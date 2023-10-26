@@ -12,6 +12,7 @@
 #include "LocalParameters.h"
 #include "IndexReader.h"
 #include "DBWriter.h"
+#include "assert.h"
 
 void deleteGapCols(std::vector<std::string> &sequences) {
     int j = sequences[0].length() - 1;
@@ -236,7 +237,6 @@ std::tuple<std::string, std::string> refineOne(
     structureSmithWaterman.ssw_init(subSequence1_aa, subSequence1_3di, tinySubMatAA, tinySubMat3Di, &subMat_aa);
     std::vector<int> map1 = maskToMapping(mask1);
     std::vector<int> map2 = maskToMapping(mask2);
-    std::vector<std::vector<std::vector<int> > > neighbours; // TODO remove this?
     Matcher::result_t result = pairwiseAlignment(
         structureSmithWaterman,
         subSequence1_aa->L,
@@ -248,7 +248,6 @@ std::tuple<std::string, std::string> refineOne(
         gapExtend,
         &subMat_aa,
         &subMat_3di,
-        neighbours,
         map1,
         map2
     );
@@ -264,8 +263,8 @@ std::tuple<std::string, std::string> refineOne(
     delete subSequence2_aa;
     delete subSequence1_3di;
     delete subSequence2_3di;
-    delete maskBool1;
-    delete maskBool2;
+    delete[] maskBool1;
+    delete[] maskBool2;
     
     return std::make_tuple(merged_aa, merged_3di);
 }
