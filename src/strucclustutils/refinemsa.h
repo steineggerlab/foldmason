@@ -1,11 +1,12 @@
-std::tuple<std::string, std::string> refineMany(
+#ifndef REFINEMSA_H
+#define REFINEMSA_H
+
+void refineMany(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
-    DBReader<unsigned int> &seqDbrAA,
-    DBReader<unsigned int> &seqDbr3Di,
-    DBReader<unsigned int> &seqDbrCA,
-    std::string msaAa,
-    std::string msa3Di,
+    DBReader<unsigned int> *seqDbrCA,
+    std::vector<std::vector<Instruction2> > cigars_aa,
+    std::vector<std::vector<Instruction2> > cigars_ss,
     PSSMCalculator &calculator_aa,
     MsaFilter &filter_aa,
     SubstitutionMatrix &subMat_aa,
@@ -19,18 +20,20 @@ std::tuple<std::string, std::string> refineMany(
     float filterMaxSeqId,
     float matchRatio,
     float qsc,
-    float scoreBias3Di,
-    float scoreBiasAa,
     int Ndiff,
+    float covMSAThr,
     int filterMinEnable,
     int filterMsa,
     int gapExtend,
     int gapOpen,
     int maxSeqLen,
-    int sequenceCnt,
     std::string qid,
-    float pairThreshold
+    float pairThreshold,
+    std::vector<size_t> indices,
+    std::vector<int> lengths
 );
 void deleteGapCols(std::vector<std::string> &sequences);
 void buildSubMSA(std::vector<std::string> &headers, std::vector<std::string> &sequences, std::string &subMSA);
 void makeSubMSA(std::string msa, std::string &subMSA1, std::string &subMSA2, std::vector<bool> &group);
+
+#endif

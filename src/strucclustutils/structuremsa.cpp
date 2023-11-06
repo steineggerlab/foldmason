@@ -619,46 +619,215 @@ int cigarLength(std::vector<Instruction2> &cigar, bool withGaps) {
     return count;
 }
 
-void msa2profile(
+/**
+ * @brief Compute MSA mask based on sequence weights
+ *
+ * "Position-based Sequence Weights", Henikoff (1994)
+ * 
+ * @param indices indices of structures in this MSA
+ * @param cigars all structure instruction vectors
+ * @param lengths all structure lengths
+ * @param lengthWithGaps gappy alignment length
+ * @return std::vector<float> 
+ */
+std::string computeProfileMask(
     std::vector<size_t> &indices,
     std::vector<std::vector<Instruction2> > &cigars,
-    PSSMCalculator &pssmCalculator,
-    MsaFilter &filter,
-    SubstitutionMatrix &subMat
+    std::vector<int> &lengths,
+    SubstitutionMatrix &subMat,
+    float matchRatio
 ) {
-    // Mask by longest (ungapped) sequence
-    if (false) {
-        int refLength = 0;
-        int refIndex;
-        for (size_t i = 0; i < indices.size(); i++) {
-            int index = indices[i]; 
-            int length = cigarLength(cigars[index], false);
-            if (length > refLength) {
-                refLength = length;
-                refIndex = i;
-            }
-        } 
-        int refLengthWithGaps = cigarLength(cigars[refIndex], true);
-        int index = 0;
-        std::vector<bool> maskedColumns(refLengthWithGaps);
-        for (Instruction2 ins : cigars[refIndex]) {
+    int lengthWithGaps = cigarLength(cigars[indices[0]], true);
+
+    // initialise weights with tiny pseudo counts
+    std::vector<float> seqWeights(indices.size(), 1e-6);
+    
+    // count residues at each position of the alignment
+    // 0-19 residue types
+    // 20   gap
+    // 21   number of distinct residues
+    std::vector<unsigned int> counts((2 + Sequence::PROFILE_AA_SIZE) * lengthWithGaps, 0);
+    for (size_t i = 0; i < indices.size(); i++) {
+        int cigIndex = indices[i];
+        int seqIndex = 0;
+        for (size_t j = 0; j < cigars[cigIndex].size(); j++) {
+            Instruction2 ins = cigars[cigIndex][j];
             if (ins.bits.state == 0) {
-                maskedColumns[index] = false;
-                index++;
+                const unsigned int c  = subMat.aa2num[static_cast<int>(ins.getCharacter())];
+                if (c < Sequence::PROFILE_AA_SIZE) {  // ignore X (20)
+                    int ij = c * lengthWithGaps + seqIndex;
+                    counts[ij] += 1;
+                    if (counts[ij] == 1) {
+                        counts[(Sequence::PROFILE_AA_SIZE + 1) * lengthWithGaps + seqIndex]++;
+                    }
+                }
+                seqIndex++;
             } else {
-                std::fill(maskedColumns.begin() + index, maskedColumns.begin() + index + ins.bits.count, true);
-                index += ins.bits.count;
+                // ignore end gaps
+                if (j != 0 && (j != cigars[cigIndex].size() - 1)) {
+                    for (int k = 0; k < ins.bits.count; k++) {
+                        counts[Sequence::PROFILE_AA_SIZE * lengthWithGaps + seqIndex + k]++;
+                    }
+                }
+                seqIndex += ins.bits.count; 
             }
         }
-        std::cout << "Mask vector: ";
-        for (bool b : maskedColumns) {
-            std::cout << (b == 0) ? '0' : '1';
+    }
+    
+    // Compute sequence weights
+    for (size_t i = 0; i < indices.size(); i++) {
+        int cigIndex = indices[i];
+        int seqIndex = 0;
+        for (Instruction2 ins : cigars[cigIndex]) {
+            if (ins.bits.state == 0) {
+                const unsigned int c = subMat.aa2num[static_cast<int>(ins.getCharacter())];
+                int distinct = counts[(Sequence::PROFILE_AA_SIZE + 1) * lengthWithGaps + seqIndex];
+                if (distinct > 0) {
+                    int ij = c * lengthWithGaps + seqIndex;
+                    seqWeights[i] += 1.0f / (
+                        static_cast<float>(counts[ij])
+                        * static_cast<float>(distinct)
+                        * (static_cast<float>(lengths[cigIndex]) + 30.0f)
+                    );
+                }
+                seqIndex++;
+            } else {
+                seqIndex += ins.bits.count; 
+            }
         }
-        std::cout << '\n';
+    }
+   
+    // Generate mask string
+    std::string mask;
+    mask.reserve(lengthWithGaps);
+    for (int i = 0; i < lengthWithGaps; i++) {
+        float matches = 0.0;
+        float gaps = static_cast<float>(counts[Sequence::PROFILE_AA_SIZE * lengthWithGaps + i]);
+        for (size_t j = 0; j < Sequence::PROFILE_AA_SIZE; j++) {
+            matches += static_cast<float>(counts[j * lengthWithGaps + i]);
+        }
+        bool state = (gaps / (gaps + matches)) > matchRatio;
+        mask.push_back(state ? '1' : '0');
     }
 
-    // mask by sequence weights OR re-use external mask
+    return mask;
+}
+
+// Generate PSSM from CIGARs and a MSA mask
+std::string msa2profile(
+    std::vector<size_t> &indices,
+    std::vector<std::vector<Instruction2> > &cigars,
+    std::string mask,
+    PSSMCalculator &pssmCalculator,
+    MsaFilter &filter,
+    SubstitutionMatrix &subMat,
+    bool filterMsa,
+    bool compBiasCorrection,
+    std::string & qid,
+    float filterMaxSeqId,
+    float Ndiff,
+    float covMSAThr,
+    float qsc,
+    int filterMinEnable,
+    bool wg,
+    size_t maxSeqLength
+) {
+    // length of sequences after masking
+    int lengthWithMask = 0;
+    for (char c : mask) {
+        if (c == '0') lengthWithMask++;
+    }
+
+    float *pNullBuffer = new float[maxSeqLength + 1];
     
+    // filter parameter
+    std::vector<std::string> qid_str_vec = Util::split(qid, ",");
+    std::vector<int> qid_vec;
+    for (size_t qid_idx = 0; qid_idx < qid_str_vec.size(); qid_idx++) {
+        float qid_float = strtod(qid_str_vec[qid_idx].c_str(), NULL);
+        qid_vec.push_back(static_cast<int>(qid_float*100));
+    }
+    std::sort(qid_vec.begin(), qid_vec.end());
+
+    // build reduced MSA
+    char **msaSequences = (char**) mem_align(ALIGN_INT, sizeof(char*) * indices.size());
+    char *msaContent = (char*) mem_align(ALIGN_INT, sizeof(char) * (lengthWithMask + 1) * indices.size());
+    int msaPos = 0; 
+    for (size_t i = 0; i < indices.size(); i++) {
+        msaSequences[i] = msaContent + msaPos;
+        msaSequences[i][lengthWithMask] = '\0';
+        int seqIndex = 0;
+        int msaIndex = 0;
+        for (Instruction2 &ins : cigars[indices[i]]) {
+            if (ins.bits.state == 0) {
+                const unsigned int c = subMat.aa2num[static_cast<int>(ins.getCharacter())];
+                if (mask[seqIndex] == '0') {
+                    msaSequences[i][msaIndex] = c;
+                    msaIndex++;
+                }
+                seqIndex++;
+            } else {
+                for (size_t j = 0; j < ins.bits.count; j++) {
+                    if (mask[seqIndex] == '0') {
+                        msaSequences[i][msaIndex] = (int)MultipleAlignment::GAP;
+                        msaIndex++;
+                    }
+                    seqIndex++;
+                }
+            }
+        }
+        assert(msaIndex == lengthWithMask);
+        msaPos += lengthWithMask + 1;
+    } 
+    
+    MultipleAlignment::MSAResult msaResult(lengthWithMask, lengthWithMask, indices.size(), msaSequences);
+
+    size_t filteredSetSize = indices.size();
+    if (filterMsa == 1) {
+        filteredSetSize = filter.filter(
+            indices.size(),
+            lengthWithMask,
+            static_cast<int>(covMSAThr * 100),
+            qid_vec,
+            qsc,
+            static_cast<int>(filterMaxSeqId * 100),
+            Ndiff,
+            filterMinEnable,
+            (const char **) msaSequences,
+            true
+        );
+    }
+
+    PSSMCalculator::Profile pssmRes = pssmCalculator.computePSSMFromMSA(
+        filteredSetSize,
+        msaResult.centerLength,
+        (const char **) msaResult.msaSequence,
+#ifdef GAP_POS_SCORING
+        alnResults,
+#endif
+        wg
+    );
+
+    if (compBiasCorrection == true) {
+        SubstitutionMatrix::calcGlobalAaBiasCorrection(
+            &subMat,
+            pssmRes.pssm,
+            pNullBuffer,
+            Sequence::PROFILE_AA_SIZE,
+            lengthWithMask
+        );
+    }
+    unsigned char * consensus = new unsigned char[lengthWithMask];
+    for (int i = 0; i < lengthWithMask; ++i)
+        consensus[i] = subMat.aa2num[pssmRes.consensus[i]];
+    std::string result;
+    pssmRes.toBuffer(consensus, lengthWithMask, subMat, result);
+
+    delete[] pNullBuffer;
+    free(msaContent);
+    free(msaSequences);
+    
+    return result;
 }
 
 
@@ -776,6 +945,12 @@ std::string fastamsa2profile(std::string & msa, PSSMCalculator &pssmCalculator, 
     if (maskByFirst == false) {
 
         if (externalMaskedColumns == NULL) {
+            // calclulate directly from smaller representation
+            // find columns to keep based on match ratio
+            // build reduced MSA
+            // use to build PSSM
+
+            // dont have to rewrite msaSequences, just build from scratch based on masked columns
             PSSMCalculator::computeSequenceWeights(seqWeight, centerLengthWithGaps,
                                                    setSize, const_cast<const char**>(msaSequences));
 
@@ -854,7 +1029,7 @@ std::string fastamsa2profile(std::string & msa, PSSMCalculator &pssmCalculator, 
     for (size_t i = 0; i < centerLength; ++i)
         consensus[i] = subMat.aa2num[pssmRes.consensus[i]];
     pssmRes.toBuffer(consensus, centerLength, subMat, result);
-    
+
     if (externalMaskedColumns == NULL) {
         // Save mask if external mask not given
         result.push_back('\n');
@@ -960,8 +1135,8 @@ void getMergeInstructions(
     Matcher::result_t &res,
     std::vector<int> &map1,
     std::vector<int> &map2,
-    std::vector<Instruction> &qBt,
-    std::vector<Instruction> &tBt
+    std::vector<Instruction2> &qBt,
+    std::vector<Instruction2> &tBt
 ) {
     qBt.emplace_back(SEQ, 1);  // first match
     tBt.emplace_back(SEQ, 1);
@@ -1021,114 +1196,6 @@ void getMergeInstructions(
 }
 
 /**
- * @brief Merges two MSAs
- * 
- * @param msa1 - query MSA
- * @param msa2 - target MSA
- * @param res  - alignment result
- * @param map1 - ungapped->gapped mapping for msa1
- * @param map2 - ungapped->gapped mapping for msa2
- * @param qBt  - query merge instructions
- * @param tBt  - target merge instructions
- * @return std::string - merged MSA
- */
-std::string mergeTwoMsa(
-    std::string &msa1,
-    std::string &msa2,
-    Matcher::result_t &res,
-    std::vector<int> map1,
-    std::vector<int> map2,
-    std::vector<Instruction> &qBt,
-    std::vector<Instruction> &tBt
-) {
-    // Calculate pre/end gaps/sequences from backtrace
-    size_t qPreSequence = map1[res.qStartPos];
-    size_t qPreGaps     = map2[res.dbStartPos];
-    size_t qEndSequence = map1[map1.size() - 1] - map1.at(res.qEndPos);
-    size_t qEndGaps     = map2[map2.size() - 1] - map2.at(res.dbEndPos);
-    size_t tPreSequence = qPreGaps;
-    size_t tPreGaps     = qPreSequence;
-    size_t tEndSequence = qEndGaps;
-    size_t tEndGaps     = qEndSequence;
-    
-    int q, t;
-
-    // String for merged MSA
-    std::string msa; 
-
-    // Query msa (msa1) first
-    kseq_buffer_t d;
-    d.buffer = (char*)msa1.c_str();
-    d.length = msa1.size();
-    kseq_t *seq = kseq_init(&d);
-    while (kseq_read(seq) >= 0) {
-        // Header
-        msa.push_back('>');
-        msa += seq->name.s;
-        msa.push_back('\n');
-
-        // Pre-alignment: in query, gaps before sequence
-        msa.append(qPreGaps, '-');
-        msa.append(seq->seq.s, 0, qPreSequence);
-
-        // In query, add sequence on M or I, gap on D
-        q = qPreSequence;
-        for (Instruction ins : qBt) {
-            if (ins.state == SEQ) {
-                msa.append(seq->seq.s, q, ins.count);
-                q += ins.count;
-            } else if (ins.state == GAP) {
-                msa.append(ins.count, '-');
-            }
-        }
-        // Post-alignment: in query, sequence before gaps
-        // if (qEndSequence > 0)
-        msa.append(seq->seq.s, q, qEndSequence);
-        msa.append(qEndGaps, '-'); 
-        msa.push_back('\n');
-    }
-    kseq_destroy(seq);
-    
-    // Target msa (msa2)
-    kseq_buffer_t d2;
-    d2.buffer = (char*)msa2.c_str();
-    d2.length = msa2.size();
-    kseq_t *seq2 = kseq_init(&d2);
-    while (kseq_read(seq2) >= 0) {
-        // Header
-        msa.push_back('>');
-        msa += seq2->name.s;
-        msa.push_back('\n');
-        
-        // Pre-alignment: in query, gaps before sequence
-        msa.append(seq2->seq.s, 0, tPreSequence);
-        msa.append(tPreGaps, '-');
-        
-        // In query, add sequence on M or I, gap on D
-        t = tPreSequence;
-        for (size_t i = 0; i < tBt.size(); ++i) {
-            Instruction ins = tBt[i];
-            if (ins.state == SEQ) {
-                msa.append(seq2->seq.s, t, ins.count);
-                t += ins.count;
-            } else if (ins.state == GAP) {
-                msa.append(ins.count, '-');
-            }
-        }
-        // Post-alignment: in query, sequence before gaps
-        msa.append(tEndGaps, '-');
-        if (tEndSequence > 0)
-            msa.append(seq2->seq.s, t, tEndSequence);
-        msa.push_back('\n');
-    }
-    // remove \n
-    // msa.erase(msa.length() - 1, 1);
-    kseq_destroy(seq2);
-    
-    return msa;
-}
-
-/**
  * @brief Expands a sequence based on CIGAR
  * 
  * @param sequence Raw sequence string
@@ -1151,163 +1218,44 @@ std::string expand(std::string sequence, std::vector<Instruction> &instructions)
 
 std::string expand(std::vector<Instruction2> &instructions) {
     std::string result = "";
-    for (Instruction2 ins : instructions) {
-        if (ins.bits.state == 0) {
-            result += ins.getCharacter();
+    for (Instruction2 &ins : instructions) {
+        if (ins.isSeq()) {
+            result.append(1, ins.getCharacter());
         } else {
-            result.append(ins.bits.count, '-');
+            result.append(static_cast<int>(ins.bits.count), '-');
         }
     }
     return result;
 }
 
-/**
- * @brief Generates CIGAR vector based on expanded alignment string
- * 
- * @param sequence Expanded alignment string
- * @return std::vector<Instruction> Vector of Instruction objects corresponding to CIGAR strings
- */
-std::vector<Instruction> contract(std::string sequence) {
-    std::vector<Instruction> instructions;
+std::vector<Instruction2> contract(std::string sequence) {
+    std::vector<Instruction2> instructions;
     for (char letter : sequence) {
-        int state = letter == '-' ? GAP : SEQ;
-        if (instructions.size() == 0) {
-            instructions.emplace_back(state, 1);
-        } else {
-            if (state == instructions.back().state) {
-                instructions.back().count++;
+        if (letter == '\0') {
+            break;
+        }
+        bool isGap = letter == '-';
+        if (instructions.empty()) {
+            if (isGap) {
+                instructions.emplace_back(1);
             } else {
-                instructions.emplace_back(state, 1);
+                instructions.emplace_back(letter);
+            }
+        } else {
+            if (isGap) {
+                if (instructions.back().isSeq()) {
+                    instructions.emplace_back(1);
+                } else {
+                    instructions.back().bits.count++;
+                }
+            } else {
+                instructions.emplace_back(letter);
             }
         }
     }
+    std::string rex = expand(instructions);
+    assert(rex == sequence);
     return instructions;
-}
-
-std::pair<std::string, std::string> mergeTwoMsa2(
-    std::vector<size_t> &group1,
-    std::vector<size_t> &group2,
-    DBReader<unsigned int> &seqDbrAA,
-    DBReader<unsigned int> &seqDbr3Di,
-    std::vector<std::vector<Instruction> > &cigars,
-    std::vector<std::string> &headers,
-    Matcher::result_t &res,
-    std::vector<int> map1,
-    std::vector<int> map2,
-    std::vector<Instruction> &qBt,
-    std::vector<Instruction> &tBt
-) {
-    // Calculate pre/end gaps/sequences from backtrace
-    size_t qPreSequence = map1[res.qStartPos];
-    size_t qPreGaps     = map2[res.dbStartPos];
-    size_t qEndSequence = map1[map1.size() - 1] - map1.at(res.qEndPos);
-    size_t qEndGaps     = map2[map2.size() - 1] - map2.at(res.dbEndPos);
-    size_t tPreSequence = qPreGaps;
-    size_t tPreGaps     = qPreSequence;
-    size_t tEndSequence = qEndGaps;
-    size_t tEndGaps     = qEndSequence;
-    
-    int q, t;
-
-    // String for merged MSA
-    std::string msa_aa; 
-    std::string msa_3di; 
-    
-    // TODO only need to do once in order to generate new cigars
-    // change fastamsa2profile to directly calculate info from cigars
-    
-    for (size_t index : group1) {
-        // Get raw sequence
-        size_t seqKey = seqDbrAA.getDbKey(index);
-        std::string sequence_aa  = expand(seqDbrAA.getData(seqKey, 0), cigars[index]);
-        std::string sequence_3di = expand(seqDbr3Di.getData(seqKey, 0), cigars[index]);
-        std::string aligned_aa  = "";
-        std::string aligned_3di = "";
-
-        // Headers
-        msa_aa.push_back('>');
-        msa_aa.append(headers[index]);
-        msa_aa.push_back('\n');
-        msa_3di.push_back('>');
-        msa_3di.append(headers[index]);
-        msa_3di.push_back('\n');
-
-        // Pre-alignment
-        aligned_aa.append(qPreGaps, '-');
-        aligned_aa.append(sequence_aa, 0, qPreSequence);
-        aligned_3di.append(qPreGaps, '-');
-        aligned_3di.append(sequence_3di, 0, qPreSequence);
-
-        // Alignment
-        q = qPreSequence;
-        for (Instruction ins : qBt) {
-            if (ins.state == SEQ) {
-                aligned_aa.append(sequence_aa, q, ins.count);
-                aligned_3di.append(sequence_3di, q, ins.count);
-                q += ins.count;
-            } else if (ins.state == GAP) {
-                aligned_aa.append(ins.count, '-');
-                aligned_3di.append(ins.count, '-');
-            }
-        }
-        
-        // Post-alignment
-        aligned_aa.append(sequence_aa, q, qEndSequence);
-        aligned_aa.append(qEndGaps, '-'); 
-        aligned_3di.append(sequence_3di, q, qEndSequence);
-        aligned_3di.append(qEndGaps, '-'); 
-        
-        // Update CIGAR
-        cigars[index] = contract(aligned_aa);
-        
-        // Save to MSA
-        msa_aa.append(aligned_aa);
-        msa_aa.push_back('\n');
-        msa_3di.append(aligned_3di);
-        msa_3di.push_back('\n');
-    }
-    
-    for (size_t index : group2) {
-        size_t seqKey = seqDbrAA.getDbKey(index);
-        std::string sequence_aa = expand(seqDbrAA.getData(seqKey, 0), cigars[index]);
-        std::string sequence_3di = expand(seqDbr3Di.getData(seqKey, 0), cigars[index]);
-        std::string aligned_aa = "";
-        std::string aligned_3di = "";
-        msa_aa.push_back('>');
-        msa_aa.append(headers[index]);
-        msa_aa.push_back('\n');
-        msa_3di.push_back('>');
-        msa_3di.append(headers[index]);
-        msa_3di.push_back('\n');
-        aligned_aa.append(sequence_aa, 0, tPreSequence);
-        aligned_aa.append(tPreGaps, '-');
-        aligned_3di.append(sequence_3di, 0, tPreSequence);
-        aligned_3di.append(tPreGaps, '-');
-        t = tPreSequence;
-        for (Instruction ins : tBt) {
-            if (ins.state == SEQ) {
-                aligned_aa.append(sequence_aa, t, ins.count);
-                aligned_3di.append(sequence_3di, t, ins.count);
-                t += ins.count;
-            } else if (ins.state == GAP) {
-                aligned_aa.append(ins.count, '-');
-                aligned_3di.append(ins.count, '-');
-            }
-        }
-        aligned_aa.append(tEndGaps, '-');
-        aligned_3di.append(tEndGaps, '-');
-        if (tEndSequence > 0) {
-            aligned_aa.append(sequence_aa, t, tEndSequence);
-            aligned_3di.append(sequence_3di, t, tEndSequence);
-        }
-        cigars[index] = contract(aligned_aa);
-        msa_aa.append(aligned_aa);
-        msa_aa.push_back('\n');
-        msa_3di.append(aligned_3di);
-        msa_3di.push_back('\n');
-    }
-   
-    return std::make_pair(msa_aa, msa_3di);
 }
 
 inline bool needNewInstruction(std::vector<Instruction2> &instructions) {
@@ -1334,8 +1282,8 @@ void addCigarGaps(
             instructionsAA.emplace_back(0);
             instructionsSS.emplace_back(0);
         }
-        int spaceLeft = 127 - instructionsAA.back().bits.count;
-        if (toAdd > spaceLeft) {
+        int spaceLeft = 127 - static_cast<int>(instructionsAA.back().bits.count);
+        if (toAdd >= spaceLeft) {
             instructionsAA.back().bits.count = 127;
             instructionsSS.back().bits.count = 127;
             toAdd -= spaceLeft;
@@ -1345,6 +1293,19 @@ void addCigarGaps(
             toAdd = 0;
         }
     }
+}
+
+void printInstructions(std::vector<Instruction2> &instructions) {
+    for (Instruction2 ins : instructions) {
+        if (ins.bits.state == 0) { 
+            std::cout << ins.getCharacter();
+        } else {
+            for (int i = 0; i < ins.bits.count; i++) {
+                std::cout << '-';
+            }
+        }
+    }
+    std::cout << '\n';   
 }
 
 /**
@@ -1362,8 +1323,6 @@ void addCigarIndices(
     std::vector<Instruction2> &oldInstructionsAA,
     std::vector<Instruction2> &oldInstructionsSS
 ) {
-    if (oldIndex < 0)
-        oldIndex = 0;
     while (toAdd > 0) {
         if (oldInstructionsAA[oldIndex].bits.state == 0) {
             newInstructionsAA.emplace_back(oldInstructionsAA[oldIndex].getCharacter());
@@ -1379,7 +1338,7 @@ void addCigarIndices(
                 newInstructionsAA.emplace_back(0);
                 newInstructionsSS.emplace_back(0);
             }
-
+            
             int spaceLeft = 127 - newInstructionsAA.back().bits.count;
 
             // More characters to add than are in this instruction
@@ -1391,9 +1350,16 @@ void addCigarIndices(
             //   More characters than space --> same as above
             //   Less --> add preSequence, set to 0 to exit
             if (toAdd > oldInstructionsAA[oldIndex].bits.count) {
+                // use ALL of this instructions count
+                // just have to check space in the new count
+
                 if (oldInstructionsAA[oldIndex].bits.count > spaceLeft) {
+                    // make new instruction/s until we exhaust the old instruction
+
                     newInstructionsAA.back().bits.count = 127;
                     newInstructionsSS.back().bits.count = 127;
+                    oldInstructionsAA[oldIndex].bits.count -= spaceLeft;
+                    oldInstructionsSS[oldIndex].bits.count -= spaceLeft;
                     toAdd -= spaceLeft;
                 } else {
                     newInstructionsAA.back().bits.count += oldInstructionsAA[oldIndex].bits.count;
@@ -1405,8 +1371,8 @@ void addCigarIndices(
                 if (toAdd > spaceLeft) {
                     newInstructionsAA.back().bits.count = 127;
                     newInstructionsSS.back().bits.count = 127;
-                    oldInstructionsAA[oldIndex].bits.count -= toAdd;
-                    oldInstructionsSS[oldIndex].bits.count -= toAdd;
+                    oldInstructionsAA[oldIndex].bits.count -= spaceLeft;
+                    oldInstructionsSS[oldIndex].bits.count -= spaceLeft;
                     toAdd -= spaceLeft;
                 } else {
                     newInstructionsAA.back().bits.count += toAdd;
@@ -1418,19 +1384,6 @@ void addCigarIndices(
             }
         }
     }
-}
-
-void printInstructions(std::vector<Instruction2> &instructions) {
-    for (Instruction2 ins : instructions) {
-        if (ins.bits.state == 0) { 
-            std::cout << ins.getCharacter();
-        } else {
-            for (int i = 0; i < ins.bits.count; i++) {
-                std::cout << '-';
-            }
-        }
-    }
-    std::cout << '\n';   
 }
 
 
@@ -1456,8 +1409,8 @@ void updateCIGARS(
     Matcher::result_t &res,
     std::vector<int> map1,
     std::vector<int> map2,
-    std::vector<Instruction> &qBt,
-    std::vector<Instruction> &tBt
+    std::vector<Instruction2> &qBt,
+    std::vector<Instruction2> &tBt
 ) {
     int qPreSequence = map1[res.qStartPos];
     int qPreGaps     = map2[res.dbStartPos];
@@ -1468,18 +1421,18 @@ void updateCIGARS(
     int tEndSequence = qEndGaps;
     int tEndGaps     = qEndSequence;
     int cigarIndex;
-    
+   
     for (size_t index : group1) {
         cigarIndex = 0;
         std::vector<Instruction2> aa;
         std::vector<Instruction2> ss;
         addCigarGaps(qPreGaps, aa, ss);
         addCigarIndices(qPreSequence, cigarIndex, aa, ss, cigars_aa[index], cigars_ss[index]);
-        for (Instruction ins : qBt) {
-            if (ins.state == SEQ) {
-                addCigarIndices(ins.count, cigarIndex, aa, ss, cigars_aa[index], cigars_ss[index]);
+        for (Instruction2 ins : qBt) {
+            if (ins.isSeq()) {
+                addCigarIndices(ins.bits.count, cigarIndex, aa, ss, cigars_aa[index], cigars_ss[index]);
             } else {
-                addCigarGaps(ins.count, aa, ss);
+                addCigarGaps(ins.bits.count, aa, ss);
             }
         }
         addCigarIndices(qEndSequence, cigarIndex, aa, ss, cigars_aa[index], cigars_ss[index]);
@@ -1493,11 +1446,11 @@ void updateCIGARS(
         std::vector<Instruction2> ss;
         addCigarIndices(tPreSequence, cigarIndex, aa, ss, cigars_aa[index], cigars_ss[index]);
         addCigarGaps(tPreGaps, aa, ss);
-        for (Instruction ins : tBt) {
-            if (ins.state == SEQ) {
-                addCigarIndices(ins.count, cigarIndex, aa, ss, cigars_aa[index], cigars_ss[index]);
+        for (Instruction2 ins : tBt) {
+            if (ins.isSeq()) {
+                addCigarIndices(ins.bits.count, cigarIndex, aa, ss, cigars_aa[index], cigars_ss[index]);
             } else {
-                addCigarGaps(ins.count, aa, ss);
+                addCigarGaps(ins.bits.count, aa, ss);
             }
         }
         addCigarGaps(tEndGaps, aa, ss);
@@ -1516,9 +1469,20 @@ void testSeqLens(std::string msa, std::map<std::string, int> &lengths) {
             if (entry.sequence.s[i] != '-')
                 count++;
         }
+        std::cout << entry.name.s << '\t' << lengths[entry.name.s] << '\t' << count << '\n';
         assert(lengths[entry.name.s] == count);
     }
 }
+
+void testSeqLens(std::vector<size_t> &indices, std::vector<std::vector<Instruction2> > &cigars, std::vector<int> &lengths) {
+    for (int index : indices) {
+        int length = cigarLength(cigars[index], false);
+        // std::cout << lengths[index] << '\t' << length << '\n';
+        assert(lengths[index] == length);
+    }
+}
+
+
 Matcher::result_t pairwiseTMAlign(
     int mergedId,
     int targetId,
@@ -1618,14 +1582,22 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     std::vector<std::vector<Instruction2> > cigars_ss(sequenceCnt);
     std::vector<std::vector<size_t> >      groups(sequenceCnt);
 
+    // map i <=> dbKey. used in LDDT calculation to retrieve CA
+    std::vector<size_t> dbKeys(sequenceCnt);
+
     std::vector<std::string> msa_aa(sequenceCnt);
     std::vector<std::string> msa_3di(sequenceCnt);
     std::vector<std::string> headers(sequenceCnt);
     std::vector<std::string> mappings(sequenceCnt);
     std::vector<size_t> idMappings(sequenceCnt);
     std::map<std::string, int> headers_rev;
+    
+#ifdef GAP_POS_SCORING
+    std::cout << "ENABLED GAP POS SCORING\n";
+#endif
 
-    std::map<std::string, int> seqLens;
+    // std::map<std::string, int> seqLens;
+    std::vector<int> seqLens(sequenceCnt);
 
     int maxSeqLength = par.maxSeqLen;
 
@@ -1633,6 +1605,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     for (size_t i = 0; i < sequenceCnt; i++) {
         size_t seqKeyAA = seqDbrAA.getDbKey(i);
         size_t seqKey3Di = seqDbr3Di.getDbKey(i);
+        
+        dbKeys.push_back(seqKeyAA);
 
         // Grab headers, remove \0
         std::string header = qdbrH.sequenceReader->getData(seqKeyAA, 0);
@@ -1668,7 +1642,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         // Map each sequence id to itself for now
         idMappings[i] = i;
         
-        seqLens[header] = allSeqs_3di[i]->L;
+        // seqLens[header] = allSeqs_3di[i]->L;
+        seqLens[i] = allSeqs_3di[i]->L;
     }
    
     // TODO: dynamically calculate and re-init PSSMCalculator/MsaFilter each iteration
@@ -1762,6 +1737,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         hits = mst(hits, sequenceCnt);
         std::cout << "Generated guide tree\n";
     }
+    
 
     std::cout << "Optimising merge order\n";
     std::vector<size_t> merges;
@@ -1771,7 +1747,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     for (size_t i = 0; i < merges.size(); i++) {
         std::cout << "Merging " << merges[i] << " sequences\n";
         for (size_t j = 0; j < merges[i]; j++) {
-            std::cout << "  " << headers[hits[idx + j].queryId] << "\t" << headers[hits[idx + j].targetId] << '\n';
+            std::cout << "  " << headers[hits[idx + j].queryId] << "\t" << headers[hits[idx + j].targetId] << '\t' << hits[idx + j].score << '\n';
         }
         idx += merges[i];
     }
@@ -1867,8 +1843,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 map1,
                 map2
             );
-            std::vector<Instruction> qBt;
-            std::vector<Instruction> tBt;
+            std::vector<Instruction2> qBt;
+            std::vector<Instruction2> tBt;
             getMergeInstructions(res, map1, map2, qBt, tBt);
             updateCIGARS(
                 groups[mergedId],
@@ -1883,49 +1859,17 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             );
             std::string msa3di_aa  = cigarsToMSA(headers, cigars_aa, groups[mergedId], groups[targetId]);
             std::string msa3di_3di = cigarsToMSA(headers, cigars_ss, groups[mergedId], groups[targetId]);
-            
-            // std::string msa3di_aa  = mergeTwoMsa(msa_aa[mergedId], msa_aa[targetId], res, map1, map2, qBt, tBt);
-            // std::string msa3di_3di = mergeTwoMsa(msa_3di[mergedId], msa_3di[targetId], res, map1, map2, qBt, tBt);
-            // std::string msa3di_aa2;
-            // std::string msa3di_3di2;
-            // std::tie(msa3di_aa2, msa3di_3di2) = mergeTwoMsa2(
-            //     groups[mergedId],
-            //     groups[targetId],
-            //     seqDbrAA,
-            //     seqDbr3Di,
-            //     cigars,
-            //     headers,
-            //     res,
-            //     map1,
-            //     map2,
-            //     qBt,
-            //     tBt
-            // );
-          
+         
             // If neither are profiles, do TM-align as well and take the best alignment
             // FIXME: something wrong with alignment lengths vs sequence lengths here
             if (false && !queryIsProfile && !targetIsProfile) {
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
-                std::vector<Instruction> qBtTM;
-                std::vector<Instruction> tBtTM;
+                std::vector<Instruction2> qBtTM;
+                std::vector<Instruction2> tBtTM;
                 getMergeInstructions(tmRes, map1, map2, qBtTM, tBtTM);
-                // std::string msaTM_aa  = mergeTwoMsa(msa_aa[mergedId],  msa_aa[targetId],  tmRes, map1, map2, qBtTM, tBtTM);
-                // std::string msaTM_3di = mergeTwoMsa(msa_3di[mergedId], msa_3di[targetId], tmRes, map1, map2, qBtTM, tBtTM);
                 std::string msaTM_aa;
                 std::string msaTM_3di;
-                std::tie(msaTM_aa, msaTM_3di) = mergeTwoMsa2(
-                    groups[mergedId],
-                    groups[targetId],
-                    seqDbrAA,
-                    seqDbr3Di,
-                    cigars,
-                    headers,
-                    tmRes,
-                    map1,
-                    map2,
-                    qBtTM,
-                    tBtTM
-                );
+
                 float lddtTM  = getLDDTScore(seqDbrAA, seqDbr3Di, seqDbrCA, msaTM_aa,  par.pairThreshold);
                 float lddt3Di = getLDDTScore(seqDbrAA, seqDbr3Di, seqDbrCA, msaTM_3di, par.pairThreshold);
                 bool improved = lddtTM > lddt3Di;
@@ -1940,9 +1884,12 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             }
             msa_aa[targetId] = "";
             msa_3di[targetId] = "";
-
+            
             assert(msa_aa[mergedId].length() == msa_3di[mergedId].length());
-            testSeqLens(msa_aa[mergedId], seqLens);
+            // std::cout << msa_aa[mergedId] << '\n';
+
+            // testSeqLens(msa_aa[mergedId], seqLens);
+            testSeqLens(groups[mergedId], cigars_aa, seqLens);
 
             // Track clusters
             groups[mergedId].insert(
@@ -1954,7 +1901,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
 if (true) {
             // calculate LDDT of merged alignment
-            float lddtScore = getLDDTScore(seqDbrAA, seqDbr3Di, seqDbrCA, msa_aa[mergedId], par.pairThreshold);
+            float lddtScore = std::get<2>(calculate_lddt(cigars_aa, groups[mergedId], dbKeys, seqLens, &seqDbrCA, par.pairThreshold));
             std::cout << std::fixed << std::setprecision(3)
                 << queryIsProfile << "\t" << targetIsProfile << '\t' << headers[mergedId] << "\t" << headers[targetId]
                 << "\tLDDT: " << lddtScore << '\t' << res.score << '\n';
@@ -1965,41 +1912,50 @@ if (true) {
             // }
             numMerges++;
             
-            // msa2profile(groups[mergedId], cigars_aa, calculator_aa, filter_aa, subMat_aa);
-            
-            std::string profile_aa = fastamsa2profile(
-                msa_aa[mergedId], calculator_aa, filter_aa, subMat_aa, maxSeqLength,
-                sequenceCnt + 1, par.matchRatio, par.filterMsa,
-                par.compBiasCorrection,
-                par.qid, par.filterMaxSeqId, par.Ndiff, 0,
-                par.qsc, par.filterMinEnable, par.wg, NULL, par.scoreBiasAa
+            mappings[mergedId] = computeProfileMask(
+                groups[mergedId],
+                cigars_aa,
+                seqLens,
+                subMat_aa,
+                par.matchRatio
             );
-            // Mapping is stored at the end of the profile (to \n), so save to mappings[]
-            // Iterate backwards until newline to recover the full mask
-            std::string mask;
-            for (size_t k = profile_aa.length() - 1; profile_aa[k] != '\n'; k--)
-                mask.push_back(profile_aa[k]);
-            std::reverse(mask.begin(), mask.end());
-            mappings[mergedId] = mask;
-            
-            // Remove mask from the profile itself, -1 for \n
-            profile_aa.erase(profile_aa.length() - mappings[mergedId].length() - 1);
-            
-            // Convert back to bool array to pass to 3di fastamsa2profile
-            bool *maskBool = new bool[mask.length()];
-            for (size_t k = 0; k < mask.length(); ++k)
-                maskBool[k] = (mask[k] == '1') ? true : false;
-
-            std::string profile_3di = fastamsa2profile(
-                msa_3di[mergedId], calculator_3di, filter_3di, subMat_3di, maxSeqLength,
-                sequenceCnt + 1, par.matchRatio, par.filterMsa,
+            std::string profile_aa = msa2profile(
+                groups[mergedId],
+                cigars_aa,
+                mappings[mergedId],
+                calculator_aa,
+                filter_aa,
+                subMat_aa,
+                par.filterMsa,
                 par.compBiasCorrection,
-                par.qid, par.filterMaxSeqId, par.Ndiff, par.covMSAThr,
+                par.qid,
+                par.filterMaxSeqId,
+                par.Ndiff,
+                par.covMSAThr,
                 par.qsc,
-                par.filterMinEnable, par.wg, maskBool, par.scoreBias3di
+                par.filterMinEnable,
+                par.wg,
+                par.maxSeqLen
+            );
+            std::string profile_3di = msa2profile(
+                groups[mergedId],
+                cigars_ss,
+                mappings[mergedId],
+                calculator_3di,
+                filter_3di,
+                subMat_3di,
+                par.filterMsa,
+                par.compBiasCorrection,
+                par.qid,
+                par.filterMaxSeqId,
+                par.Ndiff,
+                par.covMSAThr,
+                par.qsc,
+                par.filterMinEnable,
+                par.wg,
+                par.maxSeqLen
             );
 
-            delete[] maskBool; 
             assert(profile_aa.length() == profile_3di.length());
 
             if (Parameters::isEqualDbtype(allSeqs_aa[mergedId]->getSeqType(), Parameters::DBTYPE_AMINO_ACIDS)) {
@@ -2028,38 +1984,12 @@ if (true) {
 #pragma omp master
 {
     if (par.refineIters > 0) {
-        std::tie(finalMSA_aa, finalMSA_3di) = refineMany(
-            tinySubMatAA,
-            tinySubMat3Di,
-            seqDbrAA,
-            seqDbr3Di,
-            seqDbrCA,
-            finalMSA_aa,
-            finalMSA_3di,
-            calculator_aa,
-            filter_aa,
-            subMat_aa,
-            calculator_3di,
-            filter_3di,
-            subMat_3di,
-            structureSmithWaterman,
-            par.refineIters,
-            par.compBiasCorrection,
-            par.wg,
-            par.evalProfile,
-            par.matchRatio,
-            par.qsc,
-            par.scoreBias3di,
-            par.scoreBiasAa,
-            par.Ndiff,
-            par.filterMinEnable,
-            par.filterMsa,
-            par.gapExtend.values.aminoacid(),
-            par.gapOpen.values.aminoacid(),
-            par.maxSeqLen,
-            sequenceCnt,
-            par.qid,
-            par.pairThreshold
+        refineMany(
+            tinySubMatAA, tinySubMat3Di, &seqDbrCA, cigars_aa, cigars_ss, calculator_aa,
+            filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di, structureSmithWaterman,
+            par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId, par.matchRatio, par.qsc,
+            par.Ndiff, par.covMSAThr, par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(),
+            par.gapOpen.values.aminoacid(), par.maxSeqLen, par.qid, par.pairThreshold, dbKeys, seqLens
         );
     }
 }
