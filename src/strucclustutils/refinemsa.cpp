@@ -181,29 +181,14 @@ void refineOne(
         &subMat_aa,
         &subMat_3di,
         map1,
-        map2
+        map2,
+        compBiasCorrection
     );
     std::cout << "Did alignment: " << result.backtrace << "\n";
     std::vector<Instruction2> qBt;
     std::vector<Instruction2> tBt;
     getMergeInstructions(result, map1, map2, qBt, tBt);
     updateCIGARS(group1, group2, cigars_aa, cigars_ss, result, map1, map2, qBt, tBt);
-}
-
-// copy from one to two
-void copyInstructions(std::vector<Instruction2> &one, std::vector<Instruction2> &two) {
-    for (Instruction2 ins : one) {
-        two.emplace_back(static_cast<int>(ins.bits.state), static_cast<int>(ins.bits.count));
-    }
-}
-
-// copy from one to two
-void copyInstructionVectors(std::vector<std::vector<Instruction2> > &one, std::vector<std::vector<Instruction2> > &two) {
-    for (std::vector<Instruction2> vec : one) {
-        std::vector<Instruction2> tmp;
-        copyInstructions(vec, tmp);
-        two.push_back(tmp);
-    }
 }
 
 void refineMany(

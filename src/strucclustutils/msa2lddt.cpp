@@ -111,8 +111,8 @@ std::vector<int> countColumns(
     int alnLength
 ) {
     std::vector<int> counts(alnLength, 0);
-    for (int i = 0; i < subset.size(); i++) {
-        std::vector<Instruction2> cigar = cigars[i];
+    for (size_t i = 0; i < subset.size(); i++) {
+        std::vector<Instruction2> cigar = cigars[subset[i]];
         int j = 0;
         for (Instruction2 ins : cigar) {
             if (ins.isSeq()) {
@@ -135,7 +135,7 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
     DBReader<unsigned int> * seqDbrCA,
     float pairThreshold
 ) {
-    int alnLength = cigarLength(cigars[0], true); 
+    int alnLength = cigarLength(cigars[subset[0]], true); 
     
     // Track per-column scores and no. non-gaps to avg
     std::vector<float> perColumnScore(alnLength, 0.0);

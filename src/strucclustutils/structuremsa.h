@@ -58,6 +58,9 @@ union Instruction2 {
     bool isSeq() {
         return (bits.state == 0);
     }
+    bool isFull() {
+        return (bits.count == 127);
+    }
 };
 
 std::string fastamsa2profile(
@@ -100,7 +103,8 @@ Matcher::result_t pairwiseAlignment(
     SubstitutionMatrix *mat_aa,
     SubstitutionMatrix *mat_3di,
     std::vector<int> &qMap,
-    std::vector<int> &tMap
+    std::vector<int> &tMap,
+    int compBiasCorrection
 );
 
 std::vector<int> maskToMapping(std::string mask);
@@ -147,5 +151,8 @@ void updateCIGARS(
 
 std::vector<Instruction2> contract(std::string sequence);
 std::string expand(std::vector<Instruction2> &instructions);
+
+void copyInstructions(std::vector<Instruction2> &one, std::vector<Instruction2> &two);
+void copyInstructionVectors(std::vector<std::vector<Instruction2> > &one, std::vector<std::vector<Instruction2> > &two);
 
 #endif
