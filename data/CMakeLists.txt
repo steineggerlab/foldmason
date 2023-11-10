@@ -13,6 +13,7 @@ set(COMPILED_RESOURCES
         matNBR.out
         encoder_weights_3di.kerasify
         evalue_nn.kerasify
+	msa.html.zst
         main.js
         vendor.js.zst
         easycomplexsearch.sh
