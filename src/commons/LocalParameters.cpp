@@ -226,6 +226,7 @@ LocalParameters::LocalParameters() :
     structuremsa.push_back(&PARAM_BITFACTOR_AA);
     structuremsa.push_back(&PARAM_BITFACTOR_3DI);
     structuremsa.push_back(&PARAM_PAIR_THRESHOLD);
+    structuremsa.push_back(&PARAM_NO_COMP_BIAS_CORR);
 
     structuremsacluster = combineList(structuremsacluster, structuremsa);
 
@@ -271,7 +272,7 @@ LocalParameters::LocalParameters() :
     chainNameMode = 0;
     writeMapping = 0;
     tmAlignFast = 1;
-    gapOpen = 1;
+    gapOpen = 11;
     gapExtend = 1;
     nsample = 5000;
     maskLowerCaseMode = 1;

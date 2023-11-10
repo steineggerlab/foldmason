@@ -715,7 +715,6 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
         int32_t query_start, int32_t query_end,
         int32_t target_start, int32_t target_end,
         const short gap_open, const short gap_extend, bool targetIsProfile,
-        std::vector<std::vector<std::vector<int> > > &neighbours,
         size_t queryId,
         size_t targetId,
         std::vector<int> qMap,
@@ -786,9 +785,6 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
             const short *target_profile_aa = target_profile_word_aa[profile->query_aa_sequence[j-1]];
             const short *target_profile_3di = target_profile_word_3di[profile->query_3di_sequence[j-1]]; 
             
-            // double cosVal = cosine(neighbours[queryId][qMap[j-1]], neighbours[targetId][tMap[i]]);
-            // cosVal = std::log2(cosVal / (1 - cosVal));
-
             short tempE = curr_sM_G_D_vec[j-1].H - gap_open;
             short tempF = prev_sM_G_D_vec[j].H - gap_open;
             short tempEE = (curr_sM_G_D_vec[j - 1].E - gap_extend);
@@ -797,7 +793,6 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
             tempH = prev_sM_G_D_vec[j - 1].H
                 + (query_profile_aa[j-1] + target_profile_aa[i]) / 2
                 + (query_profile_3di[j-1] + target_profile_3di[i]) / 2
-                // + (cosVal - 5) * 4
                 ;
             curr_sM_G_D_vec[j].E = std::max(tempE, static_cast<short>(tempEE));
             curr_sM_G_D_vec[j].F = std::max(tempF, static_cast<short>(tempFF));
