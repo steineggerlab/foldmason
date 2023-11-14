@@ -206,8 +206,6 @@ Matcher::result_t pairwiseAlignment(
     int gapExtend,
     SubstitutionMatrix *mat_aa,
     SubstitutionMatrix *mat_3di,
-    std::vector<int> &qMap,
-    std::vector<int> &tMap,
     int compBiasCorrection
 ) {
     std::string backtrace;
@@ -308,9 +306,7 @@ Matcher::result_t pairwiseAlignment(
         gapExtend,
         targetIsProfile,
         query_aa->getId(),
-        target_aa->getId(),
-        qMap,
-        tMap
+        target_aa->getId()
     );
 
     for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
@@ -324,7 +320,7 @@ Matcher::result_t pairwiseAlignment(
     delete[] query_profile_scores_3di;
     delete[] target_profile_scores_aa;
     delete[] target_profile_scores_3di;
-    
+   
     return gAlign;
 }
 
@@ -1230,8 +1226,8 @@ void updateCIGARS(
 ) {
     int qPreSequence = qMap[res.qStartPos];
     int qPreGaps     = tMap[res.dbStartPos];
-    int qEndSequence = qMap.back() - qMap.at(res.qEndPos);
-    int qEndGaps     = tMap.back() - tMap.at(res.dbEndPos);
+    int qEndSequence = qMap.back() - qMap[res.qEndPos];
+    int qEndGaps     = tMap.back() - tMap[res.dbEndPos];
     int tPreSequence = qPreGaps;
     int tPreGaps     = qPreSequence;
     int tEndSequence = qEndGaps;
@@ -1242,7 +1238,7 @@ void updateCIGARS(
         updateTargetCIGAR(cigars_aa[index], cigars_ss[index], tBt, tPreGaps, tPreSequence, tEndGaps, tEndSequence);
 }
 
-void testSeqLens(std::vector<size_t> &indices, std::vector<std::vector<Instruction2> > &cigars, std::vector<int> &lengths, std::vector<std::string> &headers) {
+void testSeqLens(std::vector<size_t> &indices, std::vector<std::vector<Instruction2> > &cigars, std::vector<int> &lengths) {
     for (int index : indices) {
         int length = cigarLength(cigars[index], false);
         // std::cout << headers[index] << '\t' << lengths[index] << '\t' << length << '\n';
@@ -1296,10 +1292,13 @@ void copyInstructions(std::vector<Instruction2> &one, std::vector<Instruction2> 
 
 // copy from one to two
 void copyInstructionVectors(std::vector<std::vector<Instruction2> > &one, std::vector<std::vector<Instruction2> > &two) {
-    for (std::vector<Instruction2> vec : one) {
-        std::vector<Instruction2> tmp;
-        copyInstructions(vec, tmp);
-        two.push_back(tmp);
+    two.clear();
+    two.resize(one.size());
+    // for (std::vector<Instruction2> vec : one) {
+    for (size_t i = 0; i < one.size(); i++) {
+        // std::vector<Instruction2> tmp;
+        copyInstructions(one[i], two[i]);
+        // two[i] = tmp;
     }
 }
 
@@ -1611,8 +1610,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 par.gapExtend.values.aminoacid(),
                 &subMat_aa,
                 &subMat_3di,
-                map1,
-                map2,
                 par.compBiasCorrection
             );
             std::vector<Instruction2> qBt;
@@ -1621,7 +1618,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         
             // If neither are profiles, do TM-align as well and take the best alignment
             bool tmaligned = false;
-            if (!queryIsProfile && !targetIsProfile) {
+            if (false && !queryIsProfile && !targetIsProfile) {
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 std::vector<Instruction2> qBtTM;
                 std::vector<Instruction2> tBtTM;
@@ -1703,7 +1700,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             groups[targetId].clear();
             mappings[targetId].clear();
 
-            testSeqLens(groups[mergedId], cigars_aa, seqLens, headers);
+            testSeqLens(groups[mergedId], cigars_aa, seqLens);
 
 if (true) {
             // calculate LDDT of merged alignment

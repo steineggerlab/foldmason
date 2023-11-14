@@ -102,8 +102,6 @@ Matcher::result_t pairwiseAlignment(
     int gapOpen, int gapExtend,
     SubstitutionMatrix *mat_aa,
     SubstitutionMatrix *mat_3di,
-    std::vector<int> &qMap,
-    std::vector<int> &tMap,
     int compBiasCorrection
 );
 
@@ -154,5 +152,11 @@ std::string expand(std::vector<Instruction2> &instructions);
 
 void copyInstructions(std::vector<Instruction2> &one, std::vector<Instruction2> &two);
 void copyInstructionVectors(std::vector<std::vector<Instruction2> > &one, std::vector<std::vector<Instruction2> > &two);
-
+void testSeqLens(std::vector<size_t> &indices, std::vector<std::vector<Instruction2> > &cigars, std::vector<int> &lengths);
+std::string cigarsToMSA(
+    std::vector<std::string> &headers,
+    std::vector<std::vector<Instruction2> > &cigars,
+    std::vector<size_t> group1,
+    std::vector<size_t> group2
+);
 #endif

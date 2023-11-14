@@ -717,9 +717,7 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
         int32_t target_start, int32_t target_end,
         const short gap_open, const short gap_extend, bool targetIsProfile,
         size_t queryId,
-        size_t targetId,
-        std::vector<int> qMap,
-        std::vector<int> tMap
+        size_t targetId
 ) {
     // defining constants for backtracing
     const uint8_t B        = 0b00000001;

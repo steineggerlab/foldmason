@@ -151,22 +151,6 @@ public:
             std::string & backtrace,
             StructureSmithWaterman::s_align r);
     
-    Matcher::result_t FwdBwd(
-        const unsigned char *db_sequence_aa,
-        const unsigned char *db_sequence_3di,
-        short **query_profile_word_aa,
-        short **query_profile_word_3di,
-        short **target_profile_word_aa,
-        short **target_profile_word_3di,
-        int32_t query_start, int32_t query_end,
-        int32_t target_start, int32_t target_end,
-        const short gap_open, const short gap_extend, bool targetIsProfile,
-        size_t queryId,
-        size_t targetId,
-        std::vector<int> qMap,
-        std::vector<int> tMap
-    );
-    
     Matcher::result_t simpleGotoh(
         const unsigned char *db_sequence_aa,
         const unsigned char *db_sequence_3di,
@@ -178,9 +162,7 @@ public:
         int32_t target_start, int32_t target_end,
         const short gap_open, const short gap_extend, bool targetIsProfile,
         size_t queryId,
-        size_t targetId,
-        std::vector<int> qMap,
-        std::vector<int> tMap
+        size_t targetId
     );
 
     /*!	@function	Create the query profile using the query sequence.

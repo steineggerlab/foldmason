@@ -28,7 +28,7 @@ void deleteGapCols(
     int length = cigarLength(cigars_aa[indices[0]], true); 
     
     // mask of columns to delete
-    std::vector<bool> isGap(length, false);
+    std::vector<bool> isGap(length, true);
     for (size_t cigIndex : indices) {
         int seqIndex = 0;
         for (Instruction2 ins : cigars_aa[cigIndex]) {
@@ -57,8 +57,10 @@ void deleteGapCols(
                         toDelete++;
                     seqIndex++;
                 }
-                ins_aa.bits.count -= toDelete;
-                ins_ss.bits.count -= toDelete;
+                if (toDelete) {
+                    ins_aa.bits.count -= toDelete;
+                    ins_ss.bits.count -= toDelete;
+                }
             }
         }
     }
@@ -67,8 +69,8 @@ void deleteGapCols(
 void refineOne(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
-    std::vector<std::vector<Instruction2> > cigars_aa,
-    std::vector<std::vector<Instruction2> > cigars_ss,
+    std::vector<std::vector<Instruction2> > &cigars_aa,
+    std::vector<std::vector<Instruction2> > &cigars_ss,
     PSSMCalculator &calculator_aa,
     MsaFilter &filter_aa,
     SubstitutionMatrix &subMat_aa,
@@ -77,7 +79,7 @@ void refineOne(
     SubstitutionMatrix &subMat_3di,
     StructureSmithWaterman &structureSmithWaterman,
     float matchRatio,
-    std::vector<int> seqLens,
+    std::vector<int> &seqLens,
     bool filterMsa,
     bool compBiasCorrection,
     std::string & qid,
@@ -92,12 +94,13 @@ void refineOne(
     size_t maxSeqLength
 ) {
     int sequenceCnt = cigars_aa.size();
-
+    
     // split into two groups
     std::vector<size_t> group1;
     std::vector<size_t> group2;
     for (int j = 0; j < sequenceCnt; j++) {
         if (std::rand() % 2 == 0) {
+        // if (j >= (sequenceCnt / 2)) {
             group1.push_back(j);
         } else {
             group2.push_back(j);
@@ -107,13 +110,12 @@ void refineOne(
     // delete all-gap columns, if any, from cigars
     // deleteGapCols(group1, cigars_aa, cigars_ss);
     // deleteGapCols(group2, cigars_aa, cigars_ss);
-    // std::cout << "Deleted gap columns\n";
     
     // generate masks for each sub MSA
     std::string mask1 = computeProfileMask(group1, cigars_aa, seqLens, subMat_aa, matchRatio);
     std::string mask2 = computeProfileMask(group2, cigars_aa, seqLens, subMat_aa, matchRatio);
-    std::cout << "Computed mask1: " << mask1 << "\n";
-    std::cout << "Computed mask2: " << mask2 << "\n";
+    std::vector<int> map1 = maskToMapping(mask1);
+    std::vector<int> map2 = maskToMapping(mask2);
 
     // msa2profile
     std::string profile1_aa = msa2profile(
@@ -127,76 +129,77 @@ void refineOne(
         Ndiff, covMSAThr, qsc, filterMinEnable, wg, maxSeqLength
     );
     std::string profile2_aa = msa2profile(
-        group1, cigars_aa, mask1, calculator_aa, filter_aa,
+        group2, cigars_aa, mask2, calculator_aa, filter_aa,
         subMat_aa, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
         Ndiff, covMSAThr, qsc, filterMinEnable, wg, maxSeqLength
     );
     std::string profile2_ss = msa2profile(
-        group1, cigars_ss, mask1, calculator_3di, filter_3di,
+        group2, cigars_ss, mask2, calculator_3di, filter_3di,
         subMat_3di, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
         Ndiff, covMSAThr, qsc, filterMinEnable, wg, maxSeqLength
     );
-    assert(profile1_aa.length() == profile2_aa.length());
-    assert(profile1_ss.length() == profile2_ss.length());
-    std::cout << "Computed profiles\n";
+    assert(profile1_aa.length() == profile1_ss.length());
+    assert(profile2_aa.length() == profile2_ss.length());
 
     // new Sequences
-    Sequence sequence1_aa(maxSeqLength, Parameters::DBTYPE_HMM_PROFILE, (const BaseMatrix *) &subMat_aa,  0, false, compBiasCorrection);
-    Sequence sequence1_ss(maxSeqLength, Parameters::DBTYPE_HMM_PROFILE, (const BaseMatrix *) &subMat_aa,  0, false, compBiasCorrection);
-    Sequence sequence2_aa(maxSeqLength, Parameters::DBTYPE_HMM_PROFILE, (const BaseMatrix *) &subMat_3di, 0, false, compBiasCorrection);
-    Sequence sequence2_ss(maxSeqLength, Parameters::DBTYPE_HMM_PROFILE, (const BaseMatrix *) &subMat_3di, 0, false, compBiasCorrection);
-    sequence1_aa.mapSequence(0, 0, profile1_aa.c_str(), profile1_aa.length() / Sequence::PROFILE_READIN_SIZE);
-    sequence1_ss.mapSequence(1, 1, profile1_ss.c_str(), profile1_ss.length() / Sequence::PROFILE_READIN_SIZE);
-    sequence2_aa.mapSequence(0, 0, profile2_aa.c_str(), profile2_aa.length() / Sequence::PROFILE_READIN_SIZE);
-    sequence2_ss.mapSequence(1, 1, profile2_ss.c_str(), profile2_ss.length() / Sequence::PROFILE_READIN_SIZE);
-    std::cout << "Made new Sequences\n";
+    std::vector<Sequence*> sequences_aa(2);
+    std::vector<Sequence*> sequences_ss(2);
+    int qId = 0;
+    int tId = 1;
+    sequences_aa[0] = new Sequence(maxSeqLength, Parameters::DBTYPE_HMM_PROFILE, (const BaseMatrix *) &subMat_aa,  0, false, compBiasCorrection);
+    sequences_ss[0] = new Sequence(maxSeqLength, Parameters::DBTYPE_HMM_PROFILE, (const BaseMatrix *) &subMat_3di, 0, false, compBiasCorrection);
+    sequences_aa[1] = new Sequence(maxSeqLength, Parameters::DBTYPE_HMM_PROFILE, (const BaseMatrix *) &subMat_aa,  0, false, compBiasCorrection);
+    sequences_ss[1] = new Sequence(maxSeqLength, Parameters::DBTYPE_HMM_PROFILE, (const BaseMatrix *) &subMat_3di, 0, false, compBiasCorrection);
+    sequences_aa[0]->mapSequence(0, 0, profile1_aa.c_str(), profile1_aa.length() / Sequence::PROFILE_READIN_SIZE);
+    sequences_ss[0]->mapSequence(0, 0, profile1_ss.c_str(), profile1_ss.length() / Sequence::PROFILE_READIN_SIZE);
+    sequences_aa[1]->mapSequence(1, 1, profile2_aa.c_str(), profile2_aa.length() / Sequence::PROFILE_READIN_SIZE);
+    sequences_ss[1]->mapSequence(1, 1, profile2_ss.c_str(), profile2_ss.length() / Sequence::PROFILE_READIN_SIZE);
 
-    // determine query vs target
     float q_neff_sum = 0.0;
     float t_neff_sum = 0.0;
-    for (int i = 0; i < sequence1_aa.L; i++)
-        q_neff_sum += sequence1_aa.neffM[i];
-    for (int i = 0; i < sequence2_aa.L; i++)
-        t_neff_sum += sequence2_aa.neffM[i];
+    for (int i = 0; i < sequences_aa[qId]->L; i++)
+        q_neff_sum += sequences_aa[qId]->neffM[i];
+    for (int i = 0; i < sequences_aa[tId]->L; i++)
+        q_neff_sum += sequences_aa[tId]->neffM[i];
     if (q_neff_sum <= t_neff_sum) {
         std::swap(mask1, mask2);
         std::swap(group1, group2);
-        std::swap(sequence1_aa, sequence2_aa);
-        std::swap(sequence1_ss, sequence2_ss);
+        std::swap(qId, tId);
     }
-    std::cout << "Chose query vs target\n";
-
-    // alignment
-    structureSmithWaterman.ssw_init(&sequence1_aa, &sequence1_ss, tinySubMatAA, tinySubMat3Di, &subMat_aa);
-    std::vector<int> map1 = maskToMapping(mask1);
-    std::vector<int> map2 = maskToMapping(mask2);
-    std::cout << "Made maps\n";
+    structureSmithWaterman.ssw_init(
+        sequences_aa[qId],
+        sequences_ss[qId],
+        tinySubMatAA, tinySubMat3Di, &subMat_aa
+    );
     Matcher::result_t result = pairwiseAlignment(
         structureSmithWaterman,
-        sequence1_aa.L,
-        &sequence1_aa, &sequence1_ss,
-        &sequence2_aa, &sequence2_ss,
-        gapOpen,
-        gapExtend,
-        &subMat_aa,
-        &subMat_3di,
-        map1,
-        map2,
+        sequences_aa[qId]->L,
+        sequences_aa[qId], sequences_ss[qId],
+        sequences_aa[tId], sequences_ss[tId],
+        gapOpen, gapExtend,
+        &subMat_aa, &subMat_3di,
         compBiasCorrection
     );
-    std::cout << "Did alignment: " << result.backtrace << "\n";
     std::vector<Instruction2> qBt;
     std::vector<Instruction2> tBt;
     getMergeInstructions(result, map1, map2, qBt, tBt);
     updateCIGARS(group1, group2, cigars_aa, cigars_ss, result, map1, map2, qBt, tBt);
+    
+    testSeqLens(group1, cigars_aa, seqLens);
+    testSeqLens(group2, cigars_aa, seqLens);
+    
+    for (size_t i = 0; i < sequences_aa.size(); i++) {
+        delete sequences_aa[i];
+        delete sequences_ss[i];
+    }
 }
 
 void refineMany(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
     DBReader<unsigned int> *seqDbrCA,
-    std::vector<std::vector<Instruction2> > cigars_aa,
-    std::vector<std::vector<Instruction2> > cigars_ss,
+    std::vector<std::vector<Instruction2> > &cigars_aa,
+    std::vector<std::vector<Instruction2> > &cigars_ss,
     PSSMCalculator &calculator_aa,
     MsaFilter &filter_aa,
     SubstitutionMatrix &subMat_aa,
@@ -223,10 +226,10 @@ void refineMany(
     std::vector<int> lengths
 ) {
     std::cout << "Running " << iterations << " refinement iterations\n";
-    
+
     std::vector<size_t> subset(cigars_aa.size());
     for (size_t i = 0; i < subset.size(); i++) {
-        subset.push_back(i);
+        subset[i] = i;
     }
 
     float prevLDDT = std::get<2>(calculate_lddt(cigars_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
@@ -238,23 +241,21 @@ void refineMany(
     for (int i = 0; i < iterations; i++) {
         copyInstructionVectors(cigars_aa, cigars_new_aa);
         copyInstructionVectors(cigars_ss, cigars_new_ss);
-        std::cout << "Copied vectors\n";
         refineOne(
-            tinySubMatAA, tinySubMat3Di, cigars_aa, cigars_ss, calculator_aa,
-            filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
+            tinySubMatAA, tinySubMat3Di,
+            cigars_new_aa, cigars_new_ss,
+            calculator_aa, filter_aa, subMat_aa,
+            calculator_3di, filter_3di, subMat_3di,
             structureSmithWaterman, matchRatio, lengths, filterMsa, compBiasCorrection,
             qid, filterMaxSeqId, Ndiff, covMSAThr, qsc, filterMinEnable,
             wg, gapExtend, gapOpen, maxSeqLen
         );
-        std::cout << "Refinement " << i << '\n';
-        float lddtScore = std::get<2>(calculate_lddt(cigars_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
+        float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
         if (lddtScore > prevLDDT) {
-            std::cout << std::fixed << std::setprecision(4) << prevLDDT << " -> " << lddtScore << " (+" << (lddtScore - prevLDDT) << ") #" << i << '\n';
+            std::cout << std::fixed << std::setprecision(4) << prevLDDT << " -> " << lddtScore << " (+" << (lddtScore - prevLDDT) << ") #" << i + 1 << '\n';
             prevLDDT = lddtScore;
             std::swap(cigars_aa, cigars_new_aa);
             std::swap(cigars_ss, cigars_new_ss);
-            cigars_new_aa.clear();
-            cigars_new_ss.clear();
         }
     }
 }
