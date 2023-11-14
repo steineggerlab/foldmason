@@ -1618,7 +1618,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         
             // If neither are profiles, do TM-align as well and take the best alignment
             bool tmaligned = false;
-            if (false && !queryIsProfile && !targetIsProfile) {
+            if (!queryIsProfile && !targetIsProfile) {
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 std::vector<Instruction2> qBtTM;
                 std::vector<Instruction2> tBtTM;
