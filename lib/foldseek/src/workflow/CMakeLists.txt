@@ -1,0 +1,11 @@
+set(workflow_source_files
+        workflow/StructureCluster.cpp
+        workflow/StructureIndex.cpp
+        workflow/StructureSearch.cpp
+        workflow/StructureRbh.cpp
+        workflow/EasyStructureRbh.cpp
+        workflow/EasyStructureSearch.cpp
+        workflow/EasyStructureCluster.cpp
+        workflow/EasyComplexSearch.cpp
+        PARENT_SCOPE
+        )
