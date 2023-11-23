@@ -1,5 +1,5 @@
 #include <cassert>
-#include <LocalParameters.h>
+#include <FoldmasonParameters.h>
 #include "LinsearchIndexReader.h"
 #include "PrefilteringIndexReader.h"
 #include "CommandCaller.h"
@@ -17,7 +17,8 @@ void setEasyMSADefaults(Parameters *p) {
 }
 
 int easymsa(int argc, const char **argv, const Command &command) {
-    LocalParameters &par = LocalParameters::getLocalInstance();
+    FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
+
     par.PARAM_ADD_BACKTRACE.addCategory(MMseqsParameter::COMMAND_EXPERT);
     par.PARAM_MAX_REJECTED.addCategory(MMseqsParameter::COMMAND_EXPERT);
     par.PARAM_ZDROP.addCategory(MMseqsParameter::COMMAND_EXPERT);

@@ -9,7 +9,7 @@
 #include "Matcher.h"
 #include "structuremsa.h"
 #include "msa2lddt.h"
-#include "LocalParameters.h"
+#include "FoldmasonParameters.h"
 #include "IndexReader.h"
 #include "DBWriter.h"
 #include "assert.h"
@@ -261,7 +261,7 @@ void refineMany(
 }
 
 int refinemsa(int argc, const char **argv, const Command& command) {
-    LocalParameters &par = LocalParameters::getLocalInstance();
+    FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
     const bool touch = (par.preloadMode != Parameters::PRELOAD_MODE_MMAP);
     par.parseParameters(argc, argv, command, true, 0, MMseqsParameter::COMMAND_ALIGN);
     

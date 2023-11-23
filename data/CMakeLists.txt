@@ -1,22 +1,7 @@
 include(MMseqsResourceCompiler)
 
 set(COMPILED_RESOURCES
-        easystructuresearch.sh
         easymsa.sh
-        structurecluster.sh
-        structureindex.sh
-        structuresearch.sh
-        structureiterativesearch.sh
-        structurerbh.sh
-        structdatabases.sh
-        mat3di.out
-        matNBR.out
-        encoder_weights_3di.kerasify
-        evalue_nn.kerasify
-	msa.html.zst
-        main.js
-        vendor.js.zst
-        easycomplexsearch.sh
         )
 
 set(GENERATED_OUTPUT_HEADERS "")
@@ -25,4 +10,4 @@ FOREACH(INPUT_FILE ${COMPILED_RESOURCES})
     list(APPEND GENERATED_OUTPUT_HEADERS "${OUTPUT_FILE}")
 ENDFOREACH()
 
-add_custom_target(local-generated ALL DEPENDS ${GENERATED_OUTPUT_HEADERS})
+add_custom_target(foldmason-generated ALL DEPENDS ${GENERATED_OUTPUT_HEADERS})

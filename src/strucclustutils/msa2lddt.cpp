@@ -1,7 +1,7 @@
 #include "DBReader.h"
 #include "DBWriter.h"
 #include "IndexReader.h"
-#include "LocalParameters.h"
+#include "FoldmasonParameters.h"
 #include "Matcher.h"
 #include "Parameters.h"
 #include "StructureUtil.h"
@@ -11,7 +11,7 @@
 #define ZSTD_STATIC_LINKING_ONLY
 
 #include <zstd.h>
-#include "msa.html.zst.h"
+//#include "msa.html.zst.h"
 
 #include "kseq.h"
 #include "KSeqBufferReader.h"
@@ -323,7 +323,7 @@ float getLDDTScore(
 }
 
 int msa2lddt(int argc, const char **argv, const Command& command) {
-    LocalParameters &par = LocalParameters::getLocalInstance();
+    FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
 
     const bool touch = (par.preloadMode != Parameters::PRELOAD_MODE_MMAP);
     par.parseParameters(argc, argv, command, true, 0, MMseqsParameter::COMMAND_ALIGN);
@@ -360,13 +360,13 @@ int msa2lddt(int argc, const char **argv, const Command& command) {
         std::string lddtHtmlIdx = par.lddtHtml + ".index";
         DBWriter resultWriter(par.lddtHtml.c_str(), lddtHtmlIdx.c_str(), static_cast<unsigned int>(par.threads), par.compressed, Parameters::DBTYPE_OMIT_FILE);
         resultWriter.open();
-        
+       /* 
         // Read in template and write to .html
         size_t dstSize = ZSTD_findDecompressedSize(msa_html_zst, msa_html_zst_len);
         char* dst = (char*)malloc(sizeof(char) * dstSize);
         size_t realSize = ZSTD_decompress(dst, dstSize, msa_html_zst, msa_html_zst_len);
         resultWriter.writeData(dst, realSize, 0, 0, false, false);
-
+*/
         // Aligned sequences, as [[header, sequence], [header, sequence], ...]
         const char* scriptBlock = "<script>render([";
         resultWriter.writeData(scriptBlock, strlen(scriptBlock), 0, 0, false, false);

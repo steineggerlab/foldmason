@@ -4,7 +4,7 @@
 #include "DBWriter.h"
 #include "Debug.h"
 #include "IndexReader.h"
-#include "LocalParameters.h"
+#include "FoldmasonParameters.h"
 #include "Matcher.h"
 #include "MathUtil.h"
 #include "MsaFilter.h"
@@ -773,7 +773,9 @@ std::string msa2profile(
 #ifdef GAP_POS_SCORING
         alnResults,
 #endif
-        wg
+        wg,
+        // FIXME
+        0.0
     );
     
     if (compBiasCorrection) {
@@ -1321,7 +1323,7 @@ std::string cigarsToMSA(
 }
 
 int structuremsa(int argc, const char **argv, const Command& command, bool preCluster) {
-    LocalParameters &par = LocalParameters::getLocalInstance();
+    FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
 
     // Databases
     const bool touch = (par.preloadMode != Parameters::PRELOAD_MODE_MMAP);
