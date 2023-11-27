@@ -12,6 +12,8 @@
 
 #include <zstd.h>
 //#include "msa.html.zst.h"
+#include "main_foldmason.js.h"
+#include "vendor_foldmason.js.zst.h"
 
 #include "kseq.h"
 #include "KSeqBufferReader.h"
@@ -34,6 +36,25 @@
                    omp_out.begin(), omp_out.begin(), std::plus<int>())) \
     initializer(omp_priv(omp_orig))
 
+
+// Return the CA coordinates of a given db index as a string
+std::string getXYZstring(size_t index, int length, DBReader<unsigned int> *db) {
+    Coordinate16 coords;
+    char *cadata = db->getData(index, 0);
+    size_t caLength = db->getEntryLen(index);
+    float *caData = coords.read(cadata, length, caLength);
+    std::string xyz;
+    std::stringstream xyzz;
+    for (int i = 0; i < length; i++) {
+        xyzz << std::fixed << std::setprecision(3)
+            << caData[i] << ','
+            << caData[length + i] << ','
+            << caData[length * 2 + i];
+        if (i != length - 1)
+            xyzz << ',';
+    }
+    return xyzz.str();
+}
 
 Matcher::result_t makeMockAlignment(
     std::vector<Instruction2> &instructions1,
@@ -367,49 +388,87 @@ int msa2lddt(int argc, const char **argv, const Command& command) {
         size_t realSize = ZSTD_decompress(dst, dstSize, msa_html_zst, msa_html_zst_len);
         resultWriter.writeData(dst, realSize, 0, 0, false, false);
 */
-        // Aligned sequences, as [[header, sequence], [header, sequence], ...]
-        const char* scriptBlock = "<script>render([";
-        resultWriter.writeData(scriptBlock, strlen(scriptBlock), 0, 0, false, false);
+        
+        size_t dstSize = ZSTD_findDecompressedSize(vendor_foldmason_js_zst, vendor_foldmason_js_zst_len);
+        char* dst = (char*)malloc(sizeof(char) * dstSize);
+        size_t realSize = ZSTD_decompress(dst, dstSize, vendor_foldmason_js_zst, vendor_foldmason_js_zst_len);
+        
+        std::string mainJS(const_cast<char *>(reinterpret_cast<const char *>(main_foldmason_js)), main_foldmason_js_len);
+        std::string htmlTemplate(
+R"html(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="x-ua-compatible" content="ie=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= STRINGS.APP_NAME %> Search Server</title>
+</head>
+<div id="app"></div>
+)html");
+        
+        resultWriter.writeData(htmlTemplate.c_str(), htmlTemplate.size(), 0, 0, false, false);
+
+        std::string scriptStart = "<script>";
+        std::string scriptEnd   = "</script>";
+
+        // vendor.js
+        resultWriter.writeData(scriptStart.c_str(), scriptStart.size(), 0, 0, false, false);
+        resultWriter.writeData(dst, realSize, 0, 0, false, false);
+        resultWriter.writeData(scriptEnd.c_str(), scriptEnd.size(), 0, 0, false, false);
+        
+        // main.js
+        resultWriter.writeData(scriptStart.c_str(), scriptStart.size(), 0, 0, false, false);
+        resultWriter.writeData(mainJS.c_str(), mainJS.size(), 0, 0, false, false);
+        resultWriter.writeData(scriptEnd.c_str(), scriptEnd.size(), 0, 0, false, false);
+        
+        // Data <div>
+        const char* dataStart = "<div id=\"data\" style=\"display: none;\">\n{\"entries\": [";
+        resultWriter.writeData(dataStart, strlen(dataStart), 0, 0, false, false);
+
+        free(dst);
+        
+        // entries: [ { name, aa, ss, ca }, ... ]
+        // scores: [ float ]
+        // statistics: { db, msaFile, msaLDDT }
 
         for (size_t i = 0; i < cigars_aa.size(); i++) {
             std::string seq_aa = expand(cigars_aa[i]);
             std::string seq_ss = expand(cigars_ss[i]);
+            std::string seq_ca = getXYZstring(indices[i], lengths[i], &seqDbrCA);
             std::string entry;
-            entry.append("['");
+            entry.append("{\"name\":\"");
             entry.append(headers[i]);
-            entry.append("','");
+            entry.append("\",\"aa\": \"");
             entry.append(seq_aa);
-            entry.append("','");
+            entry.append("\",\"ss\": \"");
             entry.append(seq_ss);
-            entry.append("'],");
+            entry.append("\",\"ca\": \"");
+            entry.append(seq_ca);
+            entry.append("\"}");
+            if (i != cigars_aa.size() - 1)
+                entry.append(",");
             resultWriter.writeData(entry.c_str(), entry.length(), 0, 0, false, false);
         } 
 
-        std::string middle = "],[";
+        std::string middle = "],\"scores\": [";
         resultWriter.writeData(middle.c_str(), middle.length(), 0, 0, false, false);
 
-        // Per-column scores, as [[id, score], [id, score], ...]
+        // Per-column scores, as [score, score, ...]
         // TODO: optionally save this as .csv
         for (int i = 0; i < alnLength; i++) {
-            if (perColumnCount[i] == 0)
-                continue;
-            std::string entry;
-            entry.append("[");
-            entry.append(std::to_string(i));
-            entry.append(",");
-            entry.append(std::to_string(perColumnScore[i]));   // / (double)perColumnCount[i]));
-            entry.append("],");
+            std::string entry = (perColumnCount[i] == 0) ? "-1" : std::to_string(perColumnScore[i]);
+            if (i != alnLength - 1)
+                entry.append(",");
             resultWriter.writeData(entry.c_str(), entry.length(), 0, 0, false, false);
         }
-        
-        std::string end = "],";
-        end.append("{'db':'");
+        std::string end = "],\"statistics\": {";
+        end.append("\"db\":\"");
         end.append(par.db1);
-        end.append("','msa':'");
+        end.append("\",\"msaFile\":\"");
         end.append(par.db2);
-        end.append("','lddt':");
+        end.append("\",\"msaLDDT\":");
         end.append(std::to_string(lddtScore));
-        end.append("});</script>");
+        end.append("}}</script>");
 
         resultWriter.writeData(end.c_str(), end.length(), 0, 0, false, false);
         resultWriter.writeEnd(0, 0, false, 0);

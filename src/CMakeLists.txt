@@ -14,6 +14,7 @@ add_executable(foldmason
 mmseqs_setup_derived_target(foldmason foldseek-framework)
 add_dependencies(foldmason foldmason-generated local-generated)
 target_include_directories(foldmason PUBLIC ${PROJECT_BINARY_DIR}/generated)
+target_include_directories(foldseek-framework PUBLIC ${PROJECT_BINARY_DIR}/lib/foldseek/generated)
 target_link_libraries(foldmason version)
 
 install(TARGETS foldmason DESTINATION bin)

@@ -50,6 +50,9 @@ else
     fi   
 fi
 
+"$MMSEQS" msa2lddt "${STRUCTUREDB}" "${RESULTS}" "--lddt-html" "${RESULTS%%.*}.html" \
+    || fail "msa2lddt died"
+
 if [ -n "${REMOVE_TMP}" ]; then
     if [ -n "${GREEDY_BEST_HITS}" ]; then
         # shellcheck disable=SC2086

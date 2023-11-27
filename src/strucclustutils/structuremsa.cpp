@@ -775,7 +775,7 @@ std::string msa2profile(
 #endif
         wg,
         // FIXME
-        0.0
+        0.6
     );
     
     if (compBiasCorrection) {
@@ -1533,8 +1533,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
     std::cout << "Merging:\n";
 
-    size_t mergedId;
-    size_t targetId;
+    size_t finalMSAId;
 
 #pragma omp parallel
 {
@@ -1558,8 +1557,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
 #pragma omp for schedule(dynamic, 1)
         for (size_t j = 0; j < merges[i]; j++) {
-            mergedId = std::min(hits[index + j].queryId, hits[index + j].targetId);
-            targetId = std::max(hits[index + j].queryId, hits[index + j].targetId);
+            size_t mergedId = std::min(hits[index + j].queryId, hits[index + j].targetId);
+            size_t targetId = std::max(hits[index + j].queryId, hits[index + j].targetId);
             mergedId = idMappings[mergedId];
             targetId = idMappings[targetId];
             bool queryIsProfile = (Parameters::isEqualDbtype(allSeqs_aa[mergedId]->getSeqType(), Parameters::DBTYPE_HMM_PROFILE));
@@ -1771,6 +1770,7 @@ if (true) {
             allSeqs_aa[mergedId]->mapSequence(mergedId, mergedId, profile_aa.c_str(), profile_aa.length() / Sequence::PROFILE_READIN_SIZE);
             allSeqs_3di[mergedId]->mapSequence(mergedId, mergedId, profile_3di.c_str(), profile_3di.length() / Sequence::PROFILE_READIN_SIZE);
             alreadyMerged[targetId] = true;
+            finalMSAId = mergedId;
         }
         index += merges[i];
         // merged += merges[i];
@@ -1820,7 +1820,7 @@ if (true) {
     std::string buffer;
     buffer.reserve(10 * 1024);
     for (size_t i = 0; i < cigars_aa.size(); i++) {
-        size_t idx = groups[mergedId][i];
+        size_t idx = groups[finalMSAId][i];
         buffer.append(1, '>');
         buffer.append(headers[idx]);
         buffer.append(1, '\n');

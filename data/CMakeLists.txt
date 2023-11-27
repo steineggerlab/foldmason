@@ -2,6 +2,8 @@ include(MMseqsResourceCompiler)
 
 set(COMPILED_RESOURCES
         easymsa.sh
+        main_foldmason.js
+        vendor_foldmason.js.zst
         )
 
 set(GENERATED_OUTPUT_HEADERS "")
