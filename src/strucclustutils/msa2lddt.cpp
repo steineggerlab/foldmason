@@ -81,7 +81,7 @@ Matcher::result_t makeMockAlignment(
 
     Instruction2 ins1 = instructions1[index1];                
     Instruction2 ins2 = instructions2[index2];
-    
+
     for (int i = 0; i < alnLength; i++) {
         ins1 = instructions1[index1];                
         ins2 = instructions2[index2];
@@ -92,11 +92,13 @@ Matcher::result_t makeMockAlignment(
             if (started) result.backtrace.push_back('D');
             tr++;
             count1++;
+            count2 = 0;
             index2++;
         } else if (!ins2.isSeq()) {
             if (started) result.backtrace.push_back('I');
             qr++;
             count2++;
+            count1 = 0;
             index1++;
         } else {
             if (!started) {
@@ -112,6 +114,8 @@ Matcher::result_t makeMockAlignment(
             tr++;
             index1++;
             index2++;
+            count1 = 0;
+            count2 = 0;
         }
         if (!ins1.isSeq() && count1 == ins1.bits.count) {
             index1++;
@@ -147,7 +151,6 @@ std::vector<int> countColumns(
     return counts;
 }
 
-
 std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
     std::vector<std::vector<Instruction2> > &cigars,
     std::vector<size_t> &subset,
@@ -176,21 +179,38 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
         char *qcadata = seqDbrCA->getData(indices[i_idx], 0);
         size_t qCaLength = seqDbrCA->getEntryLen(indices[i_idx]);
         float *queryCaData = qcoords.read(qcadata, lengths[i_idx], qCaLength);
-        
-        lddtcalculator->initQuery(
+
+/*         lddtcalculator->initQuery(
             lengths[i_idx],
             queryCaData,
             &queryCaData[lengths[i_idx]],
             &queryCaData[lengths[i_idx] * 2]
         );
-
+ */
 #pragma omp for schedule(dynamic, 1)
         for (size_t j = i + 1; j < subset.size(); j++) {
             size_t j_idx = subset[j];
+
             Coordinate16 tcoords;
             char *tcadata = seqDbrCA->getData(indices[j_idx], 0);
             size_t tCaLength = seqDbrCA->getEntryLen(indices[j_idx]);
             float *targetCaData = tcoords.read(tcadata, lengths[j_idx], tCaLength);
+            
+            if (indices[i_idx] < indices[j_idx]) {
+                lddtcalculator->initQuery(
+                    lengths[i_idx],
+                    queryCaData,
+                    &queryCaData[lengths[i_idx]],
+                    &queryCaData[lengths[i_idx] * 2]
+                );
+            } else {
+                lddtcalculator->initQuery(
+                    lengths[j_idx],
+                    targetCaData,
+                    &targetCaData[lengths[j_idx]],
+                    &targetCaData[lengths[j_idx] * 2]
+                );
+            }
 
             // indices of matches in gappy msa
             std::vector<int> match_to_msa;
@@ -201,7 +221,12 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
             // e.g. --X-XX-X---XX-
             //      Y---YYYY---YYY
             //          MMDM   MM
-            Matcher::result_t result = makeMockAlignment(cigars[i_idx], cigars[j_idx], match_to_msa, alnLength);
+            Matcher::result_t result;
+            if (indices[i_idx] < indices[j_idx]) {
+                result = makeMockAlignment(cigars[i_idx], cigars[j_idx], match_to_msa, alnLength);
+            } else {
+                result = makeMockAlignment(cigars[j_idx], cigars[i_idx], match_to_msa, alnLength);
+            }
 
             // If no alignment between the two sequences, skip
             if (result.backtrace.length() == 0)
@@ -213,15 +238,28 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
             for (k = result.backtrace.length() - 1; result.backtrace[k] != 'M'; k--);
             result.backtrace.erase(k + 1);
 
-            LDDTCalculator::LDDTScoreResult lddtres = lddtcalculator->computeLDDTScore(
-                lengths[j_idx],
-                result.qStartPos,
-                result.dbStartPos,
-                result.backtrace,
-                targetCaData,
-                &targetCaData[lengths[j_idx]],
-                &targetCaData[lengths[j_idx] * 2]
-            );
+            LDDTCalculator::LDDTScoreResult lddtres;
+            if (indices[i_idx] < indices[j_idx]) {
+                lddtres = lddtcalculator->computeLDDTScore(
+                    lengths[j_idx],
+                    result.qStartPos,
+                    result.dbStartPos,
+                    result.backtrace,
+                    targetCaData,
+                    &targetCaData[lengths[j_idx]],
+                    &targetCaData[lengths[j_idx] * 2]
+                );
+            } else {
+                lddtres = lddtcalculator->computeLDDTScore(
+                    lengths[i_idx],
+                    result.qStartPos,
+                    result.dbStartPos,
+                    result.backtrace,
+                    queryCaData,
+                    &queryCaData[lengths[i_idx]],
+                    &queryCaData[lengths[i_idx] * 2]
+                );
+            }
             
             if (std::isnan(lddtres.avgLddtScore)) {
                 std::cout << "Found nan\n";
@@ -248,7 +286,7 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
         float residuesInColumn = colCounts[i];
 
         // TODO maybe change to bool flag to just count/not count single-residue columns in entire MSA score
-        if ((residuesInColumn / cigars.size()) < pairThreshold) {
+        if ((residuesInColumn / subset.size()) < pairThreshold) {
             perColumnScore[i] = 0.0;
             perColumnCount[i] = 0;
             continue;
@@ -267,7 +305,7 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
     }
     // float lddtScore = sum / static_cast<double>(numPairs);
     // float lddtScore = (scaledSum / perColumnCount.size());  // get mean over all columns
-    float lddtScore = scaledSum / static_cast<float>(numCols);                                        
+    float lddtScore = (numCols > 0) ? scaledSum / static_cast<float>(numCols) : 0.0;
     return std::make_tuple(perColumnScore, perColumnCount, lddtScore);
 }
 
@@ -299,7 +337,7 @@ void parseFasta(
         std::string seq3Di = seqDbr3Di->getData(seqId3Di, 0);
         seq3Di.pop_back();
         lengths.push_back(seqAA.length());
-        
+
         std::vector<Instruction2> cigar_aa = contract(entry.sequence.s);
         std::vector<Instruction2> cigar_ss;
         int index = 0;
@@ -370,8 +408,12 @@ int msa2lddt(int argc, const char **argv, const Command& command) {
     std::vector<float> perColumnScore;
     std::vector<int>   perColumnCount;
     float lddtScore;
-
-    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, indices, indices, lengths, &seqDbrCA, par.pairThreshold);
+    
+    std::vector<size_t> subset(headers.size());
+    for (size_t i = 0; i < subset.size(); i++)
+        subset[i] = i;
+    
+    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, subset, indices, lengths, &seqDbrCA, par.pairThreshold);
     
     std::cout << "Average MSA LDDT: " << lddtScore << std::endl;
     
