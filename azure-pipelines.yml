@@ -66,17 +66,17 @@ jobs:
           fi
 
           make -j $(nproc --all)
-        displayName: Build foldseek
+        displayName: Build foldmason
       - script: |
           cd ${BUILD_SOURCESDIRECTORY}
-          ./regression/run_regression.sh ./build/src/foldseek examples 
+          ./regression/run_regression.sh ./build/src/foldmason examples 
         displayName: Run Regression Suite
         condition: eq(variables['regression'], 1)
       - task: PublishPipelineArtifact@0
         condition: eq(variables['STATIC'], 1)
         inputs:
-          targetPath: $(Build.SourcesDirectory)/build/src/foldseek
-          artifactName: foldseek-linux-$(SIMD)
+          targetPath: $(Build.SourcesDirectory)/build/src/foldmason
+          artifactName: foldmason-linux-$(SIMD)
 
   - job: build_ubuntu_cross_2004
     displayName: Ubuntu 2004 Cross-Compile
@@ -115,11 +115,11 @@ jobs:
             -DRust_CARGO_TARGET=${CPREF}-unknown-linux-gnu \
             -DENABLE_WERROR=1 -DHAVE_${SIMD}=1 ..
           make -j $(nproc --all)
-        displayName: Build foldseek
+        displayName: Build foldmason
       - task: PublishPipelineArtifact@0
         inputs:
-          targetPath: $(Build.SourcesDirectory)/build/src/foldseek
-          artifactName: foldseek-linux-$(SIMD)
+          targetPath: $(Build.SourcesDirectory)/build/src/foldmason
+          artifactName: foldmason-linux-$(SIMD)
 
   - job: build_macos_11
     displayName: macOS 11
@@ -135,17 +135,17 @@ jobs:
         displayName: Install Rust Toolchain
       - script: |
           cd ${BUILD_SOURCESDIRECTORY}
-          ./util/build_osx.sh . build foldseek
-        displayName: Build foldseek
+          ./util/build_osx.sh . build foldmason
+        displayName: Build foldmason
       - script: |
           cd ${BUILD_SOURCESDIRECTORY}
-          ./regression/run_regression.sh ./build/foldseek examples 
+          ./regression/run_regression.sh ./build/foldmason examples 
         displayName: Run Regression Suite
         condition: eq(variables['regression'], 1)
       - task: PublishPipelineArtifact@0
         inputs:
-          targetPath: $(Build.SourcesDirectory)/build/foldseek
-          artifactName: foldseek-darwin-universal
+          targetPath: $(Build.SourcesDirectory)/build/foldmason
+          artifactName: foldmason-darwin-universal
 
   - job: upload_artifacts
     displayName: Upload Artifacts
@@ -159,31 +159,31 @@ jobs:
     steps:
       - script: |
           cd "${BUILD_SOURCESDIRECTORY}"
-          mkdir foldseek
-          cp -f README.md LICENCE.md foldseek
-          mkdir foldseek/bin
+          mkdir foldmason
+          cp -f README.md LICENCE.md foldmason
+          mkdir foldmason/bin
       - task: DownloadPipelineArtifact@1
         inputs:
-          artifactName: foldseek-darwin-universal
-          targetPath: $(Build.SourcesDirectory)/foldseek/bin
+          artifactName: foldmason-darwin-universal
+          targetPath: $(Build.SourcesDirectory)/foldmason/bin
       - script:
-          chmod +x "${BUILD_SOURCESDIRECTORY}/foldseek/bin/foldseek"
+          chmod +x "${BUILD_SOURCESDIRECTORY}/foldmason/bin/foldmason"
       - task: ArchiveFiles@2
         inputs:
-          rootFolderOrFile: $(Build.SourcesDirectory)/foldseek
-          archiveFile: $(Build.SourcesDirectory)/foldseek-osx-universal.tar.gz
+          rootFolderOrFile: $(Build.SourcesDirectory)/foldmason
+          archiveFile: $(Build.SourcesDirectory)/foldmason-osx-universal.tar.gz
           includeRootFolder: true
           archiveType: tar
       - task: DownloadPipelineArtifact@1
         inputs:
-          artifactName: foldseek-linux-SSE2
-          targetPath: $(Build.SourcesDirectory)/foldseek/bin
+          artifactName: foldmason-linux-SSE2
+          targetPath: $(Build.SourcesDirectory)/foldmason/bin
       - script:
-          chmod +x "${BUILD_SOURCESDIRECTORY}/foldseek/bin/foldseek"
+          chmod +x "${BUILD_SOURCESDIRECTORY}/foldmason/bin/foldmason"
       - task: ArchiveFiles@2
         inputs:
-          rootFolderOrFile: $(Build.SourcesDirectory)/foldseek
-          archiveFile: $(Build.SourcesDirectory)/foldseek-linux-sse2.tar.gz
+          rootFolderOrFile: $(Build.SourcesDirectory)/foldmason
+          archiveFile: $(Build.SourcesDirectory)/foldmason-linux-sse2.tar.gz
           includeRootFolder: true
           archiveType: tar
       # - task: DownloadPipelineArtifact@1
@@ -200,26 +200,26 @@ jobs:
       #     archiveType: tar
       - task: DownloadPipelineArtifact@1
         inputs:
-          artifactName: foldseek-linux-AVX2
-          targetPath: $(Build.SourcesDirectory)/foldseek/bin
+          artifactName: foldmason-linux-AVX2
+          targetPath: $(Build.SourcesDirectory)/foldmason/bin
       - script:
-          chmod +x "${BUILD_SOURCESDIRECTORY}/foldseek/bin/foldseek"
+          chmod +x "${BUILD_SOURCESDIRECTORY}/foldmason/bin/foldmason"
       - task: ArchiveFiles@2
         inputs:
-          rootFolderOrFile: $(Build.SourcesDirectory)/foldseek
-          archiveFile: $(Build.SourcesDirectory)/foldseek-linux-avx2.tar.gz
+          rootFolderOrFile: $(Build.SourcesDirectory)/foldmason
+          archiveFile: $(Build.SourcesDirectory)/foldmason-linux-avx2.tar.gz
           includeRootFolder: true
           archiveType: tar
       - task: DownloadPipelineArtifact@1
         inputs:
-          artifactName: foldseek-linux-ARM8
-          targetPath: $(Build.SourcesDirectory)/foldseek/bin
+          artifactName: foldmason-linux-ARM8
+          targetPath: $(Build.SourcesDirectory)/foldmason/bin
       - script:
-          chmod +x "${BUILD_SOURCESDIRECTORY}/foldseek/bin/foldseek"
+          chmod +x "${BUILD_SOURCESDIRECTORY}/foldmason/bin/foldmason"
       - task: ArchiveFiles@2
         inputs:
-          rootFolderOrFile: $(Build.SourcesDirectory)/foldseek
-          archiveFile: $(Build.SourcesDirectory)/foldseek-linux-arm64.tar.gz
+          rootFolderOrFile: $(Build.SourcesDirectory)/foldmason
+          archiveFile: $(Build.SourcesDirectory)/foldmason-linux-arm64.tar.gz
           includeRootFolder: true
           archiveType: tar
       # - task: DownloadPipelineArtifact@1
@@ -248,23 +248,23 @@ jobs:
       #     archiveType: tar
       - task: DownloadSecureFile@1
         inputs:
-          secureFile: azure_upload_foldseek
+          secureFile: azure_upload_foldmason
         displayName: Get Deployment Key
       - script: |
           mkdir ~/.ssh && mv $DOWNLOADSECUREFILE_SECUREFILEPATH ~/.ssh/id_rsa
           chmod 700 ~/.ssh && chmod 600 ~/.ssh/id_rsa
           ssh-keygen -f ~/.ssh/id_rsa -y > ~/.ssh/id_rsa.pub
           cd "${BUILD_SOURCESDIRECTORY}"
-          # disabled:foldseek-linux-sse41.tar.gz foldseek-linux-ppc64le-POWER8.tar.gz foldseek-linux-ppc64le-POWER9.tar.gz
+          # disabled:foldmason-linux-sse41.tar.gz foldmason-linux-ppc64le-POWER8.tar.gz foldmason-linux-ppc64le-POWER9.tar.gz
           ssh-keygen -Y sign -f ~/.ssh/id_rsa -n file \
-             foldseek-osx-universal.tar.gz \
-             foldseek-linux-sse2.tar.gz \
-             foldseek-linux-avx2.tar.gz \
-             foldseek-linux-arm64.tar.gz
+             foldmason-osx-universal.tar.gz \
+             foldmason-linux-sse2.tar.gz \
+             foldmason-linux-avx2.tar.gz \
+             foldmason-linux-arm64.tar.gz
           curl --retry 5 --retry-all-errors -X POST \
-            -F file[]=@foldseek-osx-universal.tar.gz -F signature[]=@foldseek-osx-universal.tar.gz.sig \
-            -F file[]=@foldseek-linux-sse2.tar.gz -F signature[]=@foldseek-linux-sse2.tar.gz.sig \
-            -F file[]=@foldseek-linux-avx2.tar.gz -F signature[]=@foldseek-linux-avx2.tar.gz.sig \
-            -F file[]=@foldseek-linux-arm64.tar.gz -F signature[]=@foldseek-linux-arm64.tar.gz.sig \
-            -F identifier="foldseek" -F directory="${BUILD_SOURCEVERSION}" \
+            -F file[]=@foldmason-osx-universal.tar.gz -F signature[]=@foldmason-osx-universal.tar.gz.sig \
+            -F file[]=@foldmason-linux-sse2.tar.gz -F signature[]=@foldmason-linux-sse2.tar.gz.sig \
+            -F file[]=@foldmason-linux-avx2.tar.gz -F signature[]=@foldmason-linux-avx2.tar.gz.sig \
+            -F file[]=@foldmason-linux-arm64.tar.gz -F signature[]=@foldmason-linux-arm64.tar.gz.sig \
+            -F identifier="foldmason" -F directory="${BUILD_SOURCEVERSION}" \
               https://mmseqs.com/upload
