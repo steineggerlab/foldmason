@@ -71,7 +71,7 @@ FoldmasonParameters::FoldmasonParameters() :
     pcb3di = 1.5;
     scoreBiasAa = 0.6;
     scoreBias3di = 0.6;
-    matchRatio = 0.51;
+    matchRatio = 0.2;
     guideTree = "";
     recomputeScores = false;
     regressive = false;
@@ -81,6 +81,7 @@ FoldmasonParameters::FoldmasonParameters() :
     bitFactor3Di = 2.1;
     outputmode = 0;
     pairThreshold = 0.0;
+    wg = true;
 
     citations.emplace(CITATION_FOLDMASON, " << TODO >> ");
 }
