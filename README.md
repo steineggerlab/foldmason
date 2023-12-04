@@ -112,6 +112,14 @@ foldmason structuremsa myDb result.fasta
 foldmason msa2lddt myDb result.fasta --lddt-html result.html
 ```
 
+### Aligning large data sets
+Foldmason can use the clustering capabilities of Foldseek to pre-cluster input structures before alignment by specifying `--precluster`,
+allowing for alignments of large sets of proteins.
+
+```
+foldmason easy-msa <PDB/mmCIF files> result.fasta tmpFolder --precluster
+```
+
 ### Computing LDDT of an externally created MSA
 The `msa2lddt` module computes an average [Local Distance Difference Test (LDDT) score](https://doi.org/10.1093/bioinformatics/btt473)
 over the length of an MSA. This is done automatically in the `easy-msa` workflow, but `msa2lddt` can be called separately to compute
