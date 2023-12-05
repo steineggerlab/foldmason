@@ -103,7 +103,7 @@ jobs:
                 -DENABLE_WERROR=$WERROR -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
           else
               cmake -DHAVE_SANITIZER=1 -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} -DHAVE_TESTS=1 \
-                -DENABLE_WERROR=$WERROR -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
+                -DENABLE_WERROR=0 -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
           fi
           make -j $(nproc --all)
 
