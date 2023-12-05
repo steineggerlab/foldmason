@@ -107,7 +107,7 @@ jobs:
         run: |
           export TTY=0
           if [ "${{ matrix.BUILD_TYPE }}" = "ASan" ]; then
-            echo "leak:libgomp1" > ASan.supp
+            echo "leak:libgomp1" > ${{ github.workspace }}/build/src/ASan.supp
             export ASAN_OPTIONS=suppressions=ASan.supp
           fi
           ${{ github.workspace }}/regression/run_regression.sh ${{ github.workspace }}/build/src/foldmason ${{ github.workspace }}/regression
