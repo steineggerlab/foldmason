@@ -9,7 +9,6 @@
 #include "MathUtil.h"
 #include "MsaFilter.h"
 #include "MultipleAlignment.h"
-#include "Newick.h"
 #include "PSSMCalculator.h"
 #include "Parameters.h"
 #include "Sequence.h"
@@ -303,10 +302,7 @@ Matcher::result_t pairwiseAlignment(
         0,
         target_aa->L,
         gapOpen,
-        gapExtend,
-        targetIsProfile,
-        query_aa->getId(),
-        target_aa->getId()
+        gapExtend
     );
 
     for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
@@ -671,7 +667,7 @@ std::string computeProfileMask(
     for (int i = 0; i < lengthWithGaps; i++) {
         float matches = colValues[i];
         float gaps = colValues[lengthWithGaps + i];
-        bool state = (gaps / (gaps + matches)) > matchRatio;
+        bool state = (gaps / (gaps + matches)) >= matchRatio;
         mask.push_back(state ? '1' : '0');
     }
 
@@ -705,8 +701,7 @@ std::string msa2profile(
     float covMSAThr,
     float qsc,
     int filterMinEnable,
-    bool wg,
-    size_t maxSeqLength
+    bool wg
 ) {
     // length of sequences after masking
     int lengthWithMask = 0;
@@ -1240,11 +1235,10 @@ void updateCIGARS(
         updateTargetCIGAR(cigars_aa[index], cigars_ss[index], tBt, tPreGaps, tPreSequence, tEndGaps, tEndSequence);
 }
 
-void testSeqLens(std::vector<size_t> &indices, std::vector<std::vector<Instruction2> > &cigars, std::vector<int> &lengths) {
-    for (int index : indices) {
-        int length = cigarLength(cigars[index], false);
+void testSeqLens(std::vector<size_t> &MAYBE_UNUSED(indices), std::vector<std::vector<Instruction2> > &MAYBE_UNUSED(cigars), std::vector<int> &MAYBE_UNUSED(lengths)) {
+    for (int MAYBE_UNUSED(index) : indices) {
+        assert(lengths[index] == cigarLength(cigars[index], false));
         // std::cout << headers[index] << '\t' << lengths[index] << '\t' << length << '\n';
-        assert(lengths[index] == length);
     }
 }
 
@@ -1706,7 +1700,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 if (true) {
             // calculate LDDT of merged alignment
             float lddtScore = std::get<2>(calculate_lddt(cigars_aa, groups[mergedId], dbKeys, seqLens, &seqDbrCA, par.pairThreshold));
-            std::cout << std::fixed << std::setprecision(3)
+            std::cout << std::fixed << std::setprecision(4)
                 << queryIsProfile << "\t" << targetIsProfile << '\t' << headers[mergedId] << "\t" << headers[targetId]
                 << "\tLDDT: " << lddtScore << '\t' << res.score;
             if (tmaligned){
@@ -1737,8 +1731,7 @@ if (true) {
                 par.covMSAThr,
                 par.qsc,
                 par.filterMinEnable,
-                par.wg,
-                1
+                par.wg
             );
             std::string profile_3di = msa2profile(
                 groups[mergedId],
@@ -1755,8 +1748,7 @@ if (true) {
                 par.covMSAThr,
                 par.qsc,
                 par.filterMinEnable,
-                par.wg,
-                par.maxSeqLen
+                par.wg
             );
             assert(profile_aa.length() == profile_3di.length());
 
@@ -1790,7 +1782,7 @@ if (true) {
         refineMany(
             tinySubMatAA, tinySubMat3Di, &seqDbrCA, cigars_aa, cigars_ss, calculator_aa,
             filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di, structureSmithWaterman,
-            par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId, par.matchRatio, par.qsc,
+            par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId, par.qsc,
             par.Ndiff, par.covMSAThr, par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(),
             par.gapOpen.values.aminoacid(), par.maxSeqLen, par.qid, par.pairThreshold, dbKeys, seqLens
         );

@@ -63,27 +63,6 @@ union Instruction2 {
     }
 };
 
-std::string fastamsa2profile(
-    std::string & msa,
-    PSSMCalculator &pssmCalculator,
-    MsaFilter &filter,
-    SubstitutionMatrix &subMat,
-    size_t maxSeqLength,
-    size_t maxSetSize,
-    float matchRatio,
-    bool filterMsa,
-    bool compBiasCorrection,
-    std::string & qid,
-    float filterMaxSeqId,
-    float Ndiff,
-    float covMSAThr,
-    float qsc,
-    int filterMinEnable,
-    bool wg,
-    bool *externalMaskedColumns,
-    float scoreBias
-);
-
 void getMergeInstructions(
     Matcher::result_t &res,
     std::vector<int> &map1,
@@ -131,8 +110,7 @@ std::string msa2profile(
     float covMSAThr,
     float qsc,
     int filterMinEnable,
-    bool wg,
-    size_t maxSeqLength
+    bool wg
 );
 
 void updateCIGARS(

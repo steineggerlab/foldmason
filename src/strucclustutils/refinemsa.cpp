@@ -86,7 +86,6 @@ void refineOne(
     MsaFilter &filter_3di,
     SubstitutionMatrix &subMat_3di,
     StructureSmithWaterman &structureSmithWaterman,
-    float matchRatio,
     std::vector<int> &seqLens,
     bool filterMsa,
     bool compBiasCorrection,
@@ -99,7 +98,6 @@ void refineOne(
     bool wg,
     int gapExtend,
     int gapOpen,
-    size_t maxSeqLength,
     std::vector<Sequence*> &sequences_aa,
     std::vector<Sequence*> &sequences_ss
 ) {
@@ -125,8 +123,8 @@ void refineOne(
     deleteGapCols(group2, cigars_aa, cigars_ss);
     
     // generate masks for each sub MSA
-    std::string mask1 = computeProfileMask(group1, cigars_aa, seqLens, subMat_aa, 1);
-    std::string mask2 = computeProfileMask(group2, cigars_aa, seqLens, subMat_aa, 1);
+    std::string mask1 = computeProfileMask(group1, cigars_aa, seqLens, subMat_aa, 1.0);
+    std::string mask2 = computeProfileMask(group2, cigars_aa, seqLens, subMat_aa, 1.0);
     std::vector<int> map1 = maskToMapping(mask1);
     std::vector<int> map2 = maskToMapping(mask2);
 
@@ -134,22 +132,22 @@ void refineOne(
     std::string profile1_aa = msa2profile(
         group1, cigars_aa, mask1, calculator_aa, filter_aa,
         subMat_aa, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
-        Ndiff, covMSAThr, qsc, filterMinEnable, wg, maxSeqLength
+        Ndiff, covMSAThr, qsc, filterMinEnable, wg
     );
     std::string profile1_ss = msa2profile(
         group1, cigars_ss, mask1, calculator_3di, filter_3di,
         subMat_3di, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
-        Ndiff, covMSAThr, qsc, filterMinEnable, wg, maxSeqLength
+        Ndiff, covMSAThr, qsc, filterMinEnable, wg
     );
     std::string profile2_aa = msa2profile(
         group2, cigars_aa, mask2, calculator_aa, filter_aa,
         subMat_aa, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
-        Ndiff, covMSAThr, qsc, filterMinEnable, wg, maxSeqLength
+        Ndiff, covMSAThr, qsc, filterMinEnable, wg
     );
     std::string profile2_ss = msa2profile(
         group2, cigars_ss, mask2, calculator_3di, filter_3di,
         subMat_3di, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
-        Ndiff, covMSAThr, qsc, filterMinEnable, wg, maxSeqLength
+        Ndiff, covMSAThr, qsc, filterMinEnable, wg
     );
     assert(profile1_aa.length() == profile1_ss.length());
     assert(profile2_aa.length() == profile2_ss.length());
@@ -213,7 +211,6 @@ void refineMany(
     bool compBiasCorrection,
     bool wg,
     float filterMaxSeqId,
-    float matchRatio,
     float qsc,
     int Ndiff,
     float covMSAThr,
@@ -256,9 +253,9 @@ void refineMany(
             cigars_new_aa, cigars_new_ss,
             calculator_aa, filter_aa, subMat_aa,
             calculator_3di, filter_3di, subMat_3di,
-            structureSmithWaterman, matchRatio, lengths, filterMsa, compBiasCorrection,
+            structureSmithWaterman, lengths, filterMsa, compBiasCorrection,
             qid, filterMaxSeqId, Ndiff, covMSAThr, qsc, filterMinEnable,
-            wg, gapExtend, gapOpen, maxSeqLen,
+            wg, gapExtend, gapOpen,
             sequences_aa, sequences_ss
         );
         float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
@@ -277,7 +274,7 @@ void refineMany(
     if (delta > 0.0) {
         std::cout << std::fixed << std::setprecision(4) << "Final LDDT: " << prevLDDT << " (+" << delta << ")\n";
     } else {
-        std::cout << "Could not improve MSA\n";
+        std::cout << "Did not improve MSA\n";
     }
     for (size_t i = 0; i < sequences_aa.size(); i++) {
         delete sequences_aa[i];
@@ -361,7 +358,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
         tinySubMatAA, tinySubMat3Di, &seqDbrCA, cigars_aa, cigars_ss,
         calculator_aa, filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
         structureSmithWaterman, par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
-        par.matchRatio, par.qsc, par.Ndiff, par.covMSAThr,
+        par.qsc, par.Ndiff, par.covMSAThr,
         par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
         par.maxSeqLen, par.qid, par.pairThreshold, indices, lengths
     );

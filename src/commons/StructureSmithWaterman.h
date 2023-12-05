@@ -160,9 +160,10 @@ public:
         short **target_profile_word_3di,
         int32_t query_start, int32_t query_end,
         int32_t target_start, int32_t target_end,
-        const short gap_open, const short gap_extend, bool targetIsProfile,
-        size_t queryId,
-        size_t targetId
+        const short gap_open, const short gap_extend
+        // bool targetIsProfile,
+        // size_t queryId,
+        // size_t targetId
     );
 
     /*!	@function	Create the query profile using the query sequence.
