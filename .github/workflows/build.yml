@@ -1,0 +1,223 @@
+name: Build & upload binaries
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  regression: 1
+
+jobs:
+  build_macos:
+    name: macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Build
+        run: |
+          cd ${{ github.workspace }}
+          ./util/build_osx.sh . build
+
+      - name: Run Regression Suite
+        if: ${{ env.regression == 1 }}
+        run: |
+          ${{ github.workspace }}/regression/run_regression.sh ${{ github.workspace }}/build/src/foldmason ${{ github.workspace }}/regression
+
+      - name: Upload MacOS Universal
+        uses: actions/upload-artifact@v3
+        with:
+          name: mmseqs-darwin-universal
+          path: ${{ github.workspace }}/build/mmseqs
+
+  build_ubuntu:
+    name: Build Ubuntu
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    strategy:
+      matrix:
+        include:
+          - SIMD: AVX2
+            STATIC: 1
+            MPI: 0
+            BUILD_TYPE: RelWithDebInfo
+          - SIMD: SSE4_1
+            STATIC: 1
+            MPI: 0
+            BUILD_TYPE: RelWithDebInfo
+          - SIMD: SSE2
+            STATIC: 1
+            MPI: 0
+            BUILD_TYPE: RelWithDebInfo
+          - SIMD: AVX2_MPI
+            STATIC: 0
+            MPI: 1
+            BUILD_TYPE: RelWithDebInfo
+          - SIMD: ASAN
+            STATIC: 0
+            MPI: 0
+            BUILD_TYPE: ASanOpt
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install G++
+        if: matrix.BUILD_TYPE == 'ASanOpt'
+        run: |
+          sudo apt-get install -y g++-12
+
+      - name: Install Dependencies
+        if: matrix.MPI == 1
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install mpi-default-dev mpi-default-bin
+
+      - name: Build Foldmason
+        run: |
+          mkdir build
+          cd build
+          export CC=gcc-12
+          export CXX=g++-12
+          if [ "${{ matrix.STATIC }}" -eq "1" ]; then
+              cmake -DHAVE_SANITIZER=1 -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} -DHAVE_TESTS=1 \
+                -DBUILD_SHARED_LIBS=OFF \
+                -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc \
+                -static-libstdc++" -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
+                -DENABLE_WERROR=1 -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
+          else
+              cmake -DHAVE_SANITIZER=1 -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} -DHAVE_TESTS=1 \
+                -DENABLE_WERROR=1 -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
+          fi
+          make -j $(nproc --all)
+
+      - name: Run Regression Suite
+        if: ${{ env.regression == 1 }}
+        run: |
+          export TTY=0
+          if [ "${{ matrix.BUILD_TYPE }}" = "ASan" ]; then
+            echo "leak:libgomp1" > ASan.supp
+            export ASAN_OPTIONS=suppressions=ASan.supp
+          fi
+          ${{ github.workspace }}/regression/run_regression.sh ${{ github.workspace }}/build/src/foldmason ${{ github.workspace }}/regression
+
+      - name: Upload Linux
+        if: matrix.STATIC == 1
+        uses: actions/upload-artifact@v3
+        with:
+          name: mmseqs-linux-${{ matrix.SIMD }}
+          path: build/src/mmseqs
+            
+  build_ubuntu_cross:
+    name: Ubuntu Cross-Compile
+    runs-on: ubuntu-20.04
+    timeout-minutes: 120
+    strategy:
+      matrix:
+        include:
+          - SIMD: ARM8
+            ARCH: arm64
+            CPREF: aarch64
+
+    steps:
+      - name: Install Toolchain
+        run: |
+          sudo dpkg --add-architecture ${{ matrix.ARCH }}
+          cat << HEREDOC | sudo tee /etc/apt/sources.list
+          deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal main universe multiverse
+          deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal-updates main universe multiverse
+          deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal-backports main universe multiverse
+          deb [arch=amd64,i386] http://security.ubuntu.com/ubuntu/ focal-security main universe multiverse
+          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ focal main universe multiverse
+          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ focal-updates main universe multiverse
+          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ focal-backports main universe multiverse
+          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ focal-security main universe multiverse
+          HEREDOC
+          sudo apt-get update
+          sudo apt-get -y install -o APT::Immediate-Configure=false crossbuild-essential-${{ matrix.ARCH }} zlib1g-dev:${{ matrix.ARCH }} libbz2-dev:${{ matrix.ARCH }}
+
+      - name: Build Cross
+        run: |
+          mkdir build && cd build
+          CC=${{ matrix.CPREF }}-linux-gnu-gcc CXX=${{ matrix.CPREF }}-linux-gnu-g++ \
+          cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHAVE_TESTS=1 \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc \
+            -static-libstdc++" -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
+            -DENABLE_WERROR=1 -DHAVE_${{ matrix.SIMD }}=1 ..
+          make -j $(nproc --all)
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: mmseqs-linux-${{ matrix.SIMD }}
+          path: build/src/foldmason
+
+  upload_artifacts:
+    name: Upload Artifacts
+    runs-on: ubuntu-latest
+    needs: [build_macos, build_ubuntu, build_ubuntu_cross]
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Artifacts Directory
+        run: |
+          mkdir foldmason
+          cp -f README.md LICENSE.md foldmason
+          mkdir mmseqs/bin
+
+      - name: Download Userguide Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: userguide
+          path: foldmason
+
+      - name: Download foldmason-darwin-universal Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: foldmason-darwin-universal
+          path: foldmason/bin
+
+      - name: Set Executable Permissions on macOS Binary
+        run: chmod +x foldmason/bin/foldmason
+
+      - name: Archive macOS Binary
+        run: tar -czvf foldmason-osx-universal.tar.gz -C foldmason .
+
+      - name: Download foldmason-linux-SSE4_1 Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: foldmason-linux-SSE4_1
+          path: foldmason/bin
+
+      - name: Set Executable Permissions on SSE4_1 Binary
+        run: chmod +x foldmason/bin/foldmason
+
+      - name: Archive SSE4_1 Binary
+        run: tar -czvf foldmason-linux-sse41.tar.gz -C foldmason .
+
+#     - name: Get Deployment Key
+#       uses: actions/download-artifact@v3
+#       with:
+#         name: secretKeyPleaseDontSteal
+
+#     - name: Sign and Upload Artifacts
+#       run: |
+#         mkdir -p $HOME/.ssh && mv secretKeyPleaseDontSteal $HOME/.ssh/id_rsa
+#         chmod 700 $HOME/.ssh && chmod 600 $HOME/.ssh/id_rsa
+#         ssh-keygen -f $HOME/.ssh/id_rsa -y > $HOME/.ssh/id_rsa.pub
+#         cp mmseqs/userguide.pdf userguide.pdf
+#         ssh-keygen -Y sign -f $HOME/.ssh/id_rsa -n file userguide.pdf mmseqs-osx-universal.tar.gz mmseqs-linux-sse2.tar.gz mmseqs-linux-sse41.tar.gz mmseqs-linux-avx2.tar.gz mmseqs-linux-arm64.tar.gz mmseqs-linux-ppc64le-power8.tar.gz mmseqs-linux-ppc64le-power9.tar.gz mmseqs-win64.zip
+#         curl --retry 5 --retry-all-errors -X POST \
+#           -F file[]=@userguide.pdf -F signature[]=@userguide.pdf.sig \
+#           -F file[]=@mmseqs-osx-universal.tar.gz -F signature[]=@mmseqs-osx-universal.tar.gz.sig \
+#           -F file[]=@mmseqs-linux-sse2.tar.gz -F signature[]=@mmseqs-linux-sse2.tar.gz.sig \
+#           -F file[]=@mmseqs-linux-sse41.tar.gz -F signature[]=@mmseqs-linux-sse41.tar.gz.sig \
+#           -F file[]=@mmseqs-linux-avx2.tar.gz -F signature[]=@mmseqs-linux-avx2.tar.gz.sig \
+#           -F file[]=@mmseqs-linux-arm64.tar.gz -F signature[]=@mmseqs-linux-arm64.tar.gz.sig \
+#           -F file[]=@mmseqs-linux-ppc64le-power8.tar.gz -F signature[]=@mmseqs-linux-pp
