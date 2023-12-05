@@ -66,7 +66,7 @@ jobs:
           - SIMD: AVX2
             STATIC: 0
             MPI: 0
-            BUILD_TYPE: ASanOpt
+            BUILD_TYPE: ASan
 
     steps:
       - uses: actions/checkout@v4
@@ -90,20 +90,15 @@ jobs:
           cd build
           export CC=gcc-12
           export CXX=g++-12
-          WERROR=1
-          if [ "${{ matrix.BUILD_TYPE }}" = "ASanOpt" ]; then
-              WERROR=0
-          fi
-          echo "WERROR=" $WERROR
           if [ "${{ matrix.STATIC }}" -eq "1" ]; then
               cmake -DHAVE_SANITIZER=1 -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} -DHAVE_TESTS=1 \
                 -DBUILD_SHARED_LIBS=OFF \
                 -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc \
                 -static-libstdc++" -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
-                -DENABLE_WERROR=$WERROR -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
+                -DENABLE_WERROR=1 -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
           else
               cmake -DHAVE_SANITIZER=1 -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} -DHAVE_TESTS=1 \
-                -DENABLE_WERROR=0 -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
+                -DENABLE_WERROR=1 -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
           fi
           make -j $(nproc --all)
 
