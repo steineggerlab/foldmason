@@ -3,7 +3,7 @@ name: Build & upload binaries
 on:
   push:
     branches:
-      - main
+      - testactions
   workflow_dispatch:
 
 env:
