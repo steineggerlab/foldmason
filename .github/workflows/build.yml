@@ -32,7 +32,7 @@ jobs:
       - name: Run Regression Suite
         if: ${{ env.regression == 1 }}
         run: |
-          ${{ github.workspace }}/regression/run_regression.sh ${{ github.workspace }}/build/src/foldmason ${{ github.workspace }}/regression
+          ${{ github.workspace }}/regression/run_regression.sh ${{ github.workspace }}/build/foldmason ${{ github.workspace }}/scratch
 
       - name: Upload MacOS Universal
         uses: actions/upload-artifact@v3
@@ -94,6 +94,7 @@ jobs:
           if [ "${{ matrix.BUILD_TYPE }}" = "ASanOpt" ]; then
               WERROR=0
           fi
+          echo "WERROR=" $WERROR
           if [ "${{ matrix.STATIC }}" -eq "1" ]; then
               cmake -DHAVE_SANITIZER=1 -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} -DHAVE_TESTS=1 \
                 -DBUILD_SHARED_LIBS=OFF \
@@ -125,7 +126,7 @@ jobs:
             
   build_ubuntu_cross:
     name: Ubuntu Cross-Compile
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 120
     strategy:
       matrix:
@@ -143,14 +144,14 @@ jobs:
         run: |
           sudo dpkg --add-architecture ${{ matrix.ARCH }}
           cat << HEREDOC | sudo tee /etc/apt/sources.list
-          deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal main universe multiverse
-          deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal-updates main universe multiverse
-          deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ focal-backports main universe multiverse
-          deb [arch=amd64,i386] http://security.ubuntu.com/ubuntu/ focal-security main universe multiverse
-          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ focal main universe multiverse
-          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ focal-updates main universe multiverse
-          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ focal-backports main universe multiverse
-          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ focal-security main universe multiverse
+          deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ jammy main universe multiverse
+          deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ jammy-updates main universe multiverse
+          deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu/ jammy-backports main universe multiverse
+          deb [arch=amd64,i386] http://security.ubuntu.com/ubuntu/ jammy-security main universe multiverse
+          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ jammy main universe multiverse
+          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates main universe multiverse
+          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-backports main universe multiverse
+          deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-security main universe multiverse
           HEREDOC
           sudo apt-get update
           sudo apt-get -y install -o APT::Immediate-Configure=false crossbuild-essential-${{ matrix.ARCH }} zlib1g-dev:${{ matrix.ARCH }} libbz2-dev:${{ matrix.ARCH }}
