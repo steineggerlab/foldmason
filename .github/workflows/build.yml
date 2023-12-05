@@ -154,13 +154,13 @@ jobs:
           deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-security main universe multiverse
           HEREDOC
           sudo apt-get update
-          sudo apt-get -y install -o APT::Immediate-Configure=false crossbuild-essential-${{ matrix.ARCH }} zlib1g-dev:${{ matrix.ARCH }} libbz2-dev:${{ matrix.ARCH }}
+          sudo apt-get -y install -o APT::Immediate-Configure=false crossbuild-essential-${{ matrix.ARCH }} zlib1g-dev:${{ matrix.ARCH }} libbz2-dev:${{ matrix.ARCH }} g++-12-${{ matrix.CPREF }}-linux-gnu
           rustup target add ${{ matrix.CPREF }}-unknown-linux-gnu
 
       - name: Build Cross
         run: |
           mkdir build && cd build
-          CC=${{ matrix.CPREF }}-linux-gnu-gcc CXX=${{ matrix.CPREF }}-linux-gnu-g++ \
+          CC=${{ matrix.CPREF }}-linux-gnu-gcc-12 CXX=${{ matrix.CPREF }}-linux-gnu-g++-12 \
           cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHAVE_TESTS=1 \
             -DBUILD_SHARED_LIBS=OFF \
             -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++" \
