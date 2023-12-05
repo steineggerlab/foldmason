@@ -12,11 +12,17 @@ env:
 jobs:
   build_macos:
     name: macOS
-    runs-on: macos-latest
+    runs-on: macos-12
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
+            
+      - name: Install Rust Toolchain
+        run: |
+          rustup update
+          rustup target install x86_64-apple-darwin
+          rustup target install aarch64-apple-darwin
 
       - name: Build
         run: |
@@ -31,8 +37,8 @@ jobs:
       - name: Upload MacOS Universal
         uses: actions/upload-artifact@v3
         with:
-          name: mmseqs-darwin-universal
-          path: ${{ github.workspace }}/build/mmseqs
+          name: foldmason-darwin-universal
+          path: ${{ github.workspace }}/build/foldmason
 
   build_ubuntu:
     name: Build Ubuntu
