@@ -403,6 +403,7 @@ int msa2lddt(int argc, const char **argv, const Command& command) {
     std::vector<std::vector<Instruction2> > cigars_aa;
     std::vector<std::vector<Instruction2> > cigars_ss;
     parseFasta(kseq, &seqDbrAA, &seqDbr3Di, headers, indices, lengths, cigars_aa, cigars_ss, alnLength);
+    delete kseq;
     
     // Calculate LDDT
     std::vector<float> perColumnScore;
@@ -517,6 +518,10 @@ R"html(<!DOCTYPE html>
         resultWriter.close(true);
         FileUtil::remove(lddtHtmlIdx.c_str());
     }
+    
+    seqDbrAA.close();
+    seqDbrCA.close();
+    seqDbr3Di.close();
 
     return EXIT_SUCCESS;
 }
