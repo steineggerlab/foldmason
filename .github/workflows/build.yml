@@ -113,8 +113,8 @@ jobs:
         if: matrix.STATIC == 1
         uses: actions/upload-artifact@v3
         with:
-          name: mmseqs-linux-${{ matrix.SIMD }}
-          path: build/src/mmseqs
+          name: foldmason-linux-${{ matrix.SIMD }}
+          path: build/src/foldmason
             
   build_ubuntu_cross:
     name: Ubuntu Cross-Compile
@@ -164,7 +164,7 @@ jobs:
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: mmseqs-linux-${{ matrix.SIMD }}
+          name: foldmason-linux-${{ matrix.SIMD }}
           path: build/src/foldmason
 
   upload_artifacts:
