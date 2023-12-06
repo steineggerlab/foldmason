@@ -788,6 +788,7 @@ std::string msa2profile(
     delete[] pNullBuffer;
     free(msaSequences[0]);
     delete[] msaSequences;
+    delete[] consensus;
     
     return result;
 }
