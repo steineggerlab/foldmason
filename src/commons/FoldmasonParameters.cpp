@@ -71,7 +71,7 @@ FoldmasonParameters::FoldmasonParameters() :
     pcb3di = 1.5;
     scoreBiasAa = 0.6;
     scoreBias3di = 0.6;
-    matchRatio = 0.2;
+    matchRatio = 0.51;
     guideTree = "";
     recomputeScores = false;
     regressive = false;

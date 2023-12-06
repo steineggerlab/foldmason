@@ -645,7 +645,7 @@ StructureSmithWaterman::s_align StructureSmithWaterman::alignStartPosBacktrace<S
 template
 StructureSmithWaterman::s_align StructureSmithWaterman::alignStartPosBacktrace<StructureSmithWaterman::PROFILE_HMM>(const unsigned char*, const unsigned char*, int32_t, const uint8_t, const uint8_t, const uint8_t, std::string& , StructureSmithWaterman::s_align, const int, const float, const int32_t);
 
-void trimCIGAR(std::string &cigar, int &qStart, int &qEnd, int &tStart, int &tEnd) {
+void trimCIGAR(std::string &cigar, int &qEnd, int &tEnd) {
     int i = 0;
     while (cigar[i] != 'M') {
         if (cigar[i] == 'D') {
@@ -714,12 +714,13 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
         short **target_profile_word_3di,
         int32_t query_start, int32_t query_end,
         int32_t target_start, int32_t target_end,
-        const short gap_open, const short gap_extend, bool targetIsProfile,
-        size_t queryId,
-        size_t targetId
+        const short gap_open, const short gap_extend
+        // bool targetIsProfile,
+        // size_t queryId,
+        // size_t targetId
 ) {
     // defining constants for backtracing
-    const uint8_t B        = 0b00000001;
+    // const uint8_t B        = 0b00000001;
     const uint8_t H        = 0b00000010;
     const uint8_t F        = 0b00000100;
     const uint8_t E        = 0b00001000;
@@ -876,7 +877,7 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
     // Adjust CIGAR string to start/end on M
     // q/dbStart and q/dbEnd are already correct, no need to adjust here
     // q/dbStart set to last M j/i, q/dbEnd last M .ref/.read
-    trimCIGAR(cigar, qStart, qEnd, dbStart, dbEnd);
+    trimCIGAR(cigar, qEnd, dbEnd);
 
     delete[] workspace;
     delete[] btMatrix;

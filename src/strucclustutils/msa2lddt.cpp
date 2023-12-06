@@ -282,7 +282,7 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
     float scaledSum = 0.0;
     int numCols = 0;
     for (size_t i = 0; i < perColumnCount.size(); i++) {
-        float pairSupport = perColumnCount[i] / static_cast<float>(numPairs);
+        // float pairSupport = perColumnCount[i] / static_cast<float>(numPairs);
         float residuesInColumn = colCounts[i];
 
         // TODO maybe change to bool flag to just count/not count single-residue columns in entire MSA score
@@ -403,6 +403,7 @@ int msa2lddt(int argc, const char **argv, const Command& command) {
     std::vector<std::vector<Instruction2> > cigars_aa;
     std::vector<std::vector<Instruction2> > cigars_ss;
     parseFasta(kseq, &seqDbrAA, &seqDbr3Di, headers, indices, lengths, cigars_aa, cigars_ss, alnLength);
+    delete kseq;
     
     // Calculate LDDT
     std::vector<float> perColumnScore;
@@ -517,6 +518,10 @@ R"html(<!DOCTYPE html>
         resultWriter.close(true);
         FileUtil::remove(lddtHtmlIdx.c_str());
     }
+    
+    seqDbrAA.close();
+    seqDbrCA.close();
+    seqDbr3Di.close();
 
     return EXIT_SUCCESS;
 }

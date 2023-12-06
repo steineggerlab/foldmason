@@ -18,7 +18,7 @@ void refineMany(
     bool compBiasCorrection,
     bool wg,
     float filterMaxSeqId,
-    float matchRatio,
+    // float matchRatio,
     float qsc,
     int Ndiff,
     float covMSAThr,
