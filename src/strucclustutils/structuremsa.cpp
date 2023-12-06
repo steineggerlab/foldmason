@@ -184,6 +184,7 @@ std::vector<AlnSimple> parseNewick(std::string newick, std::map<std::string, int
         AlnSimple hit;
         hit.queryId = linkage[i + 0];
         hit.targetId = linkage[i + 1];
+        hit.score = 0;
         hits.push_back(hit);
     }
     
@@ -1523,7 +1524,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
     std::cout << "Merging:\n";
 
-    size_t finalMSAId;
+    size_t finalMSAId = 0;
 
 #pragma omp parallel
 {
@@ -1788,8 +1789,8 @@ if (true) {
 }
     // Cleanup
     delete[] alreadyMerged;
-    delete [] tinySubMatAA;
-    delete [] tinySubMat3Di;
+    free(tinySubMatAA);
+    free(tinySubMat3Di);
     for (size_t i = 0; i < allSeqs_aa.size(); i++) {
         delete allSeqs_aa[i];
         delete allSeqs_3di[i];
