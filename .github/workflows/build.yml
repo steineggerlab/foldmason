@@ -182,12 +182,6 @@ jobs:
           cp -f README.md LICENSE.md foldmason
           mkdir foldmason/bin
 
-      - name: Download Userguide Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: userguide
-          path: foldmason
-
      #- name: Download foldmason-darwin-universal Artifact
      #  uses: actions/download-artifact@v3
      #  with:
