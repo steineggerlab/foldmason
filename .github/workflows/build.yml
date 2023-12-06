@@ -170,7 +170,8 @@ jobs:
   upload_artifacts:
     name: Upload Artifacts
     runs-on: ubuntu-latest
-    needs: [build_macos, build_ubuntu, build_ubuntu_cross]
+    needs: [build_ubuntu, build_ubuntu_cross]
+    #needs: [build_macos, build_ubuntu, build_ubuntu_cross]
     if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -179,7 +180,7 @@ jobs:
         run: |
           mkdir foldmason
           cp -f README.md LICENSE.md foldmason
-          mkdir mmseqs/bin
+          mkdir foldmason/bin
 
       - name: Download Userguide Artifact
         uses: actions/download-artifact@v3
@@ -187,17 +188,17 @@ jobs:
           name: userguide
           path: foldmason
 
-      - name: Download foldmason-darwin-universal Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: foldmason-darwin-universal
-          path: foldmason/bin
+     #- name: Download foldmason-darwin-universal Artifact
+     #  uses: actions/download-artifact@v3
+     #  with:
+     #    name: foldmason-darwin-universal
+     #    path: foldmason/bin
 
-      - name: Set Executable Permissions on macOS Binary
-        run: chmod +x foldmason/bin/foldmason
+     #- name: Set Executable Permissions on macOS Binary
+     #  run: chmod +x foldmason/bin/foldmason
 
-      - name: Archive macOS Binary
-        run: tar -czvf foldmason-osx-universal.tar.gz -C foldmason .
+     #- name: Archive macOS Binary
+     #  run: tar -czvf foldmason-osx-universal.tar.gz -C foldmason .
 
       - name: Download foldmason-linux-SSE4_1 Artifact
         uses: actions/download-artifact@v3
