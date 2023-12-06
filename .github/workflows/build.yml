@@ -181,45 +181,83 @@ jobs:
           cp -f README.md LICENSE.md foldmason
           mkdir foldmason/bin
 
-     - name: Download foldmason-darwin-universal Artifact
-       uses: actions/download-artifact@v3
-       with:
-         name: foldmason-darwin-universal
-         path: foldmason/bin
+      # MacOS
+      - name: Download foldmason-darwin-universal Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: foldmason-darwin-universal
+          path: foldmason/bin
 
-     - name: Set Executable Permissions on macOS Binary
-       run: chmod +x foldmason/bin/foldmason
+      - name: Archive Mac Binary
+        run: |
+          chmod +x foldmason/bin/foldmason
+          tar -czvf foldmason-osx-universal.tar.gz -C foldmason .
 
-     - name: Archive macOS Binary
-       run: tar -czvf foldmason-osx-universal.tar.gz -C foldmason .
-
+      # Linux SSE41
       - name: Download foldmason-linux-SSE4_1 Artifact
         uses: actions/download-artifact@v3
         with:
           name: foldmason-linux-SSE4_1
           path: foldmason/bin
 
-      - name: Set Executable Permissions on SSE4_1 Binary
-        run: chmod +x foldmason/bin/foldmason
-
       - name: Archive SSE4_1 Binary
-        run: tar -czvf foldmason-linux-sse41.tar.gz -C foldmason .
+        run: |
+          chmod +x foldmason/bin/foldmason
+          tar -czvf foldmason-linux-sse41.tar.gz -C foldmason .
 
-#     - name: Get Deployment Key
-#       uses: actions/download-artifact@v3
-#       with:
-#         name: secretKeyPleaseDontSteal
+      # Linux SSE2
+      - name: Download foldmason-linux-SSE2 Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: foldmason-linux-SSE2
+          path: foldmason/bin
 
-#     - name: Sign and Upload Artifacts
-#       run: |
-#         mkdir -p $HOME/.ssh && mv secretKeyPleaseDontSteal $HOME/.ssh/id_rsa
-#         chmod 700 $HOME/.ssh && chmod 600 $HOME/.ssh/id_rsa
-#         ssh-keygen -f $HOME/.ssh/id_rsa -y > $HOME/.ssh/id_rsa.pub
-#         ssh-keygen -Y sign -f $HOME/.ssh/id_rsa -n file foldmason-osx-universal.tar.gz foldmason-linux-sse2.tar.gz foldmason-linux-sse41.tar.gz foldmason-linux-avx2.tar.gz foldmason-linux-arm64.tar.gz
-#         curl --retry 5 --retry-all-errors -X POST \
-#           -F file[]=@userguide.pdf -F signature[]=@userguide.pdf.sig \
-#           -F file[]=@foldmason-osx-universal.tar.gz -F signature[]=@foldmason-osx-universal.tar.gz.sig \
-#           -F file[]=@foldmason-linux-sse2.tar.gz -F signature[]=@foldmason-linux-sse2.tar.gz.sig \
-#           -F file[]=@foldmason-linux-sse41.tar.gz -F signature[]=@foldmason-linux-sse41.tar.gz.sig \
-#           -F file[]=@foldmason-linux-avx2.tar.gz -F signature[]=@foldmason-linux-avx2.tar.gz.sig \
-#           -F file[]=@foldmason-linux-arm64.tar.gz -F signature[]=@foldmason-linux-arm64.tar.gz.sig
+      - name: Archive SSE2 Binary
+        run: |
+          chmod +x foldmason/bin/foldmason
+          tar -czvf foldmason-linux-sse2.tar.gz -C foldmason .
+
+      # Linux AVX2
+      - name: Download foldmason-linux-AVX2 Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: foldmason-linux-AVX2
+          path: foldmason/bin
+
+      - name: Archive AVX2 Binary
+        run: |
+          chmod +x foldmason/bin/foldmason
+          tar -czvf foldmason-linux-avx2.tar.gz -C foldmason .
+
+      # Linux ARM64
+      - name: Download foldmason-linux-ARM8 Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: foldmason-linux-ARM8
+          path: foldmason/bin
+
+      - name: Archive ARM8 Binary
+        run: |
+          chmod +x foldmason/bin/foldmason
+          tar -czvf foldmason-linux-arm64.tar.gz -C foldmason .
+
+      - name: Get Deployment Key 
+        run: |
+            mkdir -p $HOME/.ssh
+            echo $PRIVATE_KEY > $HOME/.ssh/id_rsa 
+            chmod 700 $HOME/.ssh && chmod 600 $HOME/.ssh/id_rsa
+            ssh-keygen -f $HOME/.ssh/id_rsa -y > $HOME/.ssh/id_rsa.pub
+        env:
+          PRIVATE_KEY : ${{ secrets.PRIVATE_KEY }}
+
+      - name: Sign and Upload Artifacts
+        run: |
+          ssh-keygen -Y sign -f $HOME/.ssh/id_rsa -n file foldmason-osx-universal.tar.gz foldmason-linux-sse2.tar.gz foldmason-linux-sse41.tar.gz foldmason-linux-avx2.tar.gz foldmason-linux-arm64.tar.gz
+          curl --retry 5 --retry-all-errors -X POST \
+            -F file[]=@foldmason-osx-universal.tar.gz -F signature[]=@foldmason-osx-universal.tar.gz.sig \
+            -F file[]=@foldmason-linux-sse2.tar.gz -F signature[]=@foldmason-linux-sse2.tar.gz.sig \
+            -F file[]=@foldmason-linux-sse41.tar.gz -F signature[]=@foldmason-linux-sse41.tar.gz.sig \
+            -F file[]=@foldmason-linux-avx2.tar.gz -F signature[]=@foldmason-linux-avx2.tar.gz.sig \
+            -F file[]=@foldmason-linux-arm64.tar.gz -F signature[]=@foldmason-linux-arm64.tar.gz.sig \
+            -F identifier="foldmason" -F directory="${{ github.sha }}" \
+              https://mmseqs.com/upload
