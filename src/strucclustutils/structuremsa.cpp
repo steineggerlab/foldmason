@@ -1798,6 +1798,7 @@ if (true) {
     }
     seqDbrAA.close();
     seqDbr3Di.close();
+    seqDbrCA.close();
 
     // Write final MSA to file with correct headers
     DBWriter resultWriter(
