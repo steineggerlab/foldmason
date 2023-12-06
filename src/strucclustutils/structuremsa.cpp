@@ -710,13 +710,10 @@ std::string msa2profile(
     }
 
     float *pNullBuffer = new float[lengthWithMask];
-    
+
     // build reduced MSA
-    char **msaSequences = (char**) mem_align(ALIGN_INT, sizeof(char*) * indices.size());
-    char *msaContent = (char*) mem_align(ALIGN_INT, sizeof(char) * (lengthWithMask + 1) * indices.size());
-    int msaPos = 0;
+    char **msaSequences = MultipleAlignment::initX(lengthWithMask + 1, indices.size());
     for (size_t i = 0; i < indices.size(); i++) {
-        msaSequences[i] = msaContent + msaPos;
         msaSequences[i][lengthWithMask] = '\0';
         int seqIndex = 0;
         int msaIndex = 0;
@@ -739,9 +736,8 @@ std::string msa2profile(
             }
         }
         assert(msaIndex == lengthWithMask);
-        msaPos += lengthWithMask + 1;
     }
-
+    
     MultipleAlignment::MSAResult msaResult(lengthWithMask, lengthWithMask, indices.size(), msaSequences);
 
     size_t filteredSetSize = indices.size();
@@ -789,8 +785,8 @@ std::string msa2profile(
     pssmRes.toBuffer(consensus, lengthWithMask, subMat, result);
 
     delete[] pNullBuffer;
-    free(msaContent);
-    free(msaSequences);
+    free(msaSequences[0]);
+    delete[] msaSequences;
     
     return result;
 }
