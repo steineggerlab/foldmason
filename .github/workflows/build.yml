@@ -244,7 +244,7 @@ jobs:
       - name: Get Deployment Key 
         run: |
             mkdir -p $HOME/.ssh
-            echo $PRIVATE_KEY > $HOME/.ssh/id_rsa 
+            echo "$PRIVATE_KEY" > $HOME/.ssh/id_rsa 
             chmod 700 $HOME/.ssh && chmod 600 $HOME/.ssh/id_rsa
             ssh-keygen -f $HOME/.ssh/id_rsa -y > $HOME/.ssh/id_rsa.pub
         env:
