@@ -4,6 +4,8 @@ Foldmason builds multiple alignments of large structure sets.
 ## Publications
 [van Kempen M, Kim S, Tumescheit C, Mirdita M, Lee J, Gilchrist C, Söding J, and Steinegger M. Fast and accurate protein structure search with Foldseek. Nature Biotechnology, doi:10.1038/s41587-023-01773-0 (2023)](https://www.nature.com/articles/s41587-023-01773-0)
 
+[![build workflow](https://github.com/steineggerlab/foldmason/actions/workflows/build.yml/badge.svg)](https://github.com/steineggerlab/foldmason/actions/workflows/build.yml)
+
 # Table of Contents
 
 - [Foldmason](#foldmason)
