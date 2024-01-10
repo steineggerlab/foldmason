@@ -50,7 +50,7 @@ public:
     PARAMETER(PARAM_OUTPUT_MODE)
     PARAMETER(PARAM_LDDT_HTML)
     PARAMETER(PARAM_PAIR_THRESHOLD)
-    // PARAMETER(PARAM_NEWICK_OUTPUT)
+    PARAMETER(PARAM_REPORT_COMMAND)
 
     MultiParam<PseudoCounts> pcaAa;
     MultiParam<PseudoCounts> pcbAa;
@@ -67,6 +67,7 @@ public:
     float bitFactor3Di;
     int outputmode;
     std::string lddtHtml;
+    std::string reportCommand;
     float pairThreshold;
 };
 #endif

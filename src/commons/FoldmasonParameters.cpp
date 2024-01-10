@@ -19,7 +19,8 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_BITFACTOR_3DI(PARAM_BITFACTOR_3DI_ID, "--bitfactor-3di", "3Di matrix bit factor", "3Di matrix bit factor", typeid(float), (void *) &bitFactor3Di, "^([0-9]*\\.[0-9]*)$"),
         PARAM_OUTPUT_MODE(PARAM_OUTPUT_MODE_ID, "--output-mode", "Alignment output mode", "Output file mode: \n0: Amino acid\n1: 3Di alphabet", typeid(int), (void *) &outputmode, "[0-1]{1}$"),
         PARAM_LDDT_HTML(PARAM_LDDT_HTML_ID, "--lddt-html", "LDDT HTML file", "File to write LDDT MSA HTML visualisation to", typeid(std::string), (void *) &lddtHtml, ""),
-        PARAM_PAIR_THRESHOLD(PARAM_PAIR_THRESHOLD_ID,"--pair-threshold", "LDDT pair threshold", "% of pair subalignments with LDDT information [0.0,1.0]",typeid(float), (void *) &pairThreshold, "^0(\\.[0-9]+)?|1(\\.0+)?$")
+        PARAM_PAIR_THRESHOLD(PARAM_PAIR_THRESHOLD_ID, "--pair-threshold", "LDDT pair threshold", "% of pair subalignments with LDDT information [0.0,1.0]",typeid(float), (void *) &pairThreshold, "^0(\\.[0-9]+)?|1(\\.0+)?$"),
+        PARAM_REPORT_COMMAND(PARAM_REPORT_COMMAND_ID, "--report-command", "", "", typeid(std::string), (void *) &reportCommand, "")
 {
     // structuremsa
     structuremsa.push_back(&PARAM_WG);
@@ -53,16 +54,19 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsacluster = combineList(structuremsacluster, structuremsa);
 
     // msa2lddt
-    msa2lddt.push_back(&PARAM_HELP);
     msa2lddt.push_back(&PARAM_LDDT_HTML);
-    msa2lddt.push_back(&PARAM_THREADS);
     msa2lddt.push_back(&PARAM_PAIR_THRESHOLD);
-    
+    msa2lddt.push_back(&PARAM_THREADS);
+    msa2lddt.push_back(&PARAM_GUIDE_TREE);
+    msa2lddt.push_back(&PARAM_V);
+    msa2lddt.push_back(&PARAM_REPORT_COMMAND);
+
     // refinemsa
     refinemsa = combineList(refinemsa, structuremsa);
     
     easymsaworkflow = combineList(easymsaworkflow, structurecreatedb);
     easymsaworkflow = combineList(easymsaworkflow, structuremsa);
+    easymsaworkflow = combineList(easymsaworkflow, msa2lddt);
     easymsaworkflow.push_back(&PARAM_PRECLUSTER);
 
     pcaAa = 1.1;
@@ -73,6 +77,7 @@ FoldmasonParameters::FoldmasonParameters() :
     scoreBias3di = 0.6;
     matchRatio = 0.51;
     guideTree = "";
+    reportCommand = "";
     recomputeScores = false;
     regressive = false;
     precluster = false;

@@ -6,6 +6,7 @@
 #include "Parameters.h"
 #include "StructureUtil.h"
 #include "Util.h"
+#include <fstream>
 #include <cassert>
 
 #define ZSTD_STATIC_LINKING_ONLY
@@ -470,6 +471,7 @@ R"html(<!DOCTYPE html>
 
         free(dst);
         
+        // tree: string (optional, from --guide-tree)
         // entries: [ { name, aa, ss, ca }, ... ]
         // scores: [ float ]
         // statistics: { db, msaFile, msaLDDT }
@@ -504,19 +506,43 @@ R"html(<!DOCTYPE html>
                 entry.append(",");
             resultWriter.writeData(entry.c_str(), entry.length(), 0, 0, false, false);
         }
-        std::string end = "],\"statistics\": {";
-        end.append("\"db\":\"");
+        std::string end = "],";
+
+        if (par.guideTree != "") {
+            std::string tree;
+            std::string line;
+            std::ifstream newick(par.guideTree);
+            if (newick.is_open()) {
+                while (std::getline(newick, line))
+                    tree += line;
+                newick.close();
+            }
+            end.append("\"tree\": \"");
+            end.append(tree);            
+            end.append("\",");
+        }
+        end.append("\"statistics\": {\"db\":\"");
         end.append(par.db1);
         end.append("\",\"msaFile\":\"");
         end.append(par.db2);
         end.append("\",\"msaLDDT\":");
         end.append(std::to_string(lddtScore));
+        
+        if (par.reportCommand != "") {
+            end.append(",\"cmdString\":\"");
+            end.append(par.reportCommand);
+            end.append("\"");
+        }
         end.append("}}</script>");
 
         resultWriter.writeData(end.c_str(), end.length(), 0, 0, false, false);
         resultWriter.writeEnd(0, 0, false, 0);
         resultWriter.close(true);
         FileUtil::remove(lddtHtmlIdx.c_str());
+    }
+    
+    if (par.reportCommand != "") {
+        std::cout << "Report command: " << par.reportCommand << '\n';
     }
     
     seqDbrAA.close();

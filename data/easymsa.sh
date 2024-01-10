@@ -50,7 +50,11 @@ else
     fi   
 fi
 
-"$MMSEQS" msa2lddt "${STRUCTUREDB}" "${RESULTS}" "--lddt-html" "${RESULTS%%.*}.html" \
+# shellcheck disable=SC2086
+"$MMSEQS" msa2lddt "${STRUCTUREDB}" "${RESULTS}" \
+    "--lddt-html" "${RESULTS}.html" \
+    "--guide-tree" "${RESULTS}.nw" \
+    ${MSA2LDDT_PAR} \
     || fail "msa2lddt died"
 
 if [ -n "${REMOVE_TMP}" ]; then

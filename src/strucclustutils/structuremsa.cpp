@@ -1451,21 +1451,27 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     } else {
         memset(alreadyMerged, 0, sizeof(bool) * sequenceCnt);
     }       
-
+    
+    // Check if guide tree argument given
+    // Try parse --> read if non-empty, otherwise generate one and write
+    std::string tree;
     std::vector<AlnSimple> hits;
+
     if (par.guideTree != "") {
-        std::cout << "Loading guide tree: " << par.guideTree << "\n";
-        std::string tree;
         std::string line;
         std::ifstream newick(par.guideTree);
         if (newick.is_open()) {
+            Debug(Debug::INFO) << "Writing guide tree to: " << par.guideTree << '\n';
             while (std::getline(newick, line))
                 tree += line;
             newick.close();
         }
+    }
+    if (tree != "") {
         hits = parseNewick(tree, headers_rev);
-        if (par.regressive)
+        if (par.regressive) {
             std::reverse(hits.begin(), hits.end());
+        }
     } else {
         hits = updateAllScores(
             tinySubMatAA,
@@ -1505,7 +1511,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         hits = mst(hits, sequenceCnt);
         std::cout << "Generated guide tree\n";
     }
-    
 
     std::cout << "Optimising merge order\n";
     std::vector<size_t> merges;
@@ -1521,9 +1526,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     }
 
     std::string nw = orderToTree(hits, headers, sequenceCnt);
-    std::cout << "Tree: " << nw << ";\n";
+    std::string treeFile = par.filenames[par.filenames.size()-1] + ".nw";
+    Debug(Debug::INFO) << "Writing guide tree to: " << treeFile << '\n';
+    std::ofstream guideTree(treeFile, std::ofstream::out);        
+    guideTree << nw;
+    guideTree.close();
 
-    std::cout << "Merging:\n";
+    Debug(Debug::INFO) << "Merging:\n";
 
     size_t finalMSAId = 0;
 
@@ -1693,9 +1702,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             groups[targetId].clear();
             mappings[targetId].clear();
 
-            testSeqLens(groups[mergedId], cigars_aa, seqLens);
+            // testSeqLens(groups[mergedId], cigars_aa, seqLens);
 
-if (true) {
+/* if (false) {
             // calculate LDDT of merged alignment
             float lddtScore = std::get<2>(calculate_lddt(cigars_aa, groups[mergedId], dbKeys, seqLens, &seqDbrCA, par.pairThreshold));
             std::cout << std::fixed << std::setprecision(4)
@@ -1705,7 +1714,14 @@ if (true) {
                 std::cout << "\t(TM-align)";
             }
             std::cout << '\n';
-}
+} */
+            std::cout << std::fixed << std::setprecision(4)
+                << queryIsProfile << "\t" << targetIsProfile << '\t' << headers[mergedId] << "\t" << headers[targetId]
+                << '\t' << res.score;
+            if (tmaligned){
+                std::cout << "\t(TM-align)";
+            }
+            std::cout << '\n';
             
             mappings[mergedId] = computeProfileMask(
                 groups[mergedId],
@@ -1802,7 +1818,7 @@ if (true) {
 
     // Write final MSA to file with correct headers
     DBWriter resultWriter(
-        par.filenames[par.filenames.size()-1].c_str(),
+        (par.filenames[par.filenames.size()-1] + ".fa").c_str(),
         (par.filenames[par.filenames.size()-1] + ".index").c_str(),
         static_cast<unsigned int>(par.threads), par.compressed, Parameters::DBTYPE_OMIT_FILE
     );
