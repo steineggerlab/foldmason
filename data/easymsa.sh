@@ -51,7 +51,7 @@ else
 fi
 
 # shellcheck disable=SC2086
-"$MMSEQS" msa2lddt "${STRUCTUREDB}" "${RESULTS}" \
+"$MMSEQS" msa2lddt "${STRUCTUREDB}" "${RESULTS}.fa" \
     "--lddt-html" "${RESULTS}.html" \
     "--guide-tree" "${RESULTS}.nw" \
     ${MSA2LDDT_PAR} \
