@@ -339,14 +339,17 @@ void parseFasta(
         seq3Di.pop_back();
         lengths.push_back(seqAA.length());
 
-        std::vector<Instruction2> cigar_aa = contract(entry.sequence.s);
+        std::vector<Instruction2> base = contract(entry.sequence.s);
+        std::vector<Instruction2> cigar_aa;
         std::vector<Instruction2> cigar_ss;
         int index = 0;
-        for (Instruction2 ins : cigar_aa) {
+        for (Instruction2 ins : base) {
             if (ins.isSeq()) {
+                cigar_aa.emplace_back(seqAA[index]);
                 cigar_ss.emplace_back(seq3Di[index]);
                 index++;
             } else {
+                cigar_aa.emplace_back(static_cast<int>(ins.bits.count));
                 cigar_ss.emplace_back(static_cast<int>(ins.bits.count));
             }
         }
@@ -417,6 +420,8 @@ int msa2lddt(int argc, const char **argv, const Command& command) {
     
     std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, subset, indices, lengths, &seqDbrCA, par.pairThreshold);
     
+    // TODO common core = columns w/ no gaps, no distances >4 angstrom to reference (structure w/ longest non-gap alignment)
+    
     std::cout << "Average MSA LDDT: " << lddtScore << std::endl;
     
     // Write clustal format MSA HTML
@@ -425,7 +430,8 @@ int msa2lddt(int argc, const char **argv, const Command& command) {
         std::string lddtHtmlIdx = par.lddtHtml + ".index";
         DBWriter resultWriter(par.lddtHtml.c_str(), lddtHtmlIdx.c_str(), static_cast<unsigned int>(par.threads), par.compressed, Parameters::DBTYPE_OMIT_FILE);
         resultWriter.open();
-       /* 
+
+/* 
         // Read in template and write to .html
         size_t dstSize = ZSTD_findDecompressedSize(msa_html_zst, msa_html_zst_len);
         char* dst = (char*)malloc(sizeof(char) * dstSize);
