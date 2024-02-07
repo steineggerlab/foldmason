@@ -1384,7 +1384,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         dbKeys[i] = seqKeyAA;
 
         // Grab headers, remove \0
-        std::string header = qdbrH.sequenceReader->getData(seqKeyAA, 0);
+        unsigned int headerId = qdbrH.sequenceReader->getId(seqKeyAA);
+        std::string header = qdbrH.sequenceReader->getData(headerId, 0);
         header = header.substr(0, std::min(header.length() - 1, header.find(' ', 0)));
         headers[i] = header;
         headers_rev[header] = i;
