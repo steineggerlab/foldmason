@@ -22,8 +22,8 @@
  */
 void deleteGapCols(
     std::vector<size_t> &indices,
-    std::vector<std::vector<Instruction2> > &cigars_aa,
-    std::vector<std::vector<Instruction2> > &cigars_ss
+    std::vector<std::vector<Instruction> > &cigars_aa,
+    std::vector<std::vector<Instruction> > &cigars_ss
 ) {
     int length = cigarLength(cigars_aa[indices[0]], true); 
     
@@ -31,7 +31,7 @@ void deleteGapCols(
     std::vector<bool> isGap(length, true);
     for (size_t cigIndex : indices) {
         int seqIndex = 0;
-        for (Instruction2 ins : cigars_aa[cigIndex]) {
+        for (Instruction ins : cigars_aa[cigIndex]) {
             if (ins.isSeq()) {
                 if (isGap[seqIndex])
                     isGap[seqIndex] = false;
@@ -47,8 +47,8 @@ void deleteGapCols(
         int seqIndex = 0;
         std::vector<int> toPop;  // instructions to remove if count = 0
         for (size_t i = 0; i < cigars_aa[cigIndex].size(); i++) {
-            Instruction2 &ins_aa = cigars_aa[cigIndex][i];
-            Instruction2 &ins_ss = cigars_ss[cigIndex][i];
+            Instruction &ins_aa = cigars_aa[cigIndex][i];
+            Instruction &ins_ss = cigars_ss[cigIndex][i];
             if (ins_aa.isSeq()) {
                 seqIndex++;
             } else {
@@ -77,8 +77,8 @@ void deleteGapCols(
 void refineOne(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
-    std::vector<std::vector<Instruction2> > &cigars_aa,
-    std::vector<std::vector<Instruction2> > &cigars_ss,
+    std::vector<std::vector<Instruction> > &cigars_aa,
+    std::vector<std::vector<Instruction> > &cigars_ss,
     PSSMCalculator &calculator_aa,
     MsaFilter &filter_aa,
     SubstitutionMatrix &subMat_aa,
@@ -185,8 +185,8 @@ void refineOne(
         &subMat_aa, &subMat_3di,
         compBiasCorrection
     );
-    std::vector<Instruction2> qBt;
-    std::vector<Instruction2> tBt;
+    std::vector<Instruction> qBt;
+    std::vector<Instruction> tBt;
     getMergeInstructions(result, map1, map2, qBt, tBt);
     updateCIGARS(group1, group2, cigars_aa, cigars_ss, result, map1, map2, qBt, tBt);
     
@@ -198,8 +198,8 @@ void refineMany(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
     DBReader<unsigned int> *seqDbrCA,
-    std::vector<std::vector<Instruction2> > &cigars_aa,
-    std::vector<std::vector<Instruction2> > &cigars_ss,
+    std::vector<std::vector<Instruction> > &cigars_aa,
+    std::vector<std::vector<Instruction> > &cigars_ss,
     PSSMCalculator &calculator_aa,
     MsaFilter &filter_aa,
     SubstitutionMatrix &subMat_aa,
@@ -235,8 +235,8 @@ void refineMany(
     float initLDDT = prevLDDT;
     std::cout << "Initial LDDT: " << prevLDDT << '\n';
 
-    std::vector<std::vector<Instruction2> > cigars_new_aa;
-    std::vector<std::vector<Instruction2> > cigars_new_ss;
+    std::vector<std::vector<Instruction> > cigars_new_aa;
+    std::vector<std::vector<Instruction> > cigars_new_ss;
 
     std::vector<Sequence*> sequences_aa(2);
     std::vector<Sequence*> sequences_ss(2);
@@ -260,7 +260,7 @@ void refineMany(
         );
         float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
         // std::cout << std::fixed << std::setprecision(4) << "New LDDT: " << lddtScore << '\t' << "(" << i + 1 << ")\n";
-        // for (std::vector<Instruction2> &ins : cigars_new_aa) {
+        // for (std::vector<Instruction> &ins : cigars_new_aa) {
         //     std::cout << expand(ins) << '\n';
         // }
         if (lddtScore > prevLDDT) {
@@ -302,8 +302,8 @@ int refinemsa(int argc, const char **argv, const Command& command) {
     IndexReader qdbrH(par.db1, par.threads, IndexReader::HEADERS, touch ? IndexReader::PRELOAD_INDEX : 0);
 
     // Read in FASTA alignment
-    std::vector<std::vector<Instruction2> > cigars_aa;
-    std::vector<std::vector<Instruction2> > cigars_ss;
+    std::vector<std::vector<Instruction> > cigars_aa;
+    std::vector<std::vector<Instruction> > cigars_ss;
     std::vector<size_t> indices;
     std::vector<int> lengths;
     std::vector<std::string> headers;

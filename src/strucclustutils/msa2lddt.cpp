@@ -59,8 +59,8 @@ std::string getXYZstring(size_t index, int length, DBReader<unsigned int> *db) {
 
 Matcher::result_t makeMockAlignment(
     Matcher::result_t &result,
-    std::vector<Instruction2> &instructions1,
-    std::vector<Instruction2> &instructions2,
+    std::vector<Instruction> &instructions1,
+    std::vector<Instruction> &instructions2,
     std::vector<int> &match_to_msa,
     int alnLength
 ) {
@@ -81,8 +81,8 @@ Matcher::result_t makeMockAlignment(
     bool started = false;  // flag for first Match column
 
     for (int i = 0; i < alnLength; i++) {
-        const Instruction2& ins1 = instructions1[index1];                
-        const Instruction2& ins2 = instructions2[index2];
+        const Instruction& ins1 = instructions1[index1];                
+        const Instruction& ins2 = instructions2[index2];
         if (!ins1.isSeq() && !ins2.isSeq()) {
             count1++;
             count2++; 
@@ -129,15 +129,15 @@ Matcher::result_t makeMockAlignment(
 }
 
 std::vector<int> countColumns(
-    std::vector<std::vector<Instruction2> > &cigars,
+    std::vector<std::vector<Instruction> > &cigars,
     std::vector<size_t> &subset,
     int alnLength
 ) {
     std::vector<int> counts(alnLength, 0);
     for (size_t i = 0; i < subset.size(); i++) {
-        std::vector<Instruction2> cigar = cigars[subset[i]];
+        std::vector<Instruction> cigar = cigars[subset[i]];
         int j = 0;
-        for (Instruction2 ins : cigar) {
+        for (Instruction ins : cigar) {
             if (ins.isSeq()) {
                 counts[j]++;
                 j++;
@@ -150,7 +150,7 @@ std::vector<int> countColumns(
 }
 
 std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
-    std::vector<std::vector<Instruction2> > &cigars,
+    std::vector<std::vector<Instruction> > &cigars,
     std::vector<size_t> subset,
     std::vector<size_t> &indices,
     std::vector<int> &lengths,
@@ -291,8 +291,8 @@ void parseFasta(
     std::vector<std::string> &headers,
     std::vector<size_t>      &indices,
     std::vector<int>         &lengths,
-    std::vector<std::vector<Instruction2> > &cigars_aa,
-    std::vector<std::vector<Instruction2> > &cigars_ss,
+    std::vector<std::vector<Instruction> > &cigars_aa,
+    std::vector<std::vector<Instruction> > &cigars_ss,
     int &alnLength
 ) {
     while (kseq->ReadEntry()) {
@@ -313,11 +313,11 @@ void parseFasta(
         seq3Di.pop_back();
         lengths.push_back(seqAA.length());
 
-        std::vector<Instruction2> base = contract(entry.sequence.s);
-        std::vector<Instruction2> cigar_aa;
-        std::vector<Instruction2> cigar_ss;
+        std::vector<Instruction> base = contract(entry.sequence.s);
+        std::vector<Instruction> cigar_aa;
+        std::vector<Instruction> cigar_ss;
         int index = 0;
-        for (Instruction2 ins : base) {
+        for (Instruction ins : base) {
             if (ins.isSeq()) {
                 cigar_aa.emplace_back(seqAA[index]);
                 cigar_ss.emplace_back(seq3Di[index]);
@@ -346,8 +346,8 @@ float getLDDTScore(
     std::vector<std::string> hdrs;
     std::vector<size_t>      inds;
     std::vector<int>         lens;
-    std::vector<std::vector<Instruction2> > cigars_aa;
-    std::vector<std::vector<Instruction2> > cigars_ss;
+    std::vector<std::vector<Instruction> > cigars_aa;
+    std::vector<std::vector<Instruction> > cigars_ss;
     parseFasta(kseq, &seqDbrAA, &seqDbr3Di, hdrs, inds, lens, cigars_aa, cigars_ss, alnLength);
     delete kseq;
 
@@ -378,8 +378,8 @@ int msa2lddt(int argc, const char **argv, const Command& command) {
     std::vector<std::string> headers;
     std::vector<size_t> indices;
     std::vector<int> lengths;
-    std::vector<std::vector<Instruction2> > cigars_aa;
-    std::vector<std::vector<Instruction2> > cigars_ss;
+    std::vector<std::vector<Instruction> > cigars_aa;
+    std::vector<std::vector<Instruction> > cigars_ss;
     parseFasta(kseq, &seqDbrAA, &seqDbr3Di, headers, indices, lengths, cigars_aa, cigars_ss, alnLength);
     delete kseq;
     

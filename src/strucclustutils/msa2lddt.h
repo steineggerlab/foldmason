@@ -14,13 +14,13 @@ void parseFasta(
     std::vector<std::string> &headers,
     std::vector<size_t>      &indices,
     std::vector<int>         &lengths,
-    std::vector<std::vector<Instruction2> > &cigars_aa,
-    std::vector<std::vector<Instruction2> > &cigars_ss,
+    std::vector<std::vector<Instruction> > &cigars_aa,
+    std::vector<std::vector<Instruction> > &cigars_ss,
     int &alnLength
 );
 
 std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
-    std::vector<std::vector<Instruction2> > &cigars,
+    std::vector<std::vector<Instruction> > &cigars,
     std::vector<size_t> subset,
     std::vector<size_t> &indices,
     std::vector<int> &lengths,
