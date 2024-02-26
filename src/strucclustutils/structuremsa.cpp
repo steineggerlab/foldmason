@@ -35,6 +35,7 @@
 
 #include "refinemsa.h"
 #include "structuremsa.h"
+#include "newick.h"
 
 #ifdef OPENMP
 #include <omp.h>
@@ -44,158 +45,6 @@ KSEQ_INIT(kseq_buffer_t*, kseq_buffer_reader)
 
 #define	EXIT_FAILURE	1
 #define	EXIT_SUCCESS	0
-
-struct AlnSimple {
-    size_t queryId;
-    size_t targetId;
-    int score;
-};
-
-struct TNode {
-    int id;
-    int dbId;
-    std::string name;
-    float length;
-    std::vector<TNode *> children;
-    TNode *parent;
-};
-
-void printTree(TNode *node, int depth) {
-    std::string gap(depth * 2, ' ');
-    std::cout << gap << node->id;
-    if (node->name != "") {
-        std::cout << "=" << node->name;
-        std::cout << " (parent " << node->parent->id << ", length " << node->length;
-        if (node->dbId != -1) {
-            std::cout << ", dbId " << node->dbId;
-        }
-        std::cout << ")";
-    }
-    std::cout << '\n';
-    for (size_t i = 0; i < node->children.size(); i++) {
-        TNode *child = node->children[i];
-        printTree(child, depth + 1);
-    }
-}
-
-/**
- * @brief Post-order traversal of a parsed Tree.
- * Generates the merging order for structuremsa
- * 
- * @param node Pointer to root TNode of the tree
- */
-void postOrder(TNode *node, std::vector<int> *linkage) {
-    for (TNode *child : node->children) {
-        postOrder(child, linkage);
-    }
-    if (node->children.size() > 0) {
-        for (TNode *child : node->children) {
-            linkage->push_back(child->dbId);
-
-            // Propagate child dbId from leaf to root, so we
-            // always have a reference during alignment stage
-            node->dbId = child->dbId;
-        }
-    }
-}
-
-// FIXME inconsistent with tree produced by orderToTree
-std::vector<AlnSimple> parseNewick(std::string newick, std::map<std::string, int> &headers, IndexReader &qdbrH) {
-    // Should know this from number of structures in database
-    int total = std::count(newick.begin(), newick.end(), '(');
-
-    // Tokenize tree on ; | ( ) , :
-    // Use {-1, 0} on sregex_token_iterator to get matches AND inbetween (i.e. names)
-    std::regex pattern("\\s*(;|\\(|\\)|,|:)\\s*");
-    auto words_begin = std::sregex_token_iterator(newick.begin(), newick.end(), pattern, {-1, 0});
-    auto words_end = std::sregex_token_iterator();
-    
-    // Initialise TNode array (2n+1 but a +1 for the root)
-    // TNode nodes[total * 2 + 2];
-    std::vector<TNode *> nodes(total * 2 + 2);
-    std::vector<TNode *> parents;
-    TNode *tree;
-    TNode *subtree;
-    
-    // Initialise the root node (the +1)
-    nodes[0] = new TNode();
-    nodes[0]->id = 0;
-    tree = nodes[0];
-    
-    int count = 1;
-    std::string prevToken;
-    
-    for (std::sregex_token_iterator i = words_begin; i != words_end; ++i) {
-        std::string match_str = *i;
-
-        if (match_str == "(") {
-            // add new node, set it as new subtree
-            nodes[count] = new TNode();
-            nodes[count]->id = count;
-            nodes[count]->dbId = -1;
-            nodes[count]->length = 1.0;
-            subtree = nodes[count];
-            count++;
-            
-            // add it as child to current tree
-            tree->children.push_back(subtree);
-            subtree->parent = tree;
-            
-            // add the tree as parent, set subtree as tree
-            parents.push_back(tree);
-            tree = subtree;
-        } else if (match_str == ",") {
-            nodes[count] = new TNode();
-            nodes[count]->id = count;
-            nodes[count]->dbId = -1;
-            nodes[count]->length = 1.0;
-            subtree = nodes[count];
-            count++;
-            parents.back()->children.push_back(subtree);
-            subtree->parent = parents.back();
-            tree = subtree;
-        } else if (match_str == ")") {
-            tree = parents[parents.size() - 1];
-            parents.pop_back();
-        } else if (match_str == ":") {
-            // Don't do anything here, just catch it in case there are
-            // branch lengths to set in else
-        } else {
-            if (match_str != "" && (prevToken == ")" || prevToken == "(" || prevToken == ",")) {
-                tree->name = match_str;
-                tree->dbId = headers[match_str];
-                
-                // std::cout << "Set name " << match_str << ", " << tree->dbId << ", " << lookupId << '\n';
-            } else if (prevToken == ":") {
-                tree->length = std::stof(match_str);
-            }
-        }
-        prevToken = match_str;
-    }
-   
-    // printTree(tree, 0);
-    
-    // Get (flat) linkage matrix, 2(2n+1)
-    // node 1, node 2
-    // NOTE: postOrder will trip up when no. children != 2
-    //       will get duplicate rows which cause errors
-    std::vector<int> linkage;
-    std::vector<AlnSimple> hits;
-    postOrder(tree, &linkage);
-    for (size_t i = 0; i < linkage.size(); i += 2) {
-        AlnSimple hit;
-        hit.queryId = linkage[i + 0];
-        hit.targetId = linkage[i + 1];
-        hit.score = 0;
-        hits.push_back(hit);
-    }
-    
-    // Cleanup 
-    for(size_t i = 0; i < nodes.size(); i++)
-        delete nodes[i];
-
-    return hits;
-}
 
 Matcher::result_t pairwiseAlignment(
     StructureSmithWaterman & aligner,
@@ -441,74 +290,6 @@ int findRoot(int vertex, std::vector<int>& parent) {
         vertex = parent[vertex];
     }
     return vertex;
-}
-
-TNode* findRoot(TNode *node) {
-    TNode* root = node;
-    while (root->id != root->parent->id)
-        root = root->parent;
-    return root;
-}
-
-std::string getNewick(TNode* node) {
-    if (node->children.empty()) {
-        return node->name;
-    } else {
-        std::string s = "(";
-        for (size_t i = 0; i < node->children.size(); i++) {
-            if (i > 0)
-                s += ",";
-            s += getNewick(node->children[i]);
-        }
-        s += ")";
-        return s;
-    }
-}
-
-/**
- * @brief Generates a Newick format string from a linkage matrix.
- * 
- * @param hits linkage matrix
- * @param headers structure headers
- * @param n number of structures
- * @return std::string 
- */
-std::string orderToTree(std::vector<AlnSimple> hits, std::vector<std::string> &headers, int n) {
-    std::string nwk = "";
-    int totalNodes = n * 2 + 2;
-
-    std::vector<TNode *> nodes(totalNodes);
-    for (int i = 0; i < totalNodes; i++) {
-        nodes[i] = new TNode();
-        nodes[i]->id = i;
-        nodes[i]->parent = nodes[i];
-        if (i < n)
-            nodes[i]->name = headers[i];
-    }
-    TNode *root = nodes[0];
-
-    int newId = n + 1;
-    for (AlnSimple aln : hits) {
-        TNode *u = findRoot(nodes[aln.queryId]);
-        TNode *v = findRoot(nodes[aln.targetId]);
-        TNode *newNode = nodes[newId];
-        newNode->id = newId;
-        newNode->length = aln.score;
-        newNode->children.push_back(u);            
-        newNode->children.push_back(v);            
-        u->parent = newNode;
-        v->parent = newNode;
-        newId++;
-        root = newNode;
-    }
-    // printTree(root, 0);
-    std::string newick = getNewick(root);
-    
-    // Cleanup 
-    for(size_t i = 0; i < nodes.size(); i++)
-        delete nodes[i];
-
-    return newick;
 }
 
 /**
@@ -1402,8 +1183,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     // std::map<std::string, int> seqLens;
     std::vector<int> seqLens(sequenceCnt);
 
-    int maxSeqLength = 0;
-    // int maxSeqLength = par.maxSeqLen;
+    // int maxSeqLength = 0;
+    int maxSeqLength = par.maxSeqLen;
 
     // TODO: could parallelise this, just need to have reduction for maxSeqLength
     for (size_t i = 0; i < sequenceCnt; i++) {
@@ -1482,19 +1263,60 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     // Try parse --> read if non-empty, otherwise generate one and write
     std::string tree;
     std::vector<AlnSimple> hits;
+    std::vector<size_t> merges;
 
     if (par.guideTree != "") {
         std::string line;
         std::ifstream newick(par.guideTree);
         if (newick.is_open()) {
-            Debug(Debug::INFO) << "Writing guide tree to: " << par.guideTree << '\n';
             while (std::getline(newick, line))
                 tree += line;
             newick.close();
         }
     }
+
     if (tree != "") {
-        hits = parseNewick(tree, headers_rev, qdbrH);
+        Debug(Debug::INFO) << "Parsing tree: " << tree << '\n';
+        NewickParser::Node* root = NewickParser::parse(tree);
+        // std::string nw = NewickParser::toNewick(root);
+        // assert(nw == tree);
+        
+        std::vector<std::string> linkage;
+        NewickParser::postOrder(root, &linkage);
+        delete root;
+
+        for (size_t i = 0; i < linkage.size(); i += 2) {
+            AlnSimple hit;
+            
+            size_t queryLookupId = seqDbrAA.getLookupIdByAccession(linkage[i]);
+            if (queryLookupId == SIZE_MAX) {
+                Debug(Debug::ERROR) << "Could not find name " << linkage[i] << " in lookup\n";
+                exit(1);
+            }
+            unsigned int queryKey = seqDbrAA.getLookupKey(queryLookupId);
+            size_t queryId = seqDbrAA.getId(queryKey);
+            hit.queryId = queryId;
+            
+            size_t targetLookupId = seqDbrAA.getLookupIdByAccession(linkage[i + 1]);
+            if (targetLookupId == SIZE_MAX) {
+                Debug(Debug::ERROR) << "Could not find name " << linkage[i + 1] << " in lookup\n";
+                exit(1);
+            }
+            
+            unsigned int targetKey = seqDbrAA.getLookupKey(targetLookupId);
+            size_t targetId = seqDbrAA.getId(targetKey);
+            hit.targetId = targetId;
+            
+            if (queryId == targetId) {
+                continue;
+            }
+
+            hit.score = 0;
+            hits.push_back(hit);
+        }
+        
+        Debug(Debug::INFO) << "Optimising merge order\n";
+        hits = reorderLinkage(hits, merges, sequenceCnt);
     } else {
         hits = updateAllScores(
             seqDbrAA,
@@ -1528,17 +1350,26 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             for (size_t i = 0; i < externalHits.size(); i++)
                 hits.push_back(externalHits[i]);
         }
+        Debug(Debug::INFO) << "Performing initial all vs all alignments\n";
         sortHitsByScore(hits);
-        std::cout << "Performed initial all vs all alignments\n";
         
+        Debug(Debug::INFO) << "Generating guide tree\n";
         hits = mst(hits, sequenceCnt);
-        std::cout << "Generated guide tree\n";
+
+        Debug(Debug::INFO) << "Optimising merge order\n";
+        hits = reorderLinkage(hits, merges, sequenceCnt);
+
+        NewickParser::Node* root = NewickParser::buildTree(hits); 
+        NewickParser::addNames(root, &qdbrH);
+        std::string nw = NewickParser::toNewick(root);
+        std::string treeFile = par.filenames[par.filenames.size()-1] + ".nw";
+        Debug(Debug::INFO) << "Writing guide tree to: " << treeFile << '\n';
+        std::ofstream guideTree(treeFile, std::ofstream::out);
+        guideTree << nw;
+        guideTree.close();
+        delete root;
     }
-
-    std::cout << "Optimising merge order\n";
-    std::vector<size_t> merges;
-    hits = reorderLinkage(hits, merges, sequenceCnt);
-
+   
     int idx = 0;
     for (size_t i = 0; i < merges.size(); i++) {
         std::cout << "Merging " << merges[i] << " sequences\n";
@@ -1547,13 +1378,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         }
         idx += merges[i];
     }
-
-    std::string nw = orderToTree(hits, headers, sequenceCnt);
-    std::string treeFile = par.filenames[par.filenames.size()-1] + ".nw";
-    Debug(Debug::INFO) << "Writing guide tree to: " << treeFile << '\n';
-    std::ofstream guideTree(treeFile, std::ofstream::out);        
-    guideTree << nw;
-    guideTree.close();
 
     Debug(Debug::INFO) << "Merging:\n";
 
@@ -1584,7 +1408,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     , par.gapOpen.values.aminoacid(), par.gapPseudoCount
 #endif
     );
-    
+
     // Add four seq objects per alignee per thread
     // Amino acid profile/sequence, 3Di profile/sequence
     Sequence seqMergedAaAa(par.maxSeqLen, Parameters::DBTYPE_AMINO_ACIDS, (const BaseMatrix *) &subMat_aa,  0, false, par.compBiasCorrection);
