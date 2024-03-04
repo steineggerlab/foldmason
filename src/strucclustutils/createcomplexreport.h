@@ -1,26 +1,27 @@
-//
-// Created by Woosub Kim on 2023/06/20.
-//
-
 #ifndef FOLDSEEK_CREATECOMPLEXREPORT_H
 #define FOLDSEEK_CREATECOMPLEXREPORT_H
 #include "Matcher.h"
+#include "MemoryMapped.h"
 
 const unsigned int NOT_AVAILABLE_CHAIN_KEY = 4294967295;
 const double MAX_ASSIGNED_CHAIN_RATIO = 1.0;
 const double TOO_SMALL_MEAN = 1.0;
 const double TOO_SMALL_CV = 0.1;
 const double FILTERED_OUT = 0.0;
-const unsigned int UNCLUSTERED = 0;
-const unsigned int CLUSTERED = 1;
-const unsigned int MAX_RECURSIVE_NUM = 1000;
+const unsigned int INITIALIZED_LABEL = 0;
 const unsigned int MIN_PTS = 2;
-
+const float DEFAULT_EPS = 0.1;
+const float LEARNING_RATE = 0.1;
+const float TM_SCORE_MARGIN = 0.7;
+const float DEF_TM_SCORE = -1.0;
+const int UNINITIALIZED = 0;
+const unsigned int MULTIPLE_CHAINED_COMPLEX = 2;
+const unsigned int SIZE_OF_SUPERPOSITION_VECTOR = 12;
 typedef std::pair<std::string, std::string> compNameChainName_t;
 typedef std::map<unsigned int, unsigned int> chainKeyToComplexId_t;
 typedef std::map<unsigned int, std::vector<unsigned int>> complexIdToChainKeys_t;
-typedef std::vector<std::vector<unsigned int>> cluster_t;
-typedef std::map<std::pair<unsigned int, unsigned int>, double> distMap_t;
+typedef std::vector<unsigned int> cluster_t;
+typedef std::map<std::pair<unsigned int, unsigned int>, float> distMap_t;
 typedef std::string resultToWrite_t;
 typedef std::string chainName_t;
 typedef std::pair<unsigned int, resultToWrite_t> resultToWriteWithKey_t;
@@ -43,7 +44,6 @@ static bool compareComplexResult(const ScoreComplexResult &first, const ScoreCom
 }
 
 struct ComplexDataHandler {
-//    ComplexDataHandler(): assId(UINT_MAX), qTmScore(0.0f), tTmScore(0.0f) {}
     ComplexDataHandler(bool isValid): assId(UINT_MAX), qTmScore(0.0f), tTmScore(0.0f), isValid(isValid) {}
     ComplexDataHandler(unsigned int assId, double qTmScore, double tTmScore, std::string &uString, std::string &tString, bool isValid)
             : assId(assId), qTmScore(qTmScore), tTmScore(tTmScore), uString(uString), tString(tString), isValid(isValid) {}
@@ -62,12 +62,15 @@ static void getKeyToIdMapIdToKeysMapIdVec(
         std::map<unsigned int, std::vector<unsigned int>> &complexIdToChainKeysLookup,
         std::vector<unsigned int> &complexIdVec
 ) {
-    if (file.length() == 0) return;
+    if (file.length() == 0) {
+        return;
+    }
     MemoryMapped lookupDB(file, MemoryMapped::WholeFile, MemoryMapped::SequentialScan);
     char *data = (char *) lookupDB.getData();
+    char *end = data + lookupDB.mappedSize();
     const char *entry[255];
     int prevComplexId =  -1;
-    while (*data != '\0') {
+    while (data < end && *data != '\0') {
         const size_t columns = Util::getWordsOfLine(data, entry, 255);
         if (columns < 3) {
             Debug(Debug::WARNING) << "Not enough columns in lookup file " << file << "\n";
@@ -98,7 +101,7 @@ static ComplexDataHandler parseScoreComplexResult(const char *data, Matcher::res
     key[keySize] = '\0';
     auto dbKey = Util::fast_atoi<unsigned int>(key);
     int score = Util::fast_atoi<int>(entry[1]);
-    double seqId = strtod(entry[2],NULL);
+    float seqId = strtof(entry[2],NULL);
     double eval = strtod(entry[3],NULL);
     int qStartPos =  Util::fast_atoi<int>(entry[4]);
     int qEndPos = Util::fast_atoi<int>(entry[5]);
@@ -107,8 +110,8 @@ static ComplexDataHandler parseScoreComplexResult(const char *data, Matcher::res
     int dbEndPos = Util::fast_atoi<int>(entry[8]);
     int dbLen = Util::fast_atoi<int>(entry[9]);
     auto backtrace = std::string(entry[10], entry[11] - entry[10]);
-    double qCov = SmithWaterman::computeCov(qStartPos==-1 ? 0 : qStartPos, qEndPos, qLen);
-    double dbCov = SmithWaterman::computeCov(dbStartPos==-1 ? 0 : dbStartPos, dbEndPos, dbLen);
+    float qCov = SmithWaterman::computeCov(qStartPos==-1 ? 0 : qStartPos, qEndPos, qLen);
+    float dbCov = SmithWaterman::computeCov(dbStartPos==-1 ? 0 : dbStartPos, dbEndPos, dbLen);
     size_t alnLength = Matcher::computeAlnLength(qStartPos==-1 ? 0 : qStartPos, qEndPos, dbStartPos==-1 ? 0 : dbStartPos, dbEndPos);
     double qTmScore = std::stod(entry[11]);
     double tTmScore = std::stod(entry[12]);

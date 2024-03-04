@@ -250,10 +250,21 @@ int structcreatedb(int argc, const char **argv, const Command& command) {
     std::string outputName = par.filenames.back();
     par.filenames.pop_back();
 
-
     PatternCompiler include(par.fileInclude.c_str());
     PatternCompiler exclude(par.fileExclude.c_str());
-    if (par.filenames.size() == 1 && FileUtil::directoryExists(par.filenames.back().c_str())) {
+
+    for (size_t i = 1; i < par.filenames.size(); ++i) {
+        if (FileUtil::directoryExists(par.filenames[i].c_str()) || Util::endsWith(".tsv", par.filenames[i].c_str())) {
+            Debug(Debug::ERROR) << "Only one directory or tsv file (" << par.filenames[i] << ") or a list of files can be given\n";
+            EXIT(EXIT_FAILURE);
+        }
+    }
+
+    if (FileUtil::directoryExists(par.filenames[0].c_str())) {
+        if (par.filenames.size() > 1) {
+            Debug(Debug::ERROR) << "Only one directory can be given\n";
+            EXIT(EXIT_FAILURE);
+        }
         std::vector<std::string> dirs;
         dirs.push_back(par.filenames.back());
         par.filenames.pop_back();
@@ -266,22 +277,40 @@ int structcreatedb(int argc, const char **argv, const Command& command) {
             }
             while (dirent* entry = readdir(handle)) {
                 std::string filename(entry->d_name);
-
-                if (filename != "." && filename !="..") {
+                if (filename != "." && filename != "..") {
                     std::string fullpath = dir + "/" + filename;
                     struct stat info;
                     stat(fullpath.c_str(), &info);
-		    if (info.st_mode & S_IFDIR) {
+                    if (info.st_mode & S_IFDIR) {
                         dirs.push_back(fullpath);
-                    } else {
-                        if (include.isMatch(filename.c_str()) == true && exclude.isMatch(filename.c_str()) == false) {
-                            par.filenames.push_back(fullpath);
-                        }
+                    } else if (include.isMatch(filename.c_str()) == true && exclude.isMatch(filename.c_str()) == false) {
+                        par.filenames.push_back(fullpath);
                     }
                 }
             }
             closedir(handle);
         }
+    } else if (Util::endsWith(".tsv", par.filenames[0])) {
+        if (par.filenames.size() > 1) {
+            Debug(Debug::ERROR) << "Only one tsv file can be given\n";
+            EXIT(EXIT_FAILURE);
+        }
+        std::string tsv = par.filenames.back();
+        par.filenames.pop_back();
+
+        FILE* file = FileUtil::openFileOrDie(tsv.c_str(), "r", true);
+        char* line = NULL;
+        size_t len = 0;
+        ssize_t read;
+        while ((read = getline(&line, &len, file)) != -1) {
+            if (line[read - 1] == '\n') {
+                line[read - 1] = '\0';
+                read--;
+            }
+            par.filenames.push_back(line);
+        }
+        free(line);
+        fclose(file);
     }
 
     Debug(Debug::INFO) << "Output file: " << outputName << "\n";
@@ -338,6 +367,9 @@ int structcreatedb(int argc, const char **argv, const Command& command) {
     bool needsReorderingAtTheEnd = false;
     size_t needToWriteModel = 0;
 
+    // cannot be const for compatibility with older compilers/openmp and omp shared
+    int inputFormat = par.inputFormat;
+
     // Process tar files!
     for(size_t i = 0; i < tarFiles.size(); i++) {
         mtar_t tar;
@@ -365,7 +397,7 @@ int structcreatedb(int argc, const char **argv, const Command& command) {
         }
 #endif
 
-#pragma omp parallel default(none) shared(tar, par, torsiondbw, hdbw, cadbw, aadbw, mat, progress, globalCnt, globalFileidCnt, entrynameToFileId, filenameToFileId, fileIdToName, mappingWriter, std::cerr, std::cout) num_threads(localThreads) reduction(+:incorrectFiles, tooShort, notProtein, needToWriteModel)
+#pragma omp parallel default(none) shared(tar, par, torsiondbw, hdbw, cadbw, aadbw, mat, progress, globalCnt, globalFileidCnt, entrynameToFileId, filenameToFileId, fileIdToName, mappingWriter, std::cerr, std::cout, inputFormat) num_threads(localThreads) reduction(+:incorrectFiles, tooShort, notProtein, needToWriteModel)
         {
             unsigned int thread_idx = 0;
 #ifdef OPENMP
@@ -491,7 +523,7 @@ int structcreatedb(int argc, const char **argv, const Command& command) {
                     } else {
                         pdbFile.append(dataBuffer, tarHeader.size);
                     }
-                    if (readStructure.loadFromBuffer(pdbFile.c_str(), pdbFile.size(), name) == false) {
+                    if (readStructure.loadFromBuffer(pdbFile.c_str(), pdbFile.size(), name, (GemmiWrapper::Format)inputFormat) == false) {
                         incorrectFiles++;
                         continue;
                     }
@@ -515,7 +547,7 @@ int structcreatedb(int argc, const char **argv, const Command& command) {
 
 
     //===================== single_process ===================//__110710__//
-#pragma omp parallel default(none) shared(par, torsiondbw, hdbw, cadbw, aadbw, mat, looseFiles, progress, globalCnt, globalFileidCnt, entrynameToFileId, filenameToFileId, fileIdToName, mappingWriter) reduction(+:incorrectFiles, tooShort, notProtein, needToWriteModel)
+#pragma omp parallel default(none) shared(par, torsiondbw, hdbw, cadbw, aadbw, mat, looseFiles, progress, globalCnt, globalFileidCnt, entrynameToFileId, filenameToFileId, fileIdToName, mappingWriter, inputFormat) reduction(+:incorrectFiles, tooShort, notProtein, needToWriteModel)
     {
         unsigned int thread_idx = 0;
 #ifdef OPENMP
@@ -535,7 +567,7 @@ int structcreatedb(int argc, const char **argv, const Command& command) {
         for (size_t i = 0; i < looseFiles.size(); i++) {
             progress.updateProgress();
 
-            if(readStructure.load(looseFiles[i]) == false){
+            if(readStructure.load(looseFiles[i], (GemmiWrapper::Format)inputFormat) == false){
                 incorrectFiles++;
                 continue;
             }
@@ -570,7 +602,7 @@ int structcreatedb(int argc, const char **argv, const Command& command) {
             filter = parts[2][0];
         }
         progress.reset(SIZE_MAX);
-#pragma omp parallel default(none) shared(par, torsiondbw, hdbw, cadbw, aadbw, mat, gcsPaths, progress, globalCnt, globalFileidCnt, entrynameToFileId, filenameToFileId, fileIdToName, client, bucket_name, filter, mappingWriter) reduction(+:incorrectFiles, tooShort, notProtein, needToWriteModel)
+#pragma omp parallel default(none) shared(par, torsiondbw, hdbw, cadbw, aadbw, mat, gcsPaths, progress, globalCnt, globalFileidCnt, entrynameToFileId, filenameToFileId, fileIdToName, client, bucket_name, filter, mappingWriter) reduction(+:incorrectFiles, tooShort, notProtein, needToWriteModel, inputFormat)
         {
             StructureTo3Di structureTo3Di;
             PulchraWrapper pulchra;
@@ -600,7 +632,7 @@ int structcreatedb(int argc, const char **argv, const Command& command) {
                             Debug(Debug::ERROR) << reader.status().message() << "\n";
                         } else {
                             std::string contents{std::istreambuf_iterator<char>{reader}, {}};
-                            if (readStructure.loadFromBuffer(contents.c_str(), contents.size(), obj_name) == false) {
+                            if (readStructure.loadFromBuffer(contents.c_str(), contents.size(), obj_name, inputFormat) == false) {
                                 incorrectFiles++;
                             } else {
                                 __sync_add_and_fetch(&needToWriteModel, (readStructure.modelCount > 1));
@@ -624,7 +656,7 @@ int structcreatedb(int argc, const char **argv, const Command& command) {
         DBReader<unsigned int> reader(dbs[i].c_str(), (dbs[i]+".index").c_str(), par.threads, DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA|DBReader<unsigned int>::USE_LOOKUP);
         reader.open(DBReader<unsigned int>::LINEAR_ACCCESS);
         progress.reset(reader.getSize());
-#pragma omp parallel default(none) shared(par, torsiondbw, hdbw, cadbw, aadbw, mat, progress, globalCnt, globalFileidCnt, entrynameToFileId, filenameToFileId, fileIdToName, reader, mappingWriter) reduction(+:incorrectFiles, tooShort, notProtein, needToWriteModel)
+#pragma omp parallel default(none) shared(par, torsiondbw, hdbw, cadbw, aadbw, mat, progress, globalCnt, globalFileidCnt, entrynameToFileId, filenameToFileId, fileIdToName, reader, mappingWriter, inputFormat) reduction(+:incorrectFiles, tooShort, notProtein, needToWriteModel)
         {
             StructureTo3Di structureTo3Di;
             PulchraWrapper pulchra;
@@ -651,7 +683,7 @@ int structcreatedb(int argc, const char **argv, const Command& command) {
                 size_t lookupId = reader.getLookupIdByKey(reader.getDbKey(i));
                 std::string name = reader.getLookupEntryName(lookupId);
 
-                if (readStructure.loadFromBuffer(data, len, name) == false) {
+                if (readStructure.loadFromBuffer(data, len, name, (GemmiWrapper::Format)inputFormat) == false) {
                     incorrectFiles++;
                 } else {
                     __sync_add_and_fetch(&needToWriteModel, (readStructure.modelCount > 1));

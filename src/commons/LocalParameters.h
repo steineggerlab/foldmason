@@ -89,8 +89,10 @@ public:
     std::vector<MMseqsParameter *> structurecreatedb;
     std::vector<MMseqsParameter *> compressca;
     std::vector<MMseqsParameter *> scorecomplex;
-    std::vector<MMseqsParameter *> easyscorecomplexworkflow;
+    std::vector<MMseqsParameter *> complexsearchworkflow;
+    std::vector<MMseqsParameter *> easyscomplexsearchworkflow;
     std::vector<MMseqsParameter *> createcomplexreport;
+    std::vector<MMseqsParameter *> expandcomplex;
 
     PARAMETER(PARAM_PREF_MODE)
     PARAMETER(PARAM_TMSCORE_THRESHOLD)
@@ -102,6 +104,7 @@ public:
     PARAMETER(PARAM_CHAIN_NAME_MODE)
     PARAMETER(PARAM_WRITE_MAPPING)
     PARAMETER(PARAM_TMALIGN_FAST)
+    PARAMETER(PARAM_EXACT_TMSCORE)
     PARAMETER(PARAM_N_SAMPLE)
     PARAMETER(PARAM_COORD_STORE_MODE)
     PARAMETER(PARAM_MIN_ASSIGNED_CHAINS_THRESHOLD)
@@ -109,6 +112,9 @@ public:
     PARAMETER(PARAM_FILE_INCLUDE)
     PARAMETER(PARAM_FILE_EXCLUDE)
     PARAMETER(PARAM_INDEX_EXCLUDE)
+    PARAMETER(PARAM_COMPLEX_REPORT_MODE)
+    PARAMETER(PARAM_EXPAND_COMPLEX_EVALUE)
+    PARAMETER(PARAM_INPUT_FORMAT)
 
     int prefMode;
     float tmScoreThr;
@@ -120,6 +126,7 @@ public:
     int chainNameMode;
     bool writeMapping;
     int tmAlignFast;
+    int exactTMscore;
     int nsample;
     int coordStoreMode;
     float minAssignedChainsThreshold;
@@ -127,6 +134,9 @@ public:
     std::string fileInclude;
     std::string fileExclude;
     int indexExclude;
+    int complexReportMode;
+    double eValueThrExpandComplex;
+    int inputFormat;
 
     static std::vector<int> getOutputFormat(int formatMode, const std::string &outformat, bool &needSequences, bool &needBacktrace, bool &needFullHeaders,
                                             bool &needLookup, bool &needSource, bool &needTaxonomyMapping, bool &needTaxonomy, bool &needQCa, bool &needTCa, bool &needTMaligner,

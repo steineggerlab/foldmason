@@ -16,11 +16,19 @@ void (*validatorUpdate)(void) = updateValdiation;
 
 std::vector<Command> foldseekCommands = {
         {"createdb",             structcreatedb,                &localPar.structurecreatedb,    COMMAND_MAIN,
-                "Convert PDB/mmCIF/tar[.gz]/DB files to a db",
-                "Convert PDB/mmCIF/tar[.gz]/DB files to a db",
+                "Convert PDB/mmCIF/tar[.gz]/DB files or directory/TSV to a structure DB",
+                "# Process multiple files\n"
+                "foldseek createdb examples/1tim.pdb.gz examples/8tim.pdb.gz DB\n"
+                "# Process a directory containing PDB|mmCIF[.gz]|tar[.gz]|DB recursively, only one directory can be given\n"
+                "foldseek createdb examples/ DB\n"
+                "# Process a TSV file with a list of PDB|mmCIF[.gz]|tar[.gz]|DB, only one TSV can be given\n"
+                "foldseek createdb examples.tsv DB\n"
+                "# Process a directory or tar file and filter based on file name\n"
+                "# Note: --file-include and --file-exclude only apply to directory or tar input\n"
+                "foldseek createdb examples/ --file-include \"pdb.gz$\"\n",
                 "Martin Steinegger <martin.steinegger@snu.ac.kr>",
-                "<i:PDB|mmCIF[.gz]|tar|DB> ... <i:PDB|mmCIF[.gz]|tar|DB> <o:sequenceDB>",
-                CITATION_FOLDSEEK, {{"PDB|mmCIF[.gz]|stdin|tar|DB", DbType::ACCESS_MODE_INPUT, DbType::NEED_DATA | DbType::VARIADIC,
+                "<i:directory|.tsv>|<i:PDB|mmCIF[.gz]|tar[.gz]|DB> ... <i:PDB|mmCIF[.gz]|tar|DB> <o:sequenceDB>",
+                CITATION_FOLDSEEK, {{"PDB|mmCIF[.gz]|stdin|tar[.gz]|DB", DbType::ACCESS_MODE_INPUT, DbType::NEED_DATA | DbType::VARIADIC,
 #ifdef HAVE_GCS
                                             &DbValidator::flatfileStdinGenericUri
 #else
@@ -260,10 +268,29 @@ std::vector<Command> foldseekCommands = {
                                            {"queryDB", DbType::ACCESS_MODE_INPUT, DbType::NEED_DATA | DbType::NEED_HEADER, &DbValidator::sequenceDb},
                                            {"targetDB", DbType::ACCESS_MODE_INPUT, DbType::NEED_DATA | DbType::NEED_HEADER, &DbValidator::sequenceDb},
                                            {"alignmentDB", DbType::ACCESS_MODE_INPUT, DbType::NEED_DATA, &DbValidator::alignmentDb},
-                                           {"complexDB", DbType::ACCESS_MODE_OUTPUT, DbType::NEED_DATA, &DbValidator::flatfile}
+                                           {"complexDB", DbType::ACCESS_MODE_OUTPUT, DbType::NEED_DATA, &DbValidator::alignmentDb}
                                    }
         },
-        {"easy-complexsearch", easycomplexsearch, &localPar.easyscorecomplexworkflow, COMMAND_EASY,
+        {"complexsearch", complexsearch, &localPar.complexsearchworkflow, COMMAND_MAIN,
+                "Complex level search",
+                "# Search a single/multiple PDB file against a set of PDB files and get complex level alignments\n"
+                "foldseek complexsearch queryDB targetDB result tmp\n"
+                "# Format output differently\n"
+                "foldseek complexsearch queryDB targetDB result tmp --format-output query,target,qstart,tstart,cigar\n"
+                "# Align with TMalign (global)\n"
+                "foldseek complexsearch queryDB targetDB result tmp --alignment-type 1\n"
+                "# Skip prefilter and perform an exhaustive alignment (slower but more sensitive)\n"
+                "foldseek complexsearch queryDB targetDB result tmp --exhaustive-search 1\n\n",
+                "Woosub Kim <woosubgo@snu.ac.kr>",
+                "<i:queryDB> <i:targetDB> <o:alignmentDB> <tmpDir>",
+                CITATION_FOLDSEEK, {
+                                           {"queryDB", DbType::ACCESS_MODE_INPUT, DbType::NEED_DATA | DbType::NEED_HEADER, &DbValidator::sequenceDb},
+                                           {"targetDB", DbType::ACCESS_MODE_INPUT, DbType::NEED_DATA | DbType::NEED_HEADER, &DbValidator::sequenceDb},
+                                           {"complexDB", DbType::ACCESS_MODE_OUTPUT, DbType::NEED_DATA, &DbValidator::alignmentDb},
+                                           {"tempDir", DbType::ACCESS_MODE_OUTPUT, DbType::NEED_DATA, &DbValidator::directory}
+                                   }
+        },
+        {"easy-complexsearch", easycomplexsearch, &localPar.easyscomplexsearchworkflow, COMMAND_EASY,
                 "Complex level search",
                 "# Search a single/multiple PDB file against a set of PDB files and get complex level alignments\n"
                 "foldseek easy-complexsearch example/1tim.pdb.gz example/8tim.pdb.gz result tmp\n"
@@ -283,7 +310,7 @@ std::vector<Command> foldseekCommands = {
                                    }
         },
         {"createcomplexreport", createcomplexreport, &localPar.createcomplexreport, COMMAND_FORMAT_CONVERSION,
-                "Convert complex DB to tsv format\"",
+                "Convert complexDB to tsv format",
                 "# Create output in tsv format (9 columns):  qComplexName.c_str(), tComplexName.c_str(), qChainString.c_str(), tChainString.c_str(), qTMScore, tTMScore, u, t, assId\n"
                 "#  (1,2) identifiers for query and target complex,\n"
                 "#  (3,4) chains of query complex and target complex,\n"
@@ -300,6 +327,18 @@ std::vector<Command> foldseekCommands = {
                                            {"complexFile", DbType::ACCESS_MODE_OUTPUT, DbType::NEED_DATA, &DbValidator::flatfile}
                                    }
         },
+        {"expandcomplex", expandcomplex, &localPar.expandcomplex, COMMAND_PREFILTER,
+        "Re-prefilter to ensure complete alignment between complexes",
+        NULL,
+        "Woosub Kim <woosubgo@snu.ac.kr>",
+        "<i:queryDB> <i:targetDB> <i:alignmentDB> <o:prefilterDB>",
+         CITATION_FOLDSEEK, {
+                 {"queryDB", DbType::ACCESS_MODE_INPUT, DbType::NEED_DATA, &DbValidator::sequenceDb },
+                 {"targetDB", DbType::ACCESS_MODE_INPUT, DbType::NEED_DATA, &DbValidator::sequenceDb },
+                 {"alignmentDB", DbType::ACCESS_MODE_INPUT, DbType::NEED_DATA, &DbValidator::alignmentDb },
+                 {"prefilterDB", DbType::ACCESS_MODE_OUTPUT, DbType::NEED_DATA, &FoldSeekDbValidator::prefilterDb }
+             }
+        },
         {"version",              versionstring,        &localPar.empty,                COMMAND_HIDDEN,
                 "",
                 NULL,
@@ -314,7 +353,7 @@ std::vector<DatabaseDownload> externalDownloads = {
         {
                 "Alphafold/UniProt",
                 "AlphaFold UniProt Protein Structure Database (including C-alpha, ~700GB download, ~950GB extracted).",
-                "Jumper et al. Highly accurate protein structure prediction with AlphaFold. Nature, (2021)",
+                "Varadi et al. AlphaFold Protein Structure Database in 2024: providing structure coverage for over 214 million protein sequences. Nucleic Acids Research, (2024)",
                 "https://alphafold.ebi.ac.uk/",
                 true, Parameters::DBTYPE_AMINO_ACIDS, structdatabases_sh, structdatabases_sh_len,
                 {}
@@ -322,7 +361,7 @@ std::vector<DatabaseDownload> externalDownloads = {
         {
                 "Alphafold/UniProt50-minimal",
                 "AlphaFold UniProt Protein Structure Database clustered with MMseqs2 at 50% sequence identity and 90% bidrectional coverage (representative only).",
-                "Jumper et al. Highly accurate protein structure prediction with AlphaFold. Nature, (2021)",
+                "Varadi et al. AlphaFold Protein Structure Database in 2024: providing structure coverage for over 214 million protein sequences. Nucleic Acids Research, (2024)",
                 "https://alphafold.ebi.ac.uk/",
                 true, Parameters::DBTYPE_AMINO_ACIDS, structdatabases_sh, structdatabases_sh_len,
                 {}
@@ -330,7 +369,7 @@ std::vector<DatabaseDownload> externalDownloads = {
         {
                 "Alphafold/UniProt50",
                 "AlphaFold UniProt Protein Structure Database clustered with MMseqs2 at 50% sequence identity and 90% bidrectional coverage.",
-                "Jumper et al. Highly accurate protein structure prediction with AlphaFold. Nature, (2021)",
+                "Varadi et al. AlphaFold Protein Structure Database in 2024: providing structure coverage for over 214 million protein sequences. Nucleic Acids Research, (2024)",
                 "https://alphafold.ebi.ac.uk/",
                 true, Parameters::DBTYPE_AMINO_ACIDS, structdatabases_sh, structdatabases_sh_len,
                 {}
@@ -354,7 +393,7 @@ std::vector<DatabaseDownload> externalDownloads = {
         {
                 "ESMAtlas30",
                 "ESM Metagenomic Atlas clustered at 30% sequence identity.",
-                "Lin et al. Evolutionary-scale prediction of atomic level protein structure with a language model. bioRxiv, (2022)",
+                "Lin et al. Evolutionary-scale prediction of atomic-level protein structure with a language model. Science, (2023)",
                 "https://esmatlas.com",
                 false, Parameters::DBTYPE_AMINO_ACIDS, structdatabases_sh, structdatabases_sh_len,
                 {}
@@ -364,6 +403,14 @@ std::vector<DatabaseDownload> externalDownloads = {
                 "The Protein Data Bank is the single worldwide archive of structural data of biological macromolecules.",
                 "Berman et al. The Protein Data Bank. Nucleic Acids Res, 28(1), 235-242 (2000)",
                 "https://www.rcsb.org",
+                true, Parameters::DBTYPE_AMINO_ACIDS, structdatabases_sh, structdatabases_sh_len,
+                {}
+        },
+        {
+                "CATH50",
+                "CATH domain database (combined AlphaFold and PDB CATH clustered at 50% seq.id.).",
+                "Bordin et al. AlphaFold2 reveals commonalities and novelties in protein structure space for 21 model organisms. Communications Biology, 6, 160 (2023)",
+                "https://www.cath.info",
                 true, Parameters::DBTYPE_AMINO_ACIDS, structdatabases_sh, structdatabases_sh_len,
                 {}
         }

@@ -19,13 +19,17 @@ LocalParameters::LocalParameters() :
         PARAM_CHAIN_NAME_MODE(PARAM_CHAIN_NAME_MODE_ID,"--chain-name-mode", "Chain name mode", "Add chain to name:\n0: auto\n1: always add\n",typeid(int), (void *) &chainNameMode, "^[0-1]{1}$", MMseqsParameter::COMMAND_EXPERT),
         PARAM_WRITE_MAPPING(PARAM_WRITE_MAPPING_ID, "--write-mapping", "Write mapping file", "write _mapping file containing mapping from internal id to taxonomic identifier", typeid(int), (void *) &writeMapping, "^[0-1]{1}", MMseqsParameter::COMMAND_EXPERT),
         PARAM_TMALIGN_FAST(PARAM_TMALIGN_FAST_ID,"--tmalign-fast", "TMalign fast","turn on fast search in TM-align" ,typeid(int), (void *) &tmAlignFast, "^[0-1]{1}$"),
+        PARAM_EXACT_TMSCORE(PARAM_EXACT_TMSCORE_ID,"--exact-tmscore", "Exact TMscore","turn on fast exact TMscore (slow), default is approximate" ,typeid(int), (void *) &exactTMscore, "^[0-1]{1}$"),
         PARAM_N_SAMPLE(PARAM_N_SAMPLE_ID, "--n-sample", "Sample size","pick N random sample" ,typeid(int), (void *) &nsample, "^[0-9]{1}[0-9]*$"),
         PARAM_COORD_STORE_MODE(PARAM_COORD_STORE_MODE_ID, "--coord-store-mode", "Coord store mode", "Coordinate storage mode: \n1: C-alpha as float\n2: C-alpha as difference (uint16_t)", typeid(int), (void *) &coordStoreMode, "^[1-2]{1}$",MMseqsParameter::COMMAND_EXPERT),
         PARAM_MIN_ASSIGNED_CHAINS_THRESHOLD(PARAM_MIN_ASSIGNED_CHAINS_THRESHOLD_ID, "--min-assigned-chains-ratio", "Minimum assigned chains percentage Threshold", "minimum percentage of assigned chains out of all query chains > thr [0,100] %", typeid(float), (void *) & minAssignedChainsThreshold, "^[0-9]*(\\.[0-9]+)?$"),
         PARAM_CLUSTER_SEARCH(PARAM_CLUSTER_SEARCH_ID, "--cluster-search", "Cluster search", "first find representative then align all cluster members", typeid(int), (void *) &clusterSearch, "^[0-1]{1}$",MMseqsParameter::COMMAND_MISC),
         PARAM_FILE_INCLUDE(PARAM_FILE_INCLUDE_ID, "--file-include", "File Inclusion Regex", "Include file names based on this regex", typeid(std::string), (void *) &fileInclude, "^.*$"),
         PARAM_FILE_EXCLUDE(PARAM_FILE_EXCLUDE_ID, "--file-exclude", "File Exclusion Regex", "Exclude file names based on this regex", typeid(std::string), (void *) &fileExclude, "^.*$"),
-        PARAM_INDEX_EXCLUDE(PARAM_INDEX_EXCLUDE_ID, "--index-exclude", "Index Exclusion", "Exclude parts of the index:\n0: Full index\n1: Exclude k-mer index (for use with --prefilter-mode 1)\n2: Exclude C-alpha coordinates (for use with --sort-by-structure-bits 0)\nFlags can be combined bit wise", typeid(int), (void *) &indexExclude, "^[0-3]{1}$", MMseqsParameter::COMMAND_EXPERT)
+        PARAM_INDEX_EXCLUDE(PARAM_INDEX_EXCLUDE_ID, "--index-exclude", "Index Exclusion", "Exclude parts of the index:\n0: Full index\n1: Exclude k-mer index (for use with --prefilter-mode 1)\n2: Exclude C-alpha coordinates (for use with --sort-by-structure-bits 0)\nFlags can be combined bit wise", typeid(int), (void *) &indexExclude, "^[0-3]{1}$", MMseqsParameter::COMMAND_EXPERT),
+        PARAM_COMPLEX_REPORT_MODE(PARAM_COMPLEX_REPORT_MODE_ID, "--complex-report-mode", "Complex report mode", "Complex report mode:\n0: No report\n1: Write complex report", typeid(int), (void *) &complexReportMode, "^[0-1]{1}$", MMseqsParameter::COMMAND_EXPERT),
+        PARAM_EXPAND_COMPLEX_EVALUE(PARAM_EXPAND_COMPLEX_EVALUE_ID, "--expand-complex-evalue", "E-value threshold for expandcomplex", "E-value threshold for expandcomplex (range 0.0-inf)", typeid(double), (void *) &eValueThrExpandComplex, "^([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)|[0-9]*(\\.[0-9]+)?$", MMseqsParameter::COMMAND_ALIGN),
+        PARAM_INPUT_FORMAT(PARAM_INPUT_FORMAT_ID, "--input-format", "Input format", "Format of input structures:\n0: Auto-detect by extension\n1: PDB\n2: mmCIF\n3: mmJSON\n4: ChemComp\n5: Foldcomp", typeid(int), (void *) &inputFormat, "^[0-5]{1}$")
 {
     PARAM_ALIGNMENT_MODE.description = "How to compute the alignment:\n0: automatic\n1: only score and end_pos\n2: also start_pos and cov\n3: also seq.id";
     PARAM_ALIGNMENT_MODE.regex = "^[0-3]{1}$";
@@ -74,13 +78,14 @@ LocalParameters::LocalParameters() :
     structurecreatedb.push_back(&PARAM_MASK_BFACTOR_THRESHOLD);
     structurecreatedb.push_back(&PARAM_COORD_STORE_MODE);
     structurecreatedb.push_back(&PARAM_WRITE_LOOKUP);
-    structurecreatedb.push_back(&PARAM_TAR_INCLUDE);
-    structurecreatedb.push_back(&PARAM_TAR_EXCLUDE);
+    structurecreatedb.push_back(&PARAM_INPUT_FORMAT);
     // protein chain only
     structurecreatedb.push_back(&PARAM_FILE_INCLUDE);
     structurecreatedb.push_back(&PARAM_FILE_EXCLUDE);
     structurecreatedb.push_back(&PARAM_THREADS);
     structurecreatedb.push_back(&PARAM_V);
+
+    convertalignments.push_back(&PARAM_EXACT_TMSCORE);
 
     createindex.push_back(&PARAM_INDEX_EXCLUDE);
 
@@ -99,6 +104,7 @@ LocalParameters::LocalParameters() :
     tmalign.push_back(&PARAM_THREADS);
     tmalign.push_back(&PARAM_V);
 
+    structurerescorediagonal.push_back(&PARAM_EXACT_TMSCORE);
     structurerescorediagonal.push_back(&PARAM_TMSCORE_THRESHOLD);
     structurerescorediagonal.push_back(&PARAM_LDDT_THRESHOLD);
     structurerescorediagonal.push_back(&PARAM_ALIGNMENT_TYPE);
@@ -108,6 +114,7 @@ LocalParameters::LocalParameters() :
     structurealign.push_back(&PARAM_LDDT_THRESHOLD);
     structurealign.push_back(&PARAM_SORT_BY_STRUCTURE_BITS);
     structurealign.push_back(&PARAM_ALIGNMENT_TYPE);
+    structurealign.push_back(&PARAM_EXACT_TMSCORE);
     structurealign = combineList(structurealign, align);
 //    tmalign.push_back(&PARAM_GAP_OPEN);
 //    tmalign.push_back(&PARAM_GAP_EXTEND);
@@ -147,7 +154,6 @@ LocalParameters::LocalParameters() :
     easystructureclusterworkflow = combineList(structureclusterworkflow, structurecreatedb);
     easystructureclusterworkflow = combineList(easystructureclusterworkflow, result2repseq);
 
-
     databases.push_back(&PARAM_HELP);
     databases.push_back(&PARAM_HELP_LONG);
     databases.push_back(&PARAM_TSV);
@@ -170,13 +176,26 @@ LocalParameters::LocalParameters() :
     scorecomplex.push_back(&PARAM_THREADS);
     scorecomplex.push_back(&PARAM_V);
     scorecomplex.push_back(&PARAM_MIN_ASSIGNED_CHAINS_THRESHOLD);
+
+    // createcomplexreport
+    createcomplexreport.push_back(&PARAM_DB_OUTPUT);
     createcomplexreport.push_back(&PARAM_THREADS);
     createcomplexreport.push_back(&PARAM_V);
-    easyscorecomplexworkflow = combineList(easyscorecomplexworkflow, structurecreatedb);
-    easyscorecomplexworkflow = combineList(easyscorecomplexworkflow, structuresearchworkflow);
-    easyscorecomplexworkflow = combineList(easyscorecomplexworkflow, scorecomplex);
-    easyscorecomplexworkflow = combineList(easyscorecomplexworkflow, convertalignments);
-    easyscorecomplexworkflow = combineList(easyscorecomplexworkflow, createcomplexreport);
+
+    // complexsearchworkflow
+    complexsearchworkflow = combineList(structuresearchworkflow, scorecomplex);
+    complexsearchworkflow.push_back(&PARAM_EXPAND_COMPLEX_EVALUE);
+
+    // easycomplexsearchworkflow
+    easyscomplexsearchworkflow = combineList(structurecreatedb, complexsearchworkflow);
+    easyscomplexsearchworkflow = combineList(easyscomplexsearchworkflow, convertalignments);
+    easyscomplexsearchworkflow = combineList(easyscomplexsearchworkflow, createcomplexreport);
+    easyscomplexsearchworkflow.push_back(&PARAM_COMPLEX_REPORT_MODE);
+
+    // expandcomplex
+    expandcomplex.push_back(&PARAM_THREADS);
+    expandcomplex.push_back(&PARAM_V);
+
     prefMode = PREF_MODE_KMER;
     alignmentType = ALIGNMENT_TYPE_3DI_AA;
     tmScoreThr = 0.0;
@@ -189,16 +208,20 @@ LocalParameters::LocalParameters() :
     chainNameMode = 0;
     writeMapping = 0;
     tmAlignFast = 1;
+    exactTMscore = 0;
     gapOpen = 10;
     gapExtend = 1;
     nsample = 5000;
     maskLowerCaseMode = 1;
     coordStoreMode = COORD_STORE_MODE_CA_DIFF;
     clusterSearch = 0;
+    inputFormat = 0; // auto detect
     fileInclude = ".*";
     fileExclude = "^$";
     dbSuffixList = "_h,_ss,_ca";
     indexExclude = 0;
+    complexReportMode = 1;
+    eValueThrExpandComplex = 10000.0;
     citations.emplace(CITATION_FOLDSEEK, "van Kempen, M., Kim, S.S., Tumescheit, C., Mirdita, M., Lee, J., Gilchrist, C.L.M., Söding, J., and Steinegger, M. Fast and accurate protein structure search with Foldseek. Nature Biotechnology, doi:10.1038/s41587-023-01773-0 (2023)");
 
     //rewrite param vals.
