@@ -1141,7 +1141,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
     IndexReader qdbrH(par.db1, par.threads, IndexReader::HEADERS, touch ? IndexReader::PRELOAD_INDEX : 0);
     
-    std::cout << "Got databases" << std::endl;
+    Debug(Debug::INFO) << "Got databases\n";
 
     SubstitutionMatrix subMat_3di(par.scoringMatrixFile.values.aminoacid().c_str(), par.bitFactor3Di, par.scoreBias3di);
     std::string blosum;
@@ -1156,7 +1156,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     }
     SubstitutionMatrix subMat_aa(blosum.c_str(), par.bitFactorAa, par.scoreBiasAa);
 
-    std::cout << "Got substitution matrices" << std::endl;
+    Debug(Debug::INFO) << "Got substitution matrices\n";
 
     // Initialise MSAs, Sequence objects
     size_t sequenceCnt = seqDbrAA.getSize();
@@ -1176,10 +1176,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     std::vector<size_t> idMappings(sequenceCnt);
     std::map<std::string, int> headers_rev;
     
-#ifdef GAP_POS_SCORING
-    std::cout << "ENABLED GAP POS SCORING\n";
-#endif
-
     // std::map<std::string, int> seqLens;
     std::vector<int> seqLens(sequenceCnt);
 
@@ -1222,7 +1218,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     }
    
     // TODO: dynamically calculate and re-init PSSMCalculator/MsaFilter each iteration
-    std::cout << "Initialised MSAs, Sequence objects" << std::endl;
+    Debug(Debug::INFO) << "Initialised MSAs, Sequence objects\n";
 
     // Substitution matrices needed for query profile
     int8_t *tinySubMatAA  = (int8_t*) mem_align(ALIGN_INT, subMat_aa.alphabetSize * 32);
@@ -1234,7 +1230,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     for (int i = 0; i < subMat_aa.alphabetSize; i++)
         for (int j = 0; j < subMat_aa.alphabetSize; j++)
             tinySubMatAA[i * subMat_aa.alphabetSize + j] = subMat_aa.subMatrix[i][j];
-    std::cout << "Set up tiny substitution matrices" << std::endl;
+
+    Debug(Debug::INFO) << "Set up tiny substitution matrices\n";
 
     bool * alreadyMerged = new bool[sequenceCnt];
    
@@ -1370,22 +1367,24 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         delete root;
     }
    
-    int idx = 0;
-    for (size_t i = 0; i < merges.size(); i++) {
-        std::cout << "Merging " << merges[i] << " sequences\n";
-        for (size_t j = 0; j < merges[i]; j++) {
-            std::cout << "  " << headers[hits[idx + j].queryId] << "\t" << headers[hits[idx + j].targetId] << '\t' << hits[idx + j].score << '\n';
+    if (par.verbosity > Debug::INFO) {
+        int idx = 0;
+        for (size_t i = 0; i < merges.size(); i++) {
+            Debug(Debug::INFO) << "Merging " << merges[i] << " sequences\n";
+            for (size_t j = 0; j < merges[i]; j++) {
+                Debug(Debug::INFO) << "  " << headers[hits[idx + j].queryId] << "\t" << headers[hits[idx + j].targetId] << '\t' << hits[idx + j].score << '\n';
+            }
+            idx += merges[i];
         }
-        idx += merges[i];
     }
-
-    Debug(Debug::INFO) << "Merging:\n";
 
     size_t finalMSAId = 0;
     
     // FIXME this has to be outside OMP block I think?
     // Store profile strings for each merged sequence using merged db key
     std::unordered_map<unsigned int, std::pair<std::string, std::string>> profiles;
+
+    Debug(Debug::INFO) << "Begin progressive alignment\n";
 
 #pragma omp parallel
 {
@@ -1614,26 +1613,20 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             mappings[targetId].clear();
 
             // testSeqLens(groups[mergedId], cigars_aa, seqLens);
-
-/* if (false) {
-            // calculate LDDT of merged alignment
-            float lddtScore = std::get<2>(calculate_lddt(cigars_aa, groups[mergedId], dbKeys, seqLens, &seqDbrCA, par.pairThreshold));
-            std::cout << std::fixed << std::setprecision(4)
-                << queryIsProfile << "\t" << targetIsProfile << '\t' << headers[mergedId] << "\t" << headers[targetId]
-                << "\tLDDT: " << lddtScore << '\t' << res.score;
-            if (tmaligned){
-                std::cout << "\t(TM-align)";
-            }
-            std::cout << '\n';
-} */
-            std::cout << std::fixed << std::setprecision(4)
-                << queryIsProfile << "\t" << targetIsProfile << '\t' << headers[mergedId] << "\t" << headers[targetId]
-                << '\t' << res.score;
-            if (tmaligned){
-                std::cout << "\t(TM-align)";
-            }
-            std::cout << '\n';
             
+            if (par.verbosity > Debug::INFO) {
+                Debug(Debug::INFO)
+                    << std::to_string(queryIsProfile) << "\t"
+                    << std::to_string(targetIsProfile) << "\t"
+                    << headers[mergedId] << "\t" << headers[targetId]
+                    << "\t"
+                    << SSTR(res.score);
+                if (tmaligned){
+                    Debug(Debug::INFO) << "\t(TM-align)";
+                }
+                Debug(Debug::INFO) << "\n";
+            }
+
             mappings[mergedId] = computeProfileMask(
                 groups[mergedId],
                 cigars_aa,
@@ -1685,7 +1678,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             finalMSAId = mergedId;
         }
         index += merges[i];
-        // merged += merges[i];
     }
 
     // Refine alignment -- MUSCLE5 style

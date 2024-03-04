@@ -50,6 +50,7 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_BITFACTOR_3DI);
     structuremsa.push_back(&PARAM_PAIR_THRESHOLD);
     structuremsa.push_back(&PARAM_NO_COMP_BIAS_CORR);
+    structuremsa.push_back(&PARAM_V);
 
     structuremsacluster = combineList(structuremsacluster, structuremsa);
 
