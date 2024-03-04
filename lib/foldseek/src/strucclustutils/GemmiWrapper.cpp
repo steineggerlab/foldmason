@@ -63,8 +63,23 @@ std::unordered_map<std::string, int> getEntityTaxIDMapping(gemmi::cif::Document&
     return entity_to_taxid;
 }
 
-bool GemmiWrapper::load(std::string & filename){
-    if (gemmi::iends_with(filename, ".fcz")) {
+GemmiWrapper::Format mapFormat(gemmi::CoorFormat format) {
+    switch (format) {
+        case gemmi::CoorFormat::Pdb:
+            return GemmiWrapper::Format::Pdb;
+        case gemmi::CoorFormat::Mmcif:
+            return GemmiWrapper::Format::Mmcif;
+        case gemmi::CoorFormat::Mmjson:
+            return GemmiWrapper::Format::Mmjson;
+        case gemmi::CoorFormat::ChemComp:
+            return GemmiWrapper::Format::ChemComp;
+        default:
+            return GemmiWrapper::Format::Unknown;
+    }
+}
+
+bool GemmiWrapper::load(const std::string& filename, Format format) {
+    if ((format == Format::Foldcomp) || (format == Format::Detect && gemmi::iends_with(filename, ".fcz"))) {
         std::ifstream in(filename, std::ios::binary);
         if (!in) {
             return false;
@@ -77,22 +92,30 @@ bool GemmiWrapper::load(std::string & filename){
 #else
         gemmi::BasicInput infile(filename);
 #endif
-        gemmi::CoorFormat format = gemmi::coor_format_from_ext(infile.basepath());
+        if (format == Format::Detect) {
+            format = mapFormat(gemmi::coor_format_from_ext(infile.basepath()));
+        }
         gemmi::Structure st;
         std::unordered_map<std::string, int> entity_to_tax_id;
         switch (format) {
-            case gemmi::CoorFormat::Mmcif: {
+            case Format::Mmcif: {
                 gemmi::cif::Document doc = gemmi::cif::read(infile);
                 entity_to_tax_id = getEntityTaxIDMapping(doc);
                 st = gemmi::make_structure(doc);
                 break;
             }
-            case gemmi::CoorFormat::Mmjson:
-                st = gemmi::make_structure(gemmi::cif::read_mmjson(infile));
+            case Format::Mmjson: {
+                gemmi::cif::Document doc = gemmi::cif::read_mmjson(infile);
+                entity_to_tax_id = getEntityTaxIDMapping(doc);
+                st = gemmi::make_structure(doc);
                 break;
-            case gemmi::CoorFormat::ChemComp:
-                st = gemmi::make_structure_from_chemcomp_doc(gemmi::cif::read(infile));
+            }
+            case Format::ChemComp: {
+                gemmi::cif::Document doc = gemmi::cif::read(infile);
+                entity_to_tax_id = getEntityTaxIDMapping(doc);
+                st = gemmi::make_structure_from_chemcomp_doc(doc);
                 break;
+            }
             default:
                 st = gemmi::read_pdb(infile);
         }
@@ -112,8 +135,8 @@ struct OneShotReadBuf : public std::streambuf
     }
 };
 
-bool GemmiWrapper::loadFromBuffer(const char * buffer, size_t bufferSize, const std::string& name) {
-    if (bufferSize > MAGICNUMBER_LENGTH && strncmp(buffer, MAGICNUMBER, MAGICNUMBER_LENGTH) == 0) {
+bool GemmiWrapper::loadFromBuffer(const char * buffer, size_t bufferSize, const std::string& name, GemmiWrapper::Format format) {
+    if ((format == Format::Foldcomp) || (format == Format::Detect && (bufferSize > MAGICNUMBER_LENGTH && strncmp(buffer, MAGICNUMBER, MAGICNUMBER_LENGTH) == 0))) {
         OneShotReadBuf buf((char *) buffer, bufferSize);
         std::istream istr(&buf);
         if (!istr) {
@@ -127,21 +150,45 @@ bool GemmiWrapper::loadFromBuffer(const char * buffer, size_t bufferSize, const 
 #else
         gemmi::BasicInput infile(name);
 #endif
-        gemmi::CoorFormat format = gemmi::coor_format_from_ext(infile.basepath());
+        if (format == Format::Detect) {
+            format = mapFormat(gemmi::coor_format_from_ext(infile.basepath()));
+        }
+
         gemmi::Structure st;
         std::unordered_map<std::string, int> entity_to_tax_id;
         switch (format) {
-            case gemmi::CoorFormat::Pdb:
+            case Format::Pdb:
                 st = gemmi::pdb_impl::read_pdb_from_stream(gemmi::MemoryStream(buffer, bufferSize), name, gemmi::PdbReadOptions());
                 break;
-            case gemmi::CoorFormat::Mmcif: {
+            case Format::Mmcif: {
                 gemmi::cif::Document doc = gemmi::cif::read_memory(buffer, bufferSize, name.c_str());
                 entity_to_tax_id = getEntityTaxIDMapping(doc);
                 st = gemmi::make_structure(doc);
                 break;
             }
-            case gemmi::CoorFormat::Unknown:
-            case gemmi::CoorFormat::Detect:
+            case Format::Mmjson: {
+                char* bufferCopy = (char*)malloc(bufferSize + 1 * sizeof(char));
+                if (bufferCopy == NULL) {
+                    return false;
+                }
+                if (memcpy(bufferCopy, buffer, bufferSize) == NULL) {
+                    free(bufferCopy);
+                    return false;
+                }
+                bufferCopy[bufferSize] = '\0';
+                gemmi::cif::Document doc = gemmi::cif::read_mmjson_insitu(bufferCopy, bufferSize, name);
+                entity_to_tax_id = getEntityTaxIDMapping(doc);
+                st = gemmi::make_structure(doc);
+                free(bufferCopy);
+                break;
+            }
+            case Format::ChemComp: {
+                gemmi::cif::Document doc = gemmi::cif::read_memory(buffer, bufferSize, name.c_str());
+                entity_to_tax_id = getEntityTaxIDMapping(doc);
+                st = gemmi::make_structure_from_chemcomp_doc(doc);
+                break;
+            }
+            default:
                 return false;
         }
         updateStructure((void*) &st, name, entity_to_tax_id);
@@ -305,12 +352,14 @@ void GemmiWrapper::updateStructure(void * void_st, const std::string& filename, 
                 Vec3 n_atom  = {NAN, NAN, NAN};
                 Vec3 c_atom  = {NAN, NAN, NAN};
                 float ca_atom_bfactor;
+                bool hasCA = false;
                 for (gemmi::Atom &atom : res.atoms) {
                     if (atom.name == "CA") {
                         ca_atom.x = atom.pos.x;
                         ca_atom.y = atom.pos.y;
                         ca_atom.z = atom.pos.z;
                         ca_atom_bfactor = atom.b_iso;
+                        hasCA = true;
                     } else if (atom.name == "CB") {
                         cb_atom.x = atom.pos.x;
                         cb_atom.y = atom.pos.y;
@@ -324,6 +373,9 @@ void GemmiWrapper::updateStructure(void * void_st, const std::string& filename, 
                         c_atom.y = atom.pos.y;
                         c_atom.z = atom.pos.z;
                     }
+                }
+                if(hasCA == false){
+                    continue;
                 }
                 ca_bfactor.push_back(ca_atom_bfactor);
                 ca.push_back(ca_atom);

@@ -6,9 +6,10 @@
 #include "Util.h"
 #include "Debug.h"
 
-#include "easycomplexsearch.sh.h"
+#include "complexsearch.sh.h"
 
-int easycomplexsearch(int argc, const char **argv, const Command &command) {
+
+int complexsearch(int argc, const char **argv, const Command &command) {
     LocalParameters &par = LocalParameters::getLocalInstance();
     par.PARAM_ADD_BACKTRACE.addCategory(MMseqsParameter::COMMAND_EXPERT);
     par.PARAM_MAX_REJECTED.addCategory(MMseqsParameter::COMMAND_EXPERT);
@@ -53,11 +54,11 @@ int easycomplexsearch(int argc, const char **argv, const Command &command) {
         par.greedyBestHits) {
         needBacktrace = true;
     }
-    if (needBacktrace) {
-        Debug(Debug::INFO) << "Alignment backtraces will be computed, since they were requested by output format.\n";
-        par.addBacktrace = true;
-        par.PARAM_ADD_BACKTRACE.wasSet = true;
-    }
+//    if (needBacktrace) {
+//        Debug(Debug::INFO) << "Alignment backtraces will be computed, since they were requested by output format.\n";
+//        par.addBacktrace = true;
+//        par.PARAM_ADD_BACKTRACE.wasSet = true;
+//    }
     if (needLookup) {
         par.writeLookup = true;
     }
@@ -70,30 +71,17 @@ int easycomplexsearch(int argc, const char **argv, const Command &command) {
     tmpDir = FileUtil::createTemporaryDirectory(tmpDir, hash);
     par.filenames.pop_back();
     CommandCaller cmd;
+    double eval =  par.evalThr;
     if(par.alignmentType == LocalParameters::ALIGNMENT_TYPE_TMALIGN){
+        par.evalThr = par.eValueThrExpandComplex;
         cmd.addVariable("COMPLEX_ALIGNMENT_ALGO", "tmalign");
         cmd.addVariable("COMPLEX_ALIGN_PAR", par.createParameterString(par.tmalign).c_str());
     }else if(par.alignmentType == LocalParameters::ALIGNMENT_TYPE_3DI_AA || par.alignmentType == LocalParameters::ALIGNMENT_TYPE_3DI){
+        par.evalThr = par.eValueThrExpandComplex;
         cmd.addVariable("COMPLEX_ALIGNMENT_ALGO", "structurealign");
         cmd.addVariable("COMPLEX_ALIGN_PAR", par.createParameterString(par.structurealign).c_str());
     }
-
-//    if(par.alignmentType == LocalParameters::ALIGNMENT_TYPE_TMALIGN){
-//        cmd.addVariable("ALIGNMENT_ALGO", "tmalign");
-//        cmd.addVariable("QUERY_ALIGNMENT", query.c_str());
-//        cmd.addVariable("TARGET_ALIGNMENT", target.c_str());
-//        cmd.addVariable("ALIGNMENT_PAR", par.createParameterString(par.tmalign).c_str());
-//        par.alignmentMode = Parameters::ALIGNMENT_MODE_SCORE_ONLY;
-//        par.sortByStructureBits = 0;
-//        //par.evalThr = 10; we want users to adjust this one. Our default is 10 anyhow.
-//        cmd.addVariable("STRUCTUREALIGN_PAR", par.createParameterString(par.structurealign).c_str());
-//    }else if(par.alignmentType == LocalParameters::ALIGNMENT_TYPE_3DI_AA || par.alignmentType == LocalParameters::ALIGNMENT_TYPE_3DI){
-//        cmd.addVariable("ALIGNMENT_ALGO", "structurealign");
-//        cmd.addVariable("QUERY_ALIGNMENT", query.c_str());
-//        cmd.addVariable("TARGET_ALIGNMENT", target.c_str());
-//        cmd.addVariable("ALIGNMENT_PAR", par.createParameterString(par.structurealign).c_str());
-//    }
-
+    par.evalThr = eval;
     switch(par.prefMode){
         case LocalParameters::PREF_MODE_KMER:
             cmd.addVariable("PREFMODE", "KMER");
@@ -112,20 +100,23 @@ int easycomplexsearch(int argc, const char **argv, const Command &command) {
     cmd.addVariable("TMP_PATH", tmpDir.c_str());
     cmd.addVariable("OUTPUT", par.filenames.back().c_str());
     par.filenames.pop_back();
-    cmd.addVariable("TARGET", par.filenames.back().c_str());
+    cmd.addVariable("TARGETDB", par.filenames.back().c_str());
     par.filenames.pop_back();
-    cmd.addVariable("QUERY", par.filenames.back().c_str());
+    cmd.addVariable("QUERYDB", par.filenames.back().c_str());
     cmd.addVariable("LEAVE_INPUT", par.dbOut ? "TRUE" : NULL);
     par.filenames.pop_back();
-    cmd.addVariable("CREATEDB_PAR", par.createParameterString(par.structurecreatedb).c_str());
-    cmd.addVariable("COMPLEXSEARCH_PAR", par.createParameterString(par.complexsearchworkflow, true).c_str());
-    cmd.addVariable("CONVERT_PAR", par.createParameterString(par.convertalignments).c_str());
-    cmd.addVariable("REPORT_PAR", par.createParameterString(par.createcomplexreport).c_str());
+
+    // initial search speed up!
+    par.addBacktrace = par.exhaustiveSearch;
+    par.alignmentType = par.exhaustiveSearch ? par.alignmentType : LocalParameters::ALIGNMENT_TYPE_3DI_AA;
+
+    cmd.addVariable("SEARCH_PAR", par.createParameterString(par.structuresearchworkflow, true).c_str());
+    cmd.addVariable("SCORECOMPLEX_PAR", par.createParameterString(par.scorecomplex).c_str());
     cmd.addVariable("THREADS_PAR", par.createParameterString(par.onlythreads).c_str());
     cmd.addVariable("REMOVE_TMP", par.removeTmpFiles ? "TRUE" : NULL);
     cmd.addVariable("VERBOSITY", par.createParameterString(par.onlyverbosity).c_str());
-    std::string program = tmpDir + "/easycomplexsearch.sh";
-    FileUtil::writeFile(program, easycomplexsearch_sh, easycomplexsearch_sh_len);
+    std::string program = tmpDir + "/complexsearch.sh";
+    FileUtil::writeFile(program, complexsearch_sh, complexsearch_sh_len);
     cmd.execProgram(program.c_str(), par.filenames);
     // Should never get here
     assert(false);
