@@ -1079,7 +1079,7 @@ Matcher::result_t pairwiseTMAlign(
     char *target_aa_seq = seqDbrAA.getData(tCaId, 0);
 
     float TMscore = 0.0;
-    TMaligner tmaln(std::max(qLen, tLen)+VECSIZE_FLOAT, 1, 0);
+    TMaligner tmaln(std::max(qLen, tLen)+VECSIZE_FLOAT, 1, 0, false);
     tmaln.initQuery(qCaData, &qCaData[qLen], &qCaData[qLen * 2], merged_aa_seq, qLen);
     Matcher::result_t res = tmaln.align(targetId, tCaData, &tCaData[tLen], &tCaData[tLen * 2], target_aa_seq, tLen, TMscore);
     res.backtrace = Matcher::uncompressAlignment(res.backtrace);
