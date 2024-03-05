@@ -1047,7 +1047,6 @@ void updateCIGARS(
 void testSeqLens(std::vector<size_t> &MAYBE_UNUSED(indices), std::vector<std::vector<Instruction> > &MAYBE_UNUSED(cigars), std::vector<int> &MAYBE_UNUSED(lengths)) {
     for (int MAYBE_UNUSED(index) : indices) {
         assert(lengths[index] == cigarLength(cigars[index], false));
-        // std::cout << headers[index] << '\t' << lengths[index] << '\t' << length << '\n';
     }
 }
 
@@ -1107,24 +1106,6 @@ void copyInstructionVectors(std::vector<std::vector<Instruction> > &one, std::ve
     }
 }
 
-std::string cigarsToMSA(
-    std::vector<std::string> &headers,
-    std::vector<std::vector<Instruction> > &cigars,
-    std::vector<size_t> group1,
-    std::vector<size_t> group2
-) {
-    std::string msa;
-    for (size_t index : group1) {
-        msa += '>' + headers[index] + '\n';
-        msa += expand(cigars[index]) + '\n';
-    }
-    for (size_t index : group2) {
-        msa += '>' + headers[index] + '\n';
-        msa += expand(cigars[index]) + '\n';
-    }
-    return msa;
-}
-
 int structuremsa(int argc, const char **argv, const Command& command, bool preCluster) {
     FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
 
@@ -1171,10 +1152,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     // map i <=> dbKey. used in LDDT calculation to retrieve CA
     std::vector<size_t> dbKeys(sequenceCnt);
 
-    std::vector<std::string> headers(sequenceCnt);
     std::vector<std::string> mappings(sequenceCnt);
     std::vector<size_t> idMappings(sequenceCnt);
-    std::map<std::string, int> headers_rev;
     
     // std::map<std::string, int> seqLens;
     std::vector<int> seqLens(sequenceCnt);
@@ -1190,13 +1169,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         size_t seqId3Di = seqDbr3Di.getId(seqKey3Di);
 
         dbKeys[i] = seqKeyAA;
-
-        // Grab headers, remove \0
-        unsigned int headerId = qdbrH.sequenceReader->getId(seqKeyAA);
-        std::string header = qdbrH.sequenceReader->getData(headerId, 0);
-        header = header.substr(0, std::min(header.length() - 1, header.find(' ', 0)));
-        headers[i] = header;
-        headers_rev[header] = i;
 
         size_t length = seqDbrAA.getSeqLen(seqIdAA);
         const char* seq_aa = seqDbrAA.getData(seqIdAA, 0);
@@ -1369,10 +1341,19 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
    
     if (par.verbosity > Debug::INFO) {
         int idx = 0;
+        size_t qHeaderId, tHeaderId;
+        unsigned int qKey, tKey;
+        std::string qHeader, tHeader;
         for (size_t i = 0; i < merges.size(); i++) {
             Debug(Debug::INFO) << "Merging " << merges[i] << " sequences\n";
             for (size_t j = 0; j < merges[i]; j++) {
-                Debug(Debug::INFO) << "  " << headers[hits[idx + j].queryId] << "\t" << headers[hits[idx + j].targetId] << '\t' << hits[idx + j].score << '\n';
+                qKey = seqDbrAA.getDbKey(hits[idx + j].queryId);
+                qHeaderId = qdbrH.sequenceReader->getId(qKey);
+                qHeader = Util::parseFastaHeader(qdbrH.sequenceReader->getData(qHeaderId, 0));
+                tKey = seqDbrAA.getDbKey(hits[idx + j].targetId);
+                tHeaderId = qdbrH.sequenceReader->getId(tKey);
+                tHeader = Util::parseFastaHeader(qdbrH.sequenceReader->getData(tHeaderId, 0));
+                Debug(Debug::INFO) << "  " << qHeader << "\t" << tHeader << '\t' << hits[idx + j].score << '\n';
             }
             idx += merges[i];
         }
@@ -1614,11 +1595,17 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
             // testSeqLens(groups[mergedId], cigars_aa, seqLens);
             
-            if (par.verbosity > Debug::INFO) {
+            if (par.verbosity >= Debug::INFO) {
+                unsigned int qKey = seqDbrAA.getDbKey(mergedId);
+                size_t qHeaderId = qdbrH.sequenceReader->getId(qKey);
+                unsigned int tKey = seqDbrAA.getDbKey(targetId);
+                size_t tHeaderId = qdbrH.sequenceReader->getId(tKey);
                 Debug(Debug::INFO)
                     << std::to_string(queryIsProfile) << "\t"
                     << std::to_string(targetIsProfile) << "\t"
-                    << headers[mergedId] << "\t" << headers[targetId]
+                    << Util::parseFastaHeader(qdbrH.sequenceReader->getData(qHeaderId, 0))
+                    << "\t"
+                    << Util::parseFastaHeader(qdbrH.sequenceReader->getData(tHeaderId, 0))
                     << "\t"
                     << SSTR(res.score);
                 if (tmaligned){
