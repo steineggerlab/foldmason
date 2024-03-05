@@ -1595,7 +1595,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
             // testSeqLens(groups[mergedId], cigars_aa, seqLens);
             
-            if (par.verbosity >= Debug::INFO) {
+            if (par.verbosity > Debug::INFO) {
                 unsigned int qKey = seqDbrAA.getDbKey(mergedId);
                 size_t qHeaderId = qdbrH.sequenceReader->getId(qKey);
                 unsigned int tKey = seqDbrAA.getDbKey(targetId);
