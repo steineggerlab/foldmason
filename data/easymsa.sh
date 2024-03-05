@@ -50,12 +50,13 @@ else
     fi   
 fi
 
-# shellcheck disable=SC2086
-"$MMSEQS" msa2lddt "${STRUCTUREDB}" "${RESULTS}_aa.fa" \
-    "--lddt-html" "${RESULTS}.html" \
-    "--guide-tree" "${RESULTS}.nw" \
-    ${MSA2LDDT_PAR} \
-    || fail "msa2lddt died"
+if [ "${MAKE_REPORT}" ]; then
+    # shellcheck disable=SC2086
+    "$MMSEQS" msa2lddtreport "${STRUCTUREDB}" "${RESULTS}_aa.fa" "${RESULTS}.html" \
+        "--guide-tree" "${RESULTS}.nw" \
+        ${MSA2LDDT_PAR} \
+        || fail "msa2lddt died"
+fi
 
 if [ -n "${REMOVE_TMP}" ]; then
     if [ -n "${GREEDY_BEST_HITS}" ]; then
