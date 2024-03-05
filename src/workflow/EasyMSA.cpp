@@ -96,19 +96,18 @@ int easymsa(int argc, const char **argv, const Command &command) {
     cmd.addVariable("CREATEDB_PAR", par.createParameterString(par.structurecreatedb).c_str());
 
     // needs to be last
-    std::vector<MMseqsParameter *> msa2lddtWithoutHtml;
+    std::vector<MMseqsParameter *> msa2lddtWithoutTree;
     par.PARAM_GAP_OPEN.wasSet = true;
     par.PARAM_GAP_EXTEND.wasSet = true;
     par.PARAM_MATCH_RATIO.wasSet = true;
     par.PARAM_FILTER_MSA.wasSet = true;
     par.reportCommand = par.createParameterString(par.easymsaworkflow, true);
-    // for (size_t i = 0; i < par.msa2lddt.size(); i++) {
-    //     if (par.msa2lddt[i]->uniqid != par.PARAM_LDDT_HTML.uniqid &&
-    //         par.msa2lddt[i]->uniqid != par.PARAM_GUIDE_TREE.uniqid) {
-    //         msa2lddtWithoutHtml.push_back(par.msa2lddt[i]);
-    //     }
-    // }
-    // cmd.addVariable("MSA2LDDT_PAR", par.createParameterString(msa2lddtWithoutHtml).c_str());
+    for (size_t i = 0; i < par.msa2lddt.size(); i++) {
+        if (par.msa2lddt[i]->uniqid != par.PARAM_GUIDE_TREE.uniqid) {
+            msa2lddtWithoutTree.push_back(par.msa2lddt[i]);
+        }
+    }
+    cmd.addVariable("MSA2LDDT_PAR", par.createParameterString(msa2lddtWithoutTree).c_str());
 
     std::string program = tmpDir + "/easymsa.sh";
     FileUtil::writeFile(program, easymsa_sh, easymsa_sh_len);
