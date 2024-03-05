@@ -1613,6 +1613,16 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 }
                 Debug(Debug::INFO) << "\n";
             }
+            
+            finalMSAId = mergedId;
+            alreadyMerged[targetId] = true;
+            
+            // Don't make profiles on final alignment
+            if (i == merges.size() - 1 && j == merges[i] - 1) {
+                profiles.erase(targetId);
+                profiles.erase(mergedId);
+                continue;
+            }
 
             mappings[mergedId] = computeProfileMask(
                 groups[mergedId],
@@ -1660,9 +1670,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             if (targetIsProfile) {
                 profiles.erase(targetId);
             }
-
-            alreadyMerged[targetId] = true;
-            finalMSAId = mergedId;
         }
         index += merges[i];
     }
