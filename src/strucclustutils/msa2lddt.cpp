@@ -359,7 +359,7 @@ float getLDDTScore(
     return lddtScore;
 }
 
-int msa2lddt(int argc, const char **argv, const Command& command) {
+int msa2lddt(int argc, const char **argv, const Command& command, bool makeReport) {
     FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
 
     const bool touch = (par.preloadMode != Parameters::PRELOAD_MODE_MMAP);
@@ -399,10 +399,8 @@ int msa2lddt(int argc, const char **argv, const Command& command) {
     std::cout << "Average MSA LDDT: " << lddtScore << std::endl;
     
     // Write clustal format MSA HTML
-    // TODO: make optional
-    if (par.lddtHtml != "") {
-        std::string lddtHtmlIdx = par.lddtHtml + ".index";
-        DBWriter resultWriter(par.lddtHtml.c_str(), lddtHtmlIdx.c_str(), static_cast<unsigned int>(par.threads), par.compressed, Parameters::DBTYPE_OMIT_FILE);
+    if (makeReport) {
+        DBWriter resultWriter(par.db3.c_str(), (par.db3 + ".index").c_str(), static_cast<unsigned int>(par.threads), par.compressed, Parameters::DBTYPE_OMIT_FILE);
         resultWriter.open();
 
 /* 
@@ -518,7 +516,7 @@ R"html(<!DOCTYPE html>
         resultWriter.writeData(end.c_str(), end.length(), 0, 0, false, false);
         resultWriter.writeEnd(0, 0, false, 0);
         resultWriter.close(true);
-        FileUtil::remove(lddtHtmlIdx.c_str());
+        FileUtil::remove((par.db3 + ".index").c_str());
     }
     
     if (par.reportCommand != "") {
@@ -530,4 +528,12 @@ R"html(<!DOCTYPE html>
     seqDbr3Di.close();
 
     return EXIT_SUCCESS;
+}
+
+
+int msa2lddt(int argc, const char **argv, const Command& command) {
+    return msa2lddt(argc, argv, command, false);
+}
+int msa2lddtreport(int argc, const char **argv, const Command& command) {
+    return msa2lddt(argc, argv, command, true);
 }

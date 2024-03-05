@@ -44,7 +44,6 @@ public:
     PARAMETER(PARAM_REFINE_ITERS)
     PARAMETER(PARAM_BITFACTOR_AA)
     PARAMETER(PARAM_BITFACTOR_3DI)
-    PARAMETER(PARAM_LDDT_HTML)
     PARAMETER(PARAM_PAIR_THRESHOLD)
     PARAMETER(PARAM_REPORT_COMMAND)
 
@@ -61,7 +60,6 @@ public:
     int refineIters;
     float bitFactorAa;
     float bitFactor3Di;
-    std::string lddtHtml;
     std::string reportCommand;
     float pairThreshold;
 };

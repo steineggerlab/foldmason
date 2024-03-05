@@ -92,6 +92,7 @@ int easymsa(int argc, const char **argv, const Command &command) {
     cmd.addVariable("THREADS_PAR", par.createParameterString(par.onlythreads).c_str());
     cmd.addVariable("VERBOSITY", par.createParameterString(par.onlyverbosity).c_str());
     cmd.addVariable("PRECLUSTER", par.precluster ? "TRUE" : NULL); 
+    cmd.addVariable("MAKE_REPORT", (par.reportMode == 1) ? "TRUE" : NULL);
     cmd.addVariable("CREATEDB_PAR", par.createParameterString(par.structurecreatedb).c_str());
 
     // needs to be last
@@ -101,13 +102,13 @@ int easymsa(int argc, const char **argv, const Command &command) {
     par.PARAM_MATCH_RATIO.wasSet = true;
     par.PARAM_FILTER_MSA.wasSet = true;
     par.reportCommand = par.createParameterString(par.easymsaworkflow, true);
-    for (size_t i = 0; i < par.msa2lddt.size(); i++) {
-        if (par.msa2lddt[i]->uniqid != par.PARAM_LDDT_HTML.uniqid &&
-            par.msa2lddt[i]->uniqid != par.PARAM_GUIDE_TREE.uniqid) {
-            msa2lddtWithoutHtml.push_back(par.msa2lddt[i]);
-        }
-    }
-    cmd.addVariable("MSA2LDDT_PAR", par.createParameterString(msa2lddtWithoutHtml).c_str());
+    // for (size_t i = 0; i < par.msa2lddt.size(); i++) {
+    //     if (par.msa2lddt[i]->uniqid != par.PARAM_LDDT_HTML.uniqid &&
+    //         par.msa2lddt[i]->uniqid != par.PARAM_GUIDE_TREE.uniqid) {
+    //         msa2lddtWithoutHtml.push_back(par.msa2lddt[i]);
+    //     }
+    // }
+    // cmd.addVariable("MSA2LDDT_PAR", par.createParameterString(msa2lddtWithoutHtml).c_str());
 
     std::string program = tmpDir + "/easymsa.sh";
     FileUtil::writeFile(program, easymsa_sh, easymsa_sh_len);

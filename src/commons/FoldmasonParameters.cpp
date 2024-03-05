@@ -17,7 +17,6 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_REFINE_ITERS(PARAM_REFINE_ITERS_ID, "--refine-iters", "Total refinement iterations", "Number of alignment refinement iterations", typeid(int), (void *) &refineIters, "[0-9]{1}[0-9]*$"),
         PARAM_BITFACTOR_AA(PARAM_BITFACTOR_AA_ID, "--bitfactor-aa", "AA matrix bit factor", "AA matrix bit factor", typeid(float), (void *) &bitFactorAa, "^([0-9]*\\.[0-9]*)$"),
         PARAM_BITFACTOR_3DI(PARAM_BITFACTOR_3DI_ID, "--bitfactor-3di", "3Di matrix bit factor", "3Di matrix bit factor", typeid(float), (void *) &bitFactor3Di, "^([0-9]*\\.[0-9]*)$"),
-        PARAM_LDDT_HTML(PARAM_LDDT_HTML_ID, "--lddt-html", "LDDT HTML file", "File to write LDDT MSA HTML visualisation to", typeid(std::string), (void *) &lddtHtml, ""),
         PARAM_PAIR_THRESHOLD(PARAM_PAIR_THRESHOLD_ID, "--pair-threshold", "LDDT pair threshold", "% of pair subalignments with LDDT information [0.0,1.0]",typeid(float), (void *) &pairThreshold, "^0(\\.[0-9]+)?|1(\\.0+)?$"),
         PARAM_REPORT_COMMAND(PARAM_REPORT_COMMAND_ID, "--report-command", "", "", typeid(std::string), (void *) &reportCommand, "")
 {
@@ -53,7 +52,6 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsacluster = combineList(structuremsacluster, structuremsa);
 
     // msa2lddt
-    msa2lddt.push_back(&PARAM_LDDT_HTML);
     msa2lddt.push_back(&PARAM_PAIR_THRESHOLD);
     msa2lddt.push_back(&PARAM_THREADS);
     msa2lddt.push_back(&PARAM_GUIDE_TREE);
@@ -63,10 +61,13 @@ FoldmasonParameters::FoldmasonParameters() :
     // refinemsa
     refinemsa = combineList(refinemsa, structuremsa);
     
+    // easymsa
+    PARAM_REPORT_MODE.description = "MSA report mode 0: AA/3Di FASTA files only, 1: Compute LDDT and generate HTML report";
     easymsaworkflow = combineList(easymsaworkflow, structurecreatedb);
     easymsaworkflow = combineList(easymsaworkflow, structuremsa);
     easymsaworkflow = combineList(easymsaworkflow, msa2lddt);
     easymsaworkflow.push_back(&PARAM_PRECLUSTER);
+    easymsaworkflow.push_back(&PARAM_REPORT_MODE);
 
     pcaAa = 1.1;
     pcbAa = 4.1;
