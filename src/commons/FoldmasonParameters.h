@@ -25,9 +25,6 @@ public:
         return static_cast<FoldmasonParameters&>(FoldmasonParameters::getInstance());
     }
 
-    static const int STRUCTUREMSA_OUTPUT_MODE_AA = 0;
-    static const int STRUCTUREMSA_OUTPUT_MODE_3DI = 1;
-
     std::vector<MMseqsParameter *> structuremsa;
     std::vector<MMseqsParameter *> structuremsacluster;
     std::vector<MMseqsParameter *> msa2lddt;
@@ -47,7 +44,6 @@ public:
     PARAMETER(PARAM_REFINE_ITERS)
     PARAMETER(PARAM_BITFACTOR_AA)
     PARAMETER(PARAM_BITFACTOR_3DI)
-    PARAMETER(PARAM_OUTPUT_MODE)
     PARAMETER(PARAM_LDDT_HTML)
     PARAMETER(PARAM_PAIR_THRESHOLD)
     PARAMETER(PARAM_REPORT_COMMAND)
@@ -65,7 +61,6 @@ public:
     int refineIters;
     float bitFactorAa;
     float bitFactor3Di;
-    int outputmode;
     std::string lddtHtml;
     std::string reportCommand;
     float pairThreshold;

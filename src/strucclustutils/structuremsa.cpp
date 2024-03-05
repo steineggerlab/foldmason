@@ -1690,13 +1690,20 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
 }
     // Write final MSA to file with correct headers
-    DBWriter resultWriter(
-        (par.filenames[par.filenames.size()-1] + ".fa").c_str(),
-        (par.filenames[par.filenames.size()-1] + ".index").c_str(),
+    DBWriter resultWriterAa(
+        (par.filenames[par.filenames.size()-1] + "_aa.fa").c_str(),
+        (par.filenames[par.filenames.size()-1] + "_aa.index").c_str(),
         static_cast<unsigned int>(par.threads), par.compressed, Parameters::DBTYPE_OMIT_FILE
     );
-    resultWriter.open();
-    resultWriter.writeStart(0);
+    DBWriter resultWriter3Di(
+        (par.filenames[par.filenames.size()-1] + "_3di.fa").c_str(),
+        (par.filenames[par.filenames.size()-1] + "_3di.index").c_str(),
+        static_cast<unsigned int>(par.threads), par.compressed, Parameters::DBTYPE_OMIT_FILE
+    );
+    resultWriterAa.open();
+    resultWriterAa.writeStart(0);
+    resultWriter3Di.open();
+    resultWriter3Di.writeStart(0);
     std::string buffer;
     buffer.reserve(10 * 1024);
     for (size_t i = 0; i < cigars_aa.size(); i++) {
@@ -1704,17 +1711,29 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         unsigned int key = seqDbrAA.getDbKey(idx);
         size_t headerId = qdbrH.sequenceReader->getId(key);
         std::string header = Util::parseFastaHeader(qdbrH.sequenceReader->getData(headerId, 0));
+
         buffer.append(1, '>');
         buffer.append(header);
         buffer.append(1, '\n');
-        buffer.append((par.outputmode == 0) ? expand(cigars_aa[idx]) : expand(cigars_ss[idx]));
+        buffer.append(expand(cigars_aa[idx]));
         buffer.append(1, '\n');
-        resultWriter.writeAdd(buffer.c_str(), buffer.size(), 0);
+        resultWriterAa.writeAdd(buffer.c_str(), buffer.size(), 0);
+        buffer.clear();
+        
+        buffer.append(1, '>');
+        buffer.append(header);
+        buffer.append(1, '\n');
+        buffer.append(expand(cigars_ss[idx]));
+        buffer.append(1, '\n');
+        resultWriter3Di.writeAdd(buffer.c_str(), buffer.size(), 0);
         buffer.clear();
     } 
-    resultWriter.writeEnd(0, 0, false, 0);
-    resultWriter.close(true);
-    FileUtil::remove((par.filenames[par.filenames.size()-1] + ".index").c_str());
+    resultWriterAa.writeEnd(0, 0, false, 0);
+    resultWriterAa.close(true);
+    resultWriter3Di.writeEnd(0, 0, false, 0);
+    resultWriter3Di.close(true);
+    FileUtil::remove((par.filenames[par.filenames.size()-1] + "_aa.index").c_str());
+    FileUtil::remove((par.filenames[par.filenames.size()-1] + "_3di.index").c_str());
 
     // Cleanup
     delete[] alreadyMerged;
