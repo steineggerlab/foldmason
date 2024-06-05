@@ -152,24 +152,23 @@ std::vector<int> countColumns(
 std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
     std::vector<std::vector<Instruction> > &cigars,
     std::vector<size_t> subset,
-    std::vector<size_t> &indices,
-    std::vector<int> &lengths,
+    DBReader<unsigned int> * seqDbrAA,
     DBReader<unsigned int> * seqDbrCA,
     float pairThreshold
 ) {
-    int alnLength = cigarLength(cigars[subset[0]], true); 
-    
+    int alnLength = cigarLength(cigars[subset[0]], true);
+
     // Track per-column scores and no. non-gaps to avg
     std::vector<float> perColumnScore(alnLength, 0.0);
     std::vector<int>   perColumnCount(alnLength, 0);
 
     float sum = 0.0;
     int numPairs = cigars.size() * (cigars.size() - 1) / 2;
-    
+
     // Sort subset vector by indices so we can initQuery in outer loop
     // AND ensure it is only ever done in one direction
-    std::sort(subset.begin(), subset.end(), [&indices](int a, int b){ return indices[a] < indices[b]; });
-    
+    // std::sort(subset.begin(), subset.end(), [&indices](int a, int b){ return indices[a] < indices[b]; });
+
 #pragma omp parallel reduction(+:sum) reduction(vsum:perColumnScore,perColumnCount)
 {
     unsigned int thread_idx = 0;
@@ -183,17 +182,20 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
 
 #pragma omp for schedule(dynamic, 1)
     for (size_t i = 0; i < subset.size(); i++) {
-        size_t i_idx = subset[i]; 
-        char *qcadata = seqDbrCA->getData(indices[i_idx], thread_idx);
-        size_t qCaLength = seqDbrCA->getEntryLen(indices[i_idx]);
-        float *queryCaData = qcoords.read(qcadata, lengths[i_idx], qCaLength);
+        unsigned int i_key = seqDbrCA->getDbKey(subset[i]);
+        size_t i_idx = seqDbrCA->getId(i_key); 
+
+        char *qcadata = seqDbrCA->getData(i_idx, thread_idx);
+        size_t qAALength = seqDbrAA->getEntryLen(i_idx);
+        size_t qCaLength = seqDbrCA->getEntryLen(i_idx);
+        float *queryCaData = qcoords.read(qcadata, qAALength, qCaLength);
         Matcher::result_t result;
 
         lddtcalculator->initQuery(
-            lengths[i_idx],
+            qAALength,
             queryCaData,
-            &queryCaData[lengths[i_idx]],
-            &queryCaData[lengths[i_idx] * 2]
+            &queryCaData[qAALength],
+            &queryCaData[qAALength * 2]
         );
 
         // indices of matches in gappy msa
@@ -201,12 +203,15 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
         match_to_msa.reserve(10000);
 
         for (size_t j = i + 1; j < subset.size(); j++) {
-            size_t j_idx = subset[j];
-            char *tcadata = seqDbrCA->getData(indices[j_idx], thread_idx);
-            size_t tCaLength = seqDbrCA->getEntryLen(indices[j_idx]);
-            float *targetCaData = tcoords.read(tcadata, lengths[j_idx], tCaLength);
+            unsigned int j_key = seqDbrCA->getDbKey(subset[j]);
+            size_t j_idx = seqDbrCA->getId(j_key); 
 
-            assert(expand(cigars[i_idx]).length() == expand(cigars[j_idx]).length());
+            char *tcadata = seqDbrCA->getData(j_idx, thread_idx);
+            size_t tAALength = seqDbrAA->getEntryLen(j_idx);
+            size_t tCaLength = seqDbrCA->getEntryLen(j_idx);
+            float *targetCaData = tcoords.read(tcadata, tAALength, tCaLength);
+
+            assert(expand(cigars[subset[i]]).length() == expand(cigars[subset[j]]).length());
 
             // Generate a CIGAR string from qId-tId sub-alignment, ignoring -- columns
             // e.g. --X-XX-X---XX-
@@ -225,13 +230,13 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
             result.backtrace.erase(k + 1);
 
             LDDTCalculator::LDDTScoreResult lddtres = lddtcalculator->computeLDDTScore(
-                lengths[j_idx],
+                tAALength,
                 result.qStartPos,
                 result.dbStartPos,
                 result.backtrace,
                 targetCaData,
-                &targetCaData[lengths[j_idx]],
-                &targetCaData[lengths[j_idx] * 2]
+                &targetCaData[tAALength],
+                &targetCaData[tAALength * 2]
             );
             
             if (std::isnan(lddtres.avgLddtScore)) {
@@ -354,7 +359,7 @@ float getLDDTScore(
     std::vector<float> perColumnScore;
     std::vector<int>   perColumnCount;
     float lddtScore;
-    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, inds, inds, lens, &seqDbrCA, pairThreshold);
+    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, inds, &seqDbrAA, &seqDbrCA, pairThreshold);
 
     return lddtScore;
 }
@@ -392,7 +397,7 @@ int msa2lddt(int argc, const char **argv, const Command& command, bool makeRepor
     for (size_t i = 0; i < subset.size(); i++)
         subset[i] = i;
     
-    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, subset, indices, lengths, &seqDbrCA, par.pairThreshold);
+    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, subset, &seqDbrAA, &seqDbrCA, par.pairThreshold);
     
     // TODO common core = columns w/ no gaps, no distances >4 angstrom to reference (structure w/ longest non-gap alignment)
     

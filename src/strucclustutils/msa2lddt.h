@@ -22,8 +22,7 @@ void parseFasta(
 std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
     std::vector<std::vector<Instruction> > &cigars,
     std::vector<size_t> subset,
-    std::vector<size_t> &indices,
-    std::vector<int> &lengths,
+    DBReader<unsigned int> * seqDbrAA,
     DBReader<unsigned int> * seqDbrCA,
     float pairThreshold
 );

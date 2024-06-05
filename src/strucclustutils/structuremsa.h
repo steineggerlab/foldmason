@@ -5,52 +5,10 @@
 #include "SubstitutionMatrix.h"
 #include "StructureSmithWaterman.h"
 #include "Sequence.h"
+#include "cigar.h"
 
 #ifndef STRUCTUREMSA_H
 #define STRUCTUREMSA_H
-
-enum State {
-    SEQ = 0,
-    GAP = 1
-};
-
-// Bit field version
-// First bit      = match or gap
-// Remaining bits = ASCII character or (gap) count
-union Instruction {
-    struct BitFields {
-        std::uint8_t state : 1;  // 0 = match, 1 = gap
-        std::uint8_t count : 7;  // count < 127
-    } bits;
-    unsigned char data;
-    Instruction() {
-        data = 0;
-    }
-    Instruction(int state, int count) {
-        data = 0;
-        bits.state = static_cast<std::uint8_t>(state);
-        bits.count = static_cast<std::uint8_t>(count);
-    }
-    Instruction(char c) {
-        data = 0;
-        bits.state = static_cast<std::uint8_t>(0);
-        bits.count = static_cast<std::uint8_t>(c);
-    }
-    Instruction(int count) {
-        data = 0;
-        bits.state = static_cast<std::uint8_t>(1);
-        bits.count = static_cast<std::uint8_t>(count);
-    }
-    char getCharacter() const {
-        return (bits.state == 0) ? static_cast<char>(bits.count) : '-';
-    }
-    bool isSeq() const {
-        return (bits.state == 0);
-    }
-    bool isFull() const {
-        return (bits.count == 127);
-    }
-};
 
 void getMergeInstructions(
     Matcher::result_t &res,
@@ -74,7 +32,6 @@ Matcher::result_t pairwiseAlignment(
 );
 
 std::vector<int> maskToMapping(std::string mask);
-int cigarLength(std::vector<Instruction> &cigar, bool withGaps);
 
 std::string computeProfileMask(
     std::vector<size_t> &indices,
@@ -114,8 +71,8 @@ void updateCIGARS(
     std::vector<Instruction> &tBt
 );
 
-std::vector<Instruction> contract(std::string sequence);
-std::string expand(std::vector<Instruction> &instructions);
+// std::vector<Instruction> contract(std::string sequence);
+// std::string expand(std::vector<Instruction> &instructions);
 
 void copyInstructions(std::vector<Instruction> &one, std::vector<Instruction> &two);
 void copyInstructionVectors(std::vector<std::vector<Instruction> > &one, std::vector<std::vector<Instruction> > &two);

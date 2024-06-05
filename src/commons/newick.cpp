@@ -149,7 +149,6 @@ void NewickParser::addNames(Node* root, IndexReader* headers) {
         NewickParser::addNames(child, headers);
     }
     if (root->children.size() == 0) {
-        unsigned int headerId = headers->sequenceReader->getId(root->id);
-        root->name = Util::parseFastaHeader(headers->sequenceReader->getData(headerId, 0));
+        root->name = Util::parseFastaHeader(headers->sequenceReader->getData(root->id, 0));
     }
 }

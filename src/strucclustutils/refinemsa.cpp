@@ -197,6 +197,7 @@ void refineOne(
 void refineMany(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
+    DBReader<unsigned int> *seqDbrAA,
     DBReader<unsigned int> *seqDbrCA,
     std::vector<std::vector<Instruction> > &cigars_aa,
     std::vector<std::vector<Instruction> > &cigars_ss,
@@ -221,7 +222,6 @@ void refineMany(
     int maxSeqLen,
     std::string qid,
     float pairThreshold,
-    std::vector<size_t> indices,
     std::vector<int> lengths
 ) {
     std::cout << "Running " << iterations << " refinement iterations\n";
@@ -231,7 +231,7 @@ void refineMany(
         subset[i] = i;
     }
 
-    float prevLDDT = std::get<2>(calculate_lddt(cigars_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
+    float prevLDDT = std::get<2>(calculate_lddt(cigars_aa, subset, seqDbrAA, seqDbrCA, pairThreshold));
     float initLDDT = prevLDDT;
     std::cout << "Initial LDDT: " << prevLDDT << '\n';
 
@@ -258,7 +258,7 @@ void refineMany(
             wg, gapExtend, gapOpen,
             sequences_aa, sequences_ss
         );
-        float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
+        float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, seqDbrAA, seqDbrCA, pairThreshold));
         // std::cout << std::fixed << std::setprecision(4) << "New LDDT: " << lddtScore << '\t' << "(" << i + 1 << ")\n";
         // for (std::vector<Instruction> &ins : cigars_new_aa) {
         //     std::cout << expand(ins) << '\n';
@@ -355,12 +355,12 @@ int refinemsa(int argc, const char **argv, const Command& command) {
     
     // Refine for N iterations
     refineMany(
-        tinySubMatAA, tinySubMat3Di, &seqDbrCA, cigars_aa, cigars_ss,
+        tinySubMatAA, tinySubMat3Di, &seqDbrAA, &seqDbrCA, cigars_aa, cigars_ss,
         calculator_aa, filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
         structureSmithWaterman, par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
         par.qsc, par.Ndiff, par.covMSAThr,
         par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
-        par.maxSeqLen, par.qid, par.pairThreshold, indices, lengths
+        par.maxSeqLen, par.qid, par.pairThreshold, lengths
     );
     
     // Write final MSA to file

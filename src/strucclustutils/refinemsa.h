@@ -4,6 +4,7 @@
 void refineMany(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
+    DBReader<unsigned int> *seqDbrAA,
     DBReader<unsigned int> *seqDbrCA,
     std::vector<std::vector<Instruction> > &cigars_aa,
     std::vector<std::vector<Instruction> > &cigars_ss,
@@ -29,7 +30,6 @@ void refineMany(
     int maxSeqLen,
     std::string qid,
     float pairThreshold,
-    std::vector<size_t> indices,
     std::vector<int> lengths
 );
 void deleteGapCols(std::vector<std::string> &sequences);
