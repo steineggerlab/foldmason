@@ -144,12 +144,12 @@ NewickParser::Node* NewickParser::buildTree(std::vector<AlnSimple> &merges) {
 }
 
 
-void NewickParser::addNames(Node* root, IndexReader* headers) {
+void NewickParser::addNames(Node* root, IndexReader* headers, bool hasKeys) {
     for (auto &child : root->children) {
-        NewickParser::addNames(child, headers);
+        NewickParser::addNames(child, headers, hasKeys);
     }
     if (root->children.size() == 0) {
-        unsigned int headerId = headers->sequenceReader->getId(root->id);
+        unsigned int headerId = hasKeys ? root->id : headers->sequenceReader->getId(root->id);
         root->name = Util::parseFastaHeader(headers->sequenceReader->getData(headerId, 0));
     }
 }

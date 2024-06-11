@@ -30,7 +30,7 @@ public:
     static Node* parse(const std::string& newick);
     static Node* buildTree(std::vector<AlnSimple> &merges); 
     static void updateDescendants(Node* node, Node* newParent, std::unordered_map<size_t, Node*>& nodeMap); 
-    static void addNames(Node* root, IndexReader* headers);
+    static void addNames(Node* root, IndexReader* headers, bool hasKeys);
     static void postOrder(Node* node, std::vector<std::string> *linkage);
     static std::string toNewick(const Node* node);
 private:

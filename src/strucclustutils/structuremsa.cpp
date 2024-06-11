@@ -212,10 +212,13 @@ std::vector<AlnSimple> updateAllScores(
     int maxSeqLen,
     int alphabetSize,
     int compBiasCorrection,
-    int compBiasCorrectionScale
+    int compBiasCorrectionScale,
+    std::vector<unsigned int> &subset
 ) {
     std::vector<AlnSimple> newHits;
-    size_t sequenceCnt = seqDbrAA.getSize();
+    
+    bool hasKeys = subset.size() > 0;
+    size_t sequenceCnt = hasKeys ? subset.size() : seqDbrAA.getSize();
 
 #pragma omp parallel
 {
@@ -245,7 +248,7 @@ std::vector<AlnSimple> updateAllScores(
         if (alreadyMerged[i])
             continue;
 
-        unsigned int mergedKey = seqDbrAA.getDbKey(i);
+        unsigned int mergedKey = hasKeys ? subset[i] : seqDbrAA.getDbKey(i);
         size_t mergedId  = seqDbrAA.getId(mergedKey);
         seqMergedAa.mapSequence(mergedId, mergedKey, seqDbrAA.getData(mergedId, thread_idx), seqDbrAA.getSeqLen(mergedId));
         mergedId = seqDbr3Di.getId(mergedKey);
@@ -263,14 +266,14 @@ std::vector<AlnSimple> updateAllScores(
             if (alreadyMerged[j] || i == j)
                 continue;
 
-            size_t targetKey = seqDbrAA.getDbKey(j);
+            size_t targetKey = hasKeys ? subset[j] : seqDbrAA.getDbKey(j);
             size_t targetId  = seqDbrAA.getId(targetKey);
             seqTargetAa.mapSequence(targetId, targetKey, seqDbrAA.getData(targetId, i), seqDbrAA.getSeqLen(targetId));
             seqTargetSs.mapSequence(targetId, targetKey, seqDbr3Di.getData(targetId, i), seqDbr3Di.getSeqLen(targetId));
 
             AlnSimple aln;
-            aln.queryId = mergedId;
-            aln.targetId = targetId;
+            aln.queryId = hasKeys ? i : mergedId;
+            aln.targetId = hasKeys ? j : targetId;
             aln.score = structureSmithWaterman.ungapped_alignment(seqTargetAa.numSequence, seqTargetSs.numSequence, seqTargetAa.L);
             threadHits.push_back(aln); 
         }
@@ -1106,14 +1109,18 @@ void copyInstructionVectors(std::vector<std::vector<Instruction> > &one, std::ve
     }
 }
 
-int structuremsa(int argc, const char **argv, const Command& command, bool preCluster) {
+int structuremsa(int argc, const char **argv, const Command& command, bool preCluster, bool hasKeys) {
     FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
 
     // Databases
     const bool touch = (par.preloadMode != Parameters::PRELOAD_MODE_MMAP);
     par.parseParameters(argc, argv, command, true, 0, MMseqsParameter::COMMAND_ALIGN);
-
-    DBReader<unsigned int> seqDbrAA(par.db1.c_str(), par.db1Index.c_str(), par.threads, DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA|DBReader<unsigned int>::USE_LOOKUP_REV);
+    
+    int mode = DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA; 
+    if (par.guideTree != "") {
+        mode |= DBReader<unsigned int>::USE_LOOKUP_REV;
+    }
+    DBReader<unsigned int> seqDbrAA(par.db1.c_str(), par.db1Index.c_str(), par.threads, mode);
     seqDbrAA.open(DBReader<unsigned int>::NOSORT);
     DBReader<unsigned int> seqDbr3Di((par.db1+"_ss").c_str(), (par.db1+"_ss.index").c_str(), par.threads, DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA);
     seqDbr3Di.open(DBReader<unsigned int>::NOSORT);
@@ -1139,8 +1146,77 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
     Debug(Debug::INFO) << "Got substitution matrices\n";
 
+    // TODO: dynamically calculate and re-init PSSMCalculator/MsaFilter each iteration
+    Debug(Debug::INFO) << "Initialised MSAs, Sequence objects\n";
+
+    // Substitution matrices needed for query profile
+    int8_t *tinySubMatAA  = (int8_t*) mem_align(ALIGN_INT, subMat_aa.alphabetSize * 32);
+    int8_t *tinySubMat3Di = (int8_t*) mem_align(ALIGN_INT, subMat_3di.alphabetSize * 32);
+
+    for (int i = 0; i < subMat_3di.alphabetSize; i++)
+        for (int j = 0; j < subMat_3di.alphabetSize; j++)
+            tinySubMat3Di[i * subMat_3di.alphabetSize + j] = subMat_3di.subMatrix[i][j]; // for farrar profile
+    for (int i = 0; i < subMat_aa.alphabetSize; i++)
+        for (int j = 0; j < subMat_aa.alphabetSize; j++)
+            tinySubMatAA[i * subMat_aa.alphabetSize + j] = subMat_aa.subMatrix[i][j];
+
+    Debug(Debug::INFO) << "Set up tiny substitution matrices\n";
+
+    DBReader<unsigned int> * cluDbr = NULL;
+    if (preCluster) {
+        // consider everything merged and unmerge the ones that are not
+        cluDbr = new DBReader<unsigned int>(
+            par.db2.c_str(),
+            par.db2Index.c_str(),
+            par.threads,
+            DBReader<unsigned int>::USE_INDEX | DBReader<unsigned int>::USE_DATA
+        );
+        cluDbr->open(DBReader<unsigned int>::LINEAR_ACCCESS);
+    }
+
+    // If structuremsasubsets and user has given tsv of subsets to align
+    std::vector<std::string> subsetNames;                   // e.g. cluster representative
+    std::vector<std::vector<unsigned int> > subsetMembers;  // db keys, e.g. cluster members
+    if (hasKeys) {
+        if (par.db2.length() > 0) {
+            std::ifstream mappingStream(par.db2);
+            if (mappingStream.fail()) {
+                Debug(Debug::ERROR) << "File " << par.db2 << " not found!\n";
+                EXIT(EXIT_FAILURE);
+            }
+            std::string line;
+            while (std::getline(mappingStream, line)) {
+                std::vector<std::string> split = Util::split(line, "\t");
+                std::string representative = split[0];
+                unsigned int member = strtoul(split[1].c_str(), NULL, 10);
+                if (subsetNames.size() > 0 && representative == subsetNames.back()) {
+                    subsetMembers.back().push_back(member);
+                } else {
+                    subsetNames.push_back(representative);
+                    std::vector<unsigned int> tmpMembers = { member };
+                    subsetMembers.emplace_back(tmpMembers);
+                }
+            }
+        }
+    } else {
+        // No subsets, initialise vectors and check for empty members as hasKeys check in updateAllScores
+        subsetNames.push_back(par.filenames[par.filenames.size()-1]);
+        subsetMembers.emplace_back();
+    }
+     
+    // TODO
+    // check hasKeys == true
+    // if yes, expect 2 col tsv like
+    //     rep1|mem1
+    //     rep1|mem2
+    //     rep2|mem1 rep2|mem2
+    // Wrap whole MSA procedure into loop of this TSV (only 1 iteration if hasKeys == false)
+    // Each rep is different MSA, sequenceCnt = number of members, expect db keys so no lookups
+    for (size_t s = 0; s < subsetNames.size(); s++) {
+        size_t sequenceCnt = hasKeys ? subsetMembers[s].size() : seqDbrAA.getSize();
+ 
     // Initialise MSAs, Sequence objects
-    size_t sequenceCnt = seqDbrAA.getSize();
+    //size_t sequenceCnt = seqDbrAA.getSize();
     
     // Current representation of sequences
     std::vector<std::vector<Instruction> > cigars_aa(sequenceCnt);
@@ -1162,9 +1238,12 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     int maxSeqLength = par.maxSeqLen;
 
     // TODO: could parallelise this, just need to have reduction for maxSeqLength
+    //
+    // wrapper fn that takes range 0 to sequenceCnt
+    // or elements 0 to N of TSV input
     for (size_t i = 0; i < sequenceCnt; i++) {
-        unsigned int seqKeyAA = seqDbrAA.getDbKey(i);
-        unsigned int seqKey3Di = seqDbr3Di.getDbKey(i);
+        unsigned int seqKeyAA = hasKeys ? subsetMembers[s][i] : seqDbrAA.getDbKey(i);
+        unsigned int seqKey3Di = hasKeys ? subsetMembers[s][i] : seqDbr3Di.getDbKey(i);
         size_t seqIdAA = seqDbrAA.getId(seqKeyAA);
         size_t seqId3Di = seqDbr3Di.getId(seqKey3Di);
 
@@ -1189,36 +1268,10 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         seqLens[i] = length;
     }
    
-    // TODO: dynamically calculate and re-init PSSMCalculator/MsaFilter each iteration
-    Debug(Debug::INFO) << "Initialised MSAs, Sequence objects\n";
-
-    // Substitution matrices needed for query profile
-    int8_t *tinySubMatAA  = (int8_t*) mem_align(ALIGN_INT, subMat_aa.alphabetSize * 32);
-    int8_t *tinySubMat3Di = (int8_t*) mem_align(ALIGN_INT, subMat_3di.alphabetSize * 32);
-
-    for (int i = 0; i < subMat_3di.alphabetSize; i++)
-        for (int j = 0; j < subMat_3di.alphabetSize; j++)
-            tinySubMat3Di[i * subMat_3di.alphabetSize + j] = subMat_3di.subMatrix[i][j]; // for farrar profile
-    for (int i = 0; i < subMat_aa.alphabetSize; i++)
-        for (int j = 0; j < subMat_aa.alphabetSize; j++)
-            tinySubMatAA[i * subMat_aa.alphabetSize + j] = subMat_aa.subMatrix[i][j];
-
-    Debug(Debug::INFO) << "Set up tiny substitution matrices\n";
-
     bool * alreadyMerged = new bool[sequenceCnt];
-   
-    DBReader<unsigned int> * cluDbr = NULL;
-
     if (preCluster) {
         // consider everything merged and unmerge the ones that are not
         memset(alreadyMerged, 1, sizeof(bool) * sequenceCnt);
-        cluDbr = new DBReader<unsigned int>(
-            par.db2.c_str(),
-            par.db2Index.c_str(),
-            par.threads,
-            DBReader<unsigned int>::USE_INDEX | DBReader<unsigned int>::USE_DATA
-        );
-        cluDbr->open(DBReader<unsigned int>::LINEAR_ACCCESS);
         // mark all sequences that are already clustered as merged
         for(size_t i = 0; i < cluDbr->getSize(); i++){
             unsigned int dbKey = cluDbr->getDbKey(i);
@@ -1234,7 +1287,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     std::vector<AlnSimple> hits;
     std::vector<size_t> merges;
 
-    if (par.guideTree != "") {
+    if (!hasKeys && par.guideTree != "") {
         std::string line;
         std::ifstream newick(par.guideTree);
         if (newick.is_open()) {
@@ -1244,7 +1297,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         }
     }
 
-    if (tree != "") {
+    if (!hasKeys && tree != "") {
         Debug(Debug::INFO) << "Parsing tree: " << tree << '\n';
         NewickParser::Node* root = NewickParser::parse(tree);
         // std::string nw = NewickParser::toNewick(root);
@@ -1298,7 +1351,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             par.maxSeqLen,
             subMat_3di.alphabetSize,
             par.compBiasCorrection,
-            par.compBiasCorrectionScale
+            par.compBiasCorrectionScale,
+            subsetMembers[s]
         );
         if (cluDbr != NULL) {
             // add external hits to the list
@@ -1329,7 +1383,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         hits = reorderLinkage(hits, merges, sequenceCnt);
 
         NewickParser::Node* root = NewickParser::buildTree(hits); 
-        NewickParser::addNames(root, &qdbrH);
+        NewickParser::addNames(root, &qdbrH, hasKeys);
         std::string nw = NewickParser::toNewick(root);
         std::string treeFile = par.filenames[par.filenames.size()-1] + ".nw";
         Debug(Debug::INFO) << "Writing guide tree to: " << treeFile << '\n';
@@ -1697,14 +1751,18 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
 }
     // Write final MSA to file with correct headers
+    std::string subsetFileName = par.filenames[par.filenames.size()-1];
+    if (hasKeys) {
+        subsetFileName += "_" + subsetNames[s];
+    }
     DBWriter resultWriterAa(
-        (par.filenames[par.filenames.size()-1] + "_aa.fa").c_str(),
-        (par.filenames[par.filenames.size()-1] + "_aa.index").c_str(),
+        (subsetFileName + "_aa.fa").c_str(),
+        (subsetFileName + "_aa.index").c_str(),
         static_cast<unsigned int>(par.threads), par.compressed, Parameters::DBTYPE_OMIT_FILE
     );
     DBWriter resultWriter3Di(
-        (par.filenames[par.filenames.size()-1] + "_3di.fa").c_str(),
-        (par.filenames[par.filenames.size()-1] + "_3di.index").c_str(),
+        (subsetFileName + "_3di.fa").c_str(),
+        (subsetFileName + "_3di.index").c_str(),
         static_cast<unsigned int>(par.threads), par.compressed, Parameters::DBTYPE_OMIT_FILE
     );
     resultWriterAa.open();
@@ -1715,7 +1773,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     buffer.reserve(10 * 1024);
     for (size_t i = 0; i < cigars_aa.size(); i++) {
         size_t idx = groups[finalMSAId][i];
-        unsigned int key = seqDbrAA.getDbKey(idx);
+        unsigned int key = hasKeys ? subsetMembers[s][idx] : seqDbrAA.getDbKey(idx);
         size_t headerId = qdbrH.sequenceReader->getId(key);
         std::string header = Util::parseFastaHeader(qdbrH.sequenceReader->getData(headerId, 0));
 
@@ -1739,11 +1797,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     resultWriterAa.close(true);
     resultWriter3Di.writeEnd(0, 0, false, 0);
     resultWriter3Di.close(true);
-    FileUtil::remove((par.filenames[par.filenames.size()-1] + "_aa.index").c_str());
-    FileUtil::remove((par.filenames[par.filenames.size()-1] + "_3di.index").c_str());
+    FileUtil::remove((subsetFileName + "_aa.index").c_str());
+    FileUtil::remove((subsetFileName + "_3di.index").c_str());
 
     // Cleanup
     delete[] alreadyMerged;
+} 
+
     free(tinySubMatAA);
     free(tinySubMat3Di);
     seqDbrAA.close();
@@ -1754,9 +1814,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 }
 
 int structuremsa(int argc, const char **argv, const Command& command) {
-    return structuremsa(argc, argv, command, false);
+    return structuremsa(argc, argv, command, false, false);
+}
+
+int structuremsasubsets(int argc, const char **argv, const Command& command) {
+    return structuremsa(argc, argv, command, false, true);
 }
 
 int structuremsacluster(int argc, const char **argv, const Command& command) {
-    return structuremsa(argc, argv, command, true);
+    return structuremsa(argc, argv, command, true, false);
 }
