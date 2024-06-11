@@ -14,16 +14,17 @@ void parseFasta(
     std::vector<std::string> &headers,
     std::vector<size_t>      &indices,
     std::vector<int>         &lengths,
-    std::vector<std::vector<Instruction> > &cigars_aa,
-    std::vector<std::vector<Instruction> > &cigars_ss,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_aa,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_ss,
     int &alnLength
 );
 
 std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
-    std::vector<std::vector<Instruction> > &cigars,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars,
     std::vector<size_t> subset,
     std::vector<size_t> &indices,
     std::vector<int> &lengths,
+    DBReader<unsigned int> * seqDbrAA,
     DBReader<unsigned int> * seqDbrCA,
     float pairThreshold
 );

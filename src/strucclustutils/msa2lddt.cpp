@@ -129,7 +129,7 @@ Matcher::result_t makeMockAlignment(
 }
 
 std::vector<int> countColumns(
-    std::vector<std::vector<Instruction> > &cigars,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars,
     std::vector<size_t> &subset,
     int alnLength
 ) {
@@ -150,14 +150,15 @@ std::vector<int> countColumns(
 }
 
 std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
-    std::vector<std::vector<Instruction> > &cigars,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars,
     std::vector<size_t> subset,
     std::vector<size_t> &indices,
     std::vector<int> &lengths,
+    DBReader<unsigned int> * seqDbrAA,
     DBReader<unsigned int> * seqDbrCA,
     float pairThreshold
 ) {
-    int alnLength = cigarLength(cigars[subset[0]], true); 
+    int alnLength = cigarLength(cigars[indices[0]], true); 
     
     // Track per-column scores and no. non-gaps to avg
     std::vector<float> perColumnScore(alnLength, 0.0);
@@ -182,37 +183,39 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
     Coordinate16 tcoords;
 
 #pragma omp for schedule(dynamic, 1)
-    for (size_t i = 0; i < subset.size(); i++) {
-        size_t i_idx = subset[i]; 
-        char *qcadata = seqDbrCA->getData(indices[i_idx], thread_idx);
-        size_t qCaLength = seqDbrCA->getEntryLen(indices[i_idx]);
-        float *queryCaData = qcoords.read(qcadata, lengths[i_idx], qCaLength);
+    for (size_t i = 0; i < indices.size(); i++) {
+        size_t qId = indices[i];
+        char *qcadata = seqDbrCA->getData(qId, thread_idx);
+        size_t qAaLength = seqDbrAA->getSeqLen(qId);
+        size_t qCaLength = seqDbrCA->getEntryLen(qId);
+        float *queryCaData = qcoords.read(qcadata, qAaLength, qCaLength);
         Matcher::result_t result;
 
         lddtcalculator->initQuery(
-            lengths[i_idx],
+            qAaLength,
             queryCaData,
-            &queryCaData[lengths[i_idx]],
-            &queryCaData[lengths[i_idx] * 2]
+            &queryCaData[qAaLength],
+            &queryCaData[qAaLength * 2]
         );
 
         // indices of matches in gappy msa
         std::vector<int> match_to_msa;
         match_to_msa.reserve(10000);
 
-        for (size_t j = i + 1; j < subset.size(); j++) {
-            size_t j_idx = subset[j];
-            char *tcadata = seqDbrCA->getData(indices[j_idx], thread_idx);
-            size_t tCaLength = seqDbrCA->getEntryLen(indices[j_idx]);
-            float *targetCaData = tcoords.read(tcadata, lengths[j_idx], tCaLength);
+        for (size_t j = i + 1; j < indices.size(); j++) {
+            size_t tId = indices[j];
+            char *tcadata = seqDbrCA->getData(tId, thread_idx);
+            size_t tAaLength = seqDbrAA->getSeqLen(tId);
+            size_t tCaLength = seqDbrCA->getEntryLen(tId);
+            float *targetCaData = tcoords.read(tcadata, tAaLength, tCaLength);
 
-            assert(expand(cigars[i_idx]).length() == expand(cigars[j_idx]).length());
+            assert(expand(cigars[qId]).length() == expand(cigars[tId]).length());
 
             // Generate a CIGAR string from qId-tId sub-alignment, ignoring -- columns
             // e.g. --X-XX-X---XX-
             //      Y---YYYY---YYY
             //          MMDM   MM
-            makeMockAlignment(result, cigars[i_idx], cigars[j_idx], match_to_msa, alnLength);
+            makeMockAlignment(result, cigars[qId], cigars[tId], match_to_msa, alnLength);
 
             // If no alignment between the two sequences, skip
             if (result.backtrace.length() == 0)
@@ -225,13 +228,13 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
             result.backtrace.erase(k + 1);
 
             LDDTCalculator::LDDTScoreResult lddtres = lddtcalculator->computeLDDTScore(
-                lengths[j_idx],
+                tAaLength,
                 result.qStartPos,
                 result.dbStartPos,
                 result.backtrace,
                 targetCaData,
-                &targetCaData[lengths[j_idx]],
-                &targetCaData[lengths[j_idx] * 2]
+                &targetCaData[tAaLength],
+                &targetCaData[tAaLength * 2]
             );
             
             if (std::isnan(lddtres.avgLddtScore)) {
@@ -291,8 +294,8 @@ void parseFasta(
     std::vector<std::string> &headers,
     std::vector<size_t>      &indices,
     std::vector<int>         &lengths,
-    std::vector<std::vector<Instruction> > &cigars_aa,
-    std::vector<std::vector<Instruction> > &cigars_ss,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_aa,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_ss,
     int &alnLength
 ) {
     while (kseq->ReadEntry()) {
@@ -327,8 +330,8 @@ void parseFasta(
                 cigar_ss.emplace_back(static_cast<int>(ins.bits.count));
             }
         }
-        cigars_aa.push_back(cigar_aa); 
-        cigars_ss.push_back(cigar_ss); 
+        cigars_aa.emplace(seqIdAA, cigar_aa); 
+        cigars_ss.emplace(seqIdAA, cigar_ss); 
         if (alnLength == 0)
             alnLength = (int)entry.sequence.l;
     }
@@ -346,15 +349,15 @@ float getLDDTScore(
     std::vector<std::string> hdrs;
     std::vector<size_t>      inds;
     std::vector<int>         lens;
-    std::vector<std::vector<Instruction> > cigars_aa;
-    std::vector<std::vector<Instruction> > cigars_ss;
+    std::unordered_map<size_t, std::vector<Instruction> > cigars_aa;
+    std::unordered_map<size_t, std::vector<Instruction> > cigars_ss;
     parseFasta(kseq, &seqDbrAA, &seqDbr3Di, hdrs, inds, lens, cigars_aa, cigars_ss, alnLength);
     delete kseq;
 
     std::vector<float> perColumnScore;
     std::vector<int>   perColumnCount;
     float lddtScore;
-    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, inds, inds, lens, &seqDbrCA, pairThreshold);
+    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, inds, inds, lens, &seqDbrAA, &seqDbrCA, pairThreshold);
 
     return lddtScore;
 }
@@ -378,8 +381,8 @@ int msa2lddt(int argc, const char **argv, const Command& command, bool makeRepor
     std::vector<std::string> headers;
     std::vector<size_t> indices;
     std::vector<int> lengths;
-    std::vector<std::vector<Instruction> > cigars_aa;
-    std::vector<std::vector<Instruction> > cigars_ss;
+    std::unordered_map<size_t, std::vector<Instruction> > cigars_aa;
+    std::unordered_map<size_t, std::vector<Instruction> > cigars_ss;
     parseFasta(kseq, &seqDbrAA, &seqDbr3Di, headers, indices, lengths, cigars_aa, cigars_ss, alnLength);
     delete kseq;
     
@@ -392,7 +395,7 @@ int msa2lddt(int argc, const char **argv, const Command& command, bool makeRepor
     for (size_t i = 0; i < subset.size(); i++)
         subset[i] = i;
     
-    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, subset, indices, lengths, &seqDbrCA, par.pairThreshold);
+    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, subset, indices, lengths, &seqDbrAA, &seqDbrCA, par.pairThreshold);
     
     // TODO common core = columns w/ no gaps, no distances >4 angstrom to reference (structure w/ longest non-gap alignment)
     

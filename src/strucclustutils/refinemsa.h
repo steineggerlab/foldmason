@@ -4,9 +4,10 @@
 void refineMany(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
+    DBReader<unsigned int> *seqDbrAA,
     DBReader<unsigned int> *seqDbrCA,
-    std::vector<std::vector<Instruction> > &cigars_aa,
-    std::vector<std::vector<Instruction> > &cigars_ss,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_aa,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_ss,
     PSSMCalculator &calculator_aa,
     MsaFilter &filter_aa,
     SubstitutionMatrix &subMat_aa,
@@ -32,7 +33,11 @@ void refineMany(
     std::vector<size_t> indices,
     std::vector<int> lengths
 );
-void deleteGapCols(std::vector<std::string> &sequences);
+void deleteGapCols(
+    std::vector<size_t> &indices,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_aa,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_ss
+);
 void buildSubMSA(std::vector<std::string> &headers, std::vector<std::string> &sequences, std::string &subMSA);
 void makeSubMSA(std::string msa, std::string &subMSA1, std::string &subMSA2, std::vector<bool> &group);
 

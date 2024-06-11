@@ -22,8 +22,8 @@
  */
 void deleteGapCols(
     std::vector<size_t> &indices,
-    std::vector<std::vector<Instruction> > &cigars_aa,
-    std::vector<std::vector<Instruction> > &cigars_ss
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_aa,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_ss
 ) {
     int length = cigarLength(cigars_aa[indices[0]], true); 
     
@@ -77,8 +77,8 @@ void deleteGapCols(
 void refineOne(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
-    std::vector<std::vector<Instruction> > &cigars_aa,
-    std::vector<std::vector<Instruction> > &cigars_ss,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_aa,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_ss,
     PSSMCalculator &calculator_aa,
     MsaFilter &filter_aa,
     SubstitutionMatrix &subMat_aa,
@@ -197,9 +197,10 @@ void refineOne(
 void refineMany(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
+    DBReader<unsigned int> *seqDbrAA,
     DBReader<unsigned int> *seqDbrCA,
-    std::vector<std::vector<Instruction> > &cigars_aa,
-    std::vector<std::vector<Instruction> > &cigars_ss,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_aa,
+    std::unordered_map<size_t, std::vector<Instruction> > &cigars_ss,
     PSSMCalculator &calculator_aa,
     MsaFilter &filter_aa,
     SubstitutionMatrix &subMat_aa,
@@ -231,12 +232,12 @@ void refineMany(
         subset[i] = i;
     }
 
-    float prevLDDT = std::get<2>(calculate_lddt(cigars_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
+    float prevLDDT = std::get<2>(calculate_lddt(cigars_aa, subset, indices, lengths, seqDbrAA, seqDbrCA, pairThreshold));
     float initLDDT = prevLDDT;
     std::cout << "Initial LDDT: " << prevLDDT << '\n';
 
-    std::vector<std::vector<Instruction> > cigars_new_aa;
-    std::vector<std::vector<Instruction> > cigars_new_ss;
+    std::unordered_map<size_t, std::vector<Instruction> > cigars_new_aa;
+    std::unordered_map<size_t, std::vector<Instruction> > cigars_new_ss;
 
     std::vector<Sequence*> sequences_aa(2);
     std::vector<Sequence*> sequences_ss(2);
@@ -258,7 +259,7 @@ void refineMany(
             wg, gapExtend, gapOpen,
             sequences_aa, sequences_ss
         );
-        float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
+        float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, lengths, seqDbrAA, seqDbrCA, pairThreshold));
         // std::cout << std::fixed << std::setprecision(4) << "New LDDT: " << lddtScore << '\t' << "(" << i + 1 << ")\n";
         // for (std::vector<Instruction> &ins : cigars_new_aa) {
         //     std::cout << expand(ins) << '\n';
@@ -302,8 +303,8 @@ int refinemsa(int argc, const char **argv, const Command& command) {
     IndexReader qdbrH(par.db1, par.threads, IndexReader::HEADERS, touch ? IndexReader::PRELOAD_INDEX : 0);
 
     // Read in FASTA alignment
-    std::vector<std::vector<Instruction> > cigars_aa;
-    std::vector<std::vector<Instruction> > cigars_ss;
+    std::unordered_map<size_t, std::vector<Instruction> > cigars_aa;
+    std::unordered_map<size_t, std::vector<Instruction> > cigars_ss;
     std::vector<size_t> indices;
     std::vector<int> lengths;
     std::vector<std::string> headers;
@@ -355,7 +356,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
     
     // Refine for N iterations
     refineMany(
-        tinySubMatAA, tinySubMat3Di, &seqDbrCA, cigars_aa, cigars_ss,
+        tinySubMatAA, tinySubMat3Di, &seqDbrAA, &seqDbrCA, cigars_aa, cigars_ss,
         calculator_aa, filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
         structureSmithWaterman, par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
         par.qsc, par.Ndiff, par.covMSAThr,
