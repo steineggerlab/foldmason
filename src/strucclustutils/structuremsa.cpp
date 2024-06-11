@@ -1637,7 +1637,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 cigars_tm.emplace(targetId, target_aa);
                 std::vector<size_t> subset_tm = { 0, 1 };
                 std::vector<size_t> indices_tm = { mergedId, targetId };
-                std::vector<int>    lengths_tm = { seqLens[mergedId], seqLens[targetId] };
+                std::vector<int>    lengths_tm = { };
 
                 float lddtTM = std::get<2>(calculate_lddt(cigars_tm, subset_tm, indices_tm, lengths_tm, &seqDbrAA, &seqDbrCA, par.pairThreshold));
                 // std::cout << "got TM lddt: " << lddtTM << '\n';
