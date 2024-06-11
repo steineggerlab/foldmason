@@ -295,6 +295,37 @@ int findRoot(int vertex, std::vector<int>& parent) {
     return vertex;
 }
 
+class UnionFind {
+    private:
+        std::unordered_map<unsigned int, unsigned int> parent;
+        std::unordered_map<unsigned int, unsigned int> rank;
+    public:
+        int find(unsigned int p) {
+            if (parent.find(p) == parent.end()) {
+                parent[p] = p;
+                rank[p] = 0;
+            }
+            if (parent[p] != p) {
+                parent[p] = find(parent[p]);
+            }
+            return parent[p];
+        }
+        void unite(int p, int q) {
+            int rootP = find(p);
+            int rootQ = find(q);
+            if (rootP != rootQ) {
+                if (rank[rootP] > rank[rootQ]) {
+                    parent[rootP] = rootQ;
+                } else if (rank[rootP] > rank[rootQ]) {
+                    parent[rootQ] = rootP;
+                } else {
+                    parent[rootQ] = rootP;
+                    rank[rootP]++;
+                }
+            }
+        }
+};
+
 /**
  * @brief Get minimum spanning tree as linkage matrix (Kruskal algorithm).
  * 
@@ -304,15 +335,12 @@ int findRoot(int vertex, std::vector<int>& parent) {
  */
 std::vector<AlnSimple> mst(std::vector<AlnSimple> hits, int n) {
     std::vector<AlnSimple> result;
-    std::vector<int> parent(n);  // parent node IDs
-    for (int i = 0; i < n; i++)
-        parent[i] = i;
-    for (AlnSimple aln : hits) {
-        int u = findRoot(aln.queryId, parent);
-        int v = findRoot(aln.targetId, parent);
-        if (u != v) {
+    UnionFind uf;
+    for (AlnSimple& aln : hits) {
+        if (uf.find(aln.queryId) != uf.find(aln.targetId)) {
+            uf.unite(aln.queryId, aln.targetId);
             result.push_back(aln);
-            parent[u] = v;
+            if (result.size() == hits.size() - 1) break;
         }
     }
     return result;
@@ -1198,6 +1226,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 }
             }
         }
+        Debug(Debug::INFO) << "Parsed subsets from " << par.db2 << '\n';
     } else {
         // No subsets, initialise vectors and check for empty members as hasKeys check in updateAllScores
         subsetNames.push_back(par.filenames[par.filenames.size()-1]);
