@@ -1,6 +1,8 @@
 #ifndef REFINEMSA_H
 #define REFINEMSA_H
 
+#include <unordered_map>
+
 void refineMany(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,

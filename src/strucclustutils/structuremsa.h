@@ -1,3 +1,6 @@
+#ifndef STRUCTUREMSA_H
+#define STRUCTUREMSA_H
+
 #include <iostream>
 #include "Matcher.h"
 #include "PSSMCalculator.h"
@@ -5,9 +8,7 @@
 #include "SubstitutionMatrix.h"
 #include "StructureSmithWaterman.h"
 #include "Sequence.h"
-
-#ifndef STRUCTUREMSA_H
-#define STRUCTUREMSA_H
+#include <unordered_map>
 
 enum State {
     SEQ = 0,

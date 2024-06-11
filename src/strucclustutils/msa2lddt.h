@@ -1,11 +1,12 @@
+#ifndef MSA2LDDT_H
+#define MSA2LDDT_H
+
 #include <vector>
 #include <iostream>
 #include "DBReader.h"
 #include "KSeqWrapper.h"
 #include "structuremsa.h"
-
-#ifndef MSA2LDDT_H
-#define MSA2LDDT_H
+#include <unordered_map>
 
 void parseFasta(
     KSeqWrapper *kseq,
