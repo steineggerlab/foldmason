@@ -17,9 +17,13 @@ class NewickParser {
 public:
     struct Node {
         size_t id;
+        size_t dbId;
+        size_t rank;
+        size_t descendants;
         std::string name;
         std::vector<Node*> children;
         Node(const std::string& name = "") : name(name) {}
+        Node(size_t id, size_t dbId, const std::string& name, size_t rank) : id(id), dbId(dbId), rank(rank), name(name) {}
         Node(size_t id) : id(id) {}
         ~Node() {
             for (auto *child : children) {
