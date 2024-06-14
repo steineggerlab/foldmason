@@ -37,6 +37,7 @@ public:
     static void addNames(Node* root, IndexReader* headers);
     static void postOrder(Node* node, std::vector<std::string> *linkage);
     static std::string toNewick(const Node* node);
+    static void toVector(Node* node, std::vector<Node*> &vec);
 private:
 
 };

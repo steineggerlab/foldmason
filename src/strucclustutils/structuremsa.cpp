@@ -315,16 +315,17 @@ class UnionFind {
         }
 };
 
-NewickParser::Node* mstNode(
+NewickParser::Node* mst(
     std::vector<AlnSimple> &hits,
     std::unordered_map<int, NewickParser::Node*> &nodes,
     size_t counter
 ) {
     UnionFind uf;
-    
+    int rootU;
+    int rootV;
     for (const AlnSimple& aln : hits) {
-        int rootU = uf.find(aln.queryId);
-        int rootV = uf.find(aln.targetId);
+        rootU = uf.find(aln.queryId);
+        rootV = uf.find(aln.targetId);
         
         if (rootU != rootV) {
             NewickParser::Node* nodeU = nodes[rootU];
@@ -332,6 +333,7 @@ NewickParser::Node* mstNode(
 
             // Create a new parent node for the union
             NewickParser::Node* newNode = new NewickParser::Node(counter++);
+            newNode->dbId = std::min(nodeU->dbId, nodeV->dbId);
             newNode->rank = std::max(nodeU->rank, nodeV->rank) + 1;
             newNode->descendants = (nodeU->rank > 0 ? nodeU->descendants : 1) + (nodeV->rank ? nodeV->descendants : 1);
             newNode->children.push_back(nodeU);
@@ -347,8 +349,8 @@ NewickParser::Node* mstNode(
     }
 
     // The root of the tree will be the last node added to the Union-Find structure
-    int rootId = uf.find(hits.back().queryId);
-    return nodes[rootId];
+    // int rootId = uf.find(hits.back().queryId);
+    return nodes[rootU];
 }
 
 int cigarLength(std::vector<Instruction> &cigar, bool withGaps) {
@@ -596,6 +598,16 @@ std::vector<int> maskToMapping(std::string mask) {
             mapping.push_back(i);
     }
     return mapping;
+}
+
+// Map 0001100 to [ 0 1 2 5 6 ]
+// needs to be ungapped->gapped direction
+void maskToMapping(const std::string &mask, std::vector<int> &mapping) {
+    mapping.reserve(mask.length());
+    for (size_t i = 0; i < mask.length(); ++i) {
+        if (mask[i] == '0')
+            mapping.push_back(i);
+    }
 }
 
 std::vector<AlnSimple> parseAndScoreExternalHits(
@@ -942,6 +954,64 @@ void addCigarIndices(
     }
 }
 
+// Query-oriented, just swap gaps/sequences for target
+struct GapData {
+    unsigned int preSequence;
+    unsigned int preGaps;
+    unsigned int endSequence;
+    unsigned int endGaps;
+};
+
+GapData getGapData(
+    Matcher::result_t &res,
+    std::vector<int> qMap,
+    std::vector<int> tMap
+) {
+    GapData data;
+    data.preSequence = qMap[res.qStartPos];
+    data.preGaps     = tMap[res.dbStartPos];
+    data.endSequence = qMap.back() - qMap[res.qEndPos];
+    data.endGaps     = tMap.back() - tMap[res.dbEndPos];
+    return data;
+}
+
+
+
+void updateCIGAR(
+    std::vector<Instruction> &cigar_aa,
+    std::vector<Instruction> &cigar_ss,
+    std::vector<Instruction> &instructions,
+    GapData gaps,
+    bool isQuery
+) {
+    int cigarIndex = 0;
+    std::vector<Instruction> aa;
+    std::vector<Instruction> ss;
+    if (isQuery) {
+        addCigarGaps(gaps.preGaps, aa, ss);
+        addCigarIndices(gaps.preSequence, cigarIndex, aa, ss, cigar_aa, cigar_ss);
+    } else {
+        addCigarIndices(gaps.preGaps, cigarIndex, aa, ss, cigar_aa, cigar_ss);
+        addCigarGaps(gaps.preSequence, aa, ss);
+    }
+    for (Instruction ins : instructions) {
+        if (ins.isSeq()) {
+            addCigarIndices(ins.bits.count, cigarIndex, aa, ss, cigar_aa, cigar_ss);
+        } else {
+            addCigarGaps(ins.bits.count, aa, ss);
+        }
+    }
+    if (isQuery) {
+        addCigarIndices(gaps.endSequence, cigarIndex, aa, ss, cigar_aa, cigar_ss);
+        addCigarGaps(gaps.endGaps, aa, ss);
+    } else {
+        addCigarGaps(gaps.endSequence, aa, ss);
+        addCigarIndices(gaps.endGaps, cigarIndex, aa, ss, cigar_aa, cigar_ss);
+    }
+    std::swap(cigar_aa, aa);
+    std::swap(cigar_ss, ss);
+}
+
 void updateQueryCIGAR(
     std::vector<Instruction> &cigar_aa,
     std::vector<Instruction> &cigar_ss,
@@ -1035,6 +1105,7 @@ void updateCIGARS(
         updateTargetCIGAR(cigars_aa[index], cigars_ss[index], tBt, tPreGaps, tPreSequence, tEndGaps, tEndSequence);
 }
 
+
 void testSeqLens(std::vector<size_t> &MAYBE_UNUSED(indices), std::vector<std::vector<Instruction> > &MAYBE_UNUSED(cigars), std::vector<int> &MAYBE_UNUSED(lengths)) {
     for (int MAYBE_UNUSED(index) : indices) {
         assert(lengths[index] == cigarLength(cigars[index], false));
@@ -1097,6 +1168,153 @@ void copyInstructionVectors(std::vector<std::vector<Instruction> > &one, std::ve
     }
 }
 
+
+struct SubMSA {
+    size_t id;
+    std::vector<size_t> members;  // CIGAR indices
+    std::string profile_aa;       // Amino acid profile
+    std::string profile_ss;       // 3Di profile        
+    std::string mask;             // Profile mask string
+    bool cleared;
+    SubMSA() {}
+    SubMSA(size_t a) : id(a), members({ a }) {}
+    SubMSA(size_t a, size_t b) : members({ a, b }) {}
+    void pushMember(size_t other) {
+        members.insert(members.end(), other);
+    }
+    void concat(const SubMSA &other) {
+        members.insert(members.end(), other.members.begin(), other.members.end());
+    }
+    void concat(const std::vector<size_t> &other) {
+        members.insert(members.end(), other.begin(), other.end());
+    }
+    void clear() {
+        members.clear();
+        profile_aa = "";
+        profile_ss = "";
+        mask = "";
+        cleared = true;
+    }
+};
+
+class MSAContainer {
+    private:
+        std::vector<SubMSA> data;
+        std::unordered_map<size_t, size_t> dbIdToSubMSA;
+
+    public:
+        typename std::vector<SubMSA>::iterator begin() { return data.begin(); }
+        typename std::vector<SubMSA>::iterator end() { return data.end(); }
+        typename std::vector<SubMSA>::const_iterator begin() const { return data.begin(); }
+        typename std::vector<SubMSA>::const_iterator end() const { return data.end(); } 
+
+        SubMSA& operator[](size_t index) {
+            // if (index >= data.size()) {
+            //     throw std::out_of_range("Index out of range");
+            // }
+            return data[index];
+        }
+        SubMSA& operator[](const std::vector<SubMSA>::iterator& it) {
+            return *it;
+        }
+        SubMSA& back() {
+            // if (data.empty()) {
+            //     throw std::out_of_range("MSAContainer is empty");
+            // }
+            return data.back();
+        }
+        
+        size_t size() const {
+            return data.size();
+        }
+
+        // Adds new subMSA with child a
+        void add(size_t index) {
+            data.emplace_back(index);
+            dbIdToSubMSA[index] = data.size() - 1;
+        } 
+
+        void add(const SubMSA &msa) {
+            data.push_back(msa);
+            for (size_t m : msa.members) {
+                dbIdToSubMSA[m] = data.size() - 1;
+            }
+        }
+        
+        void remove(std::vector<size_t> &toRemove) {
+            std::sort(toRemove.begin(), toRemove.end(), std::greater<int>());
+            for (size_t index : toRemove) {
+                data.erase(data.begin() + index);
+            }
+            for (size_t i = 0; i < data.size(); i++) {
+                const SubMSA &msa = data[i];
+                for (size_t member : msa.members) {
+                    dbIdToSubMSA[member] = i;
+                }
+            }
+        }
+
+        void remove(size_t index) {
+            for (size_t member : data[index].members) {
+                dbIdToSubMSA.erase(member);
+            }
+            data.erase(data.begin() + index);
+        }
+        
+        // Merge SubMSA at index b into SubMSA at index a
+        // Removes SubMSA b from the container
+        void mergeInto(size_t a, size_t b) {
+            data[a].concat(data[b]);
+            for (size_t member : data[b].members) {
+                dbIdToSubMSA[member] = a;
+            }
+            remove(b);
+        }
+        
+        // Insert index b into SubMSA at index a
+        void insertInto(size_t a, size_t b) {
+            data[a].pushMember(b);
+            dbIdToSubMSA[b] = a;
+        }
+       
+        // Get index of SubMSA in container matching given index
+        // Returns container size if not found
+        size_t find(size_t index) {
+            std::unordered_map<size_t, size_t>::const_iterator it = dbIdToSubMSA.find(index);
+            if (it != dbIdToSubMSA.end()) {
+                return it->second;
+            }
+            return size();
+        }
+
+        // Given a new SubMSA, replace an existing one and update member mappings
+        void updateSubMSA(const SubMSA &msa) {
+            size_t index = dbIdToSubMSA[msa.id];
+            for (size_t member : msa.members) {
+                dbIdToSubMSA[member] = index;
+            }
+            data[index] = msa;
+        }
+
+        // Update the container with newly created SubMSAs
+        void update(const std::vector<SubMSA> &newMSAs) {
+            for (SubMSA msa : newMSAs) {
+                updateSubMSA(msa);
+            }
+        }
+
+        SubMSA& getFinalMSA() {
+            SubMSA finalMsa;
+            for (size_t i = 0; i < data.size(); i++) {
+                if (!data[i].cleared) {
+                    finalMsa = data[i];
+                }
+            }
+            return finalMsa;
+        }
+};
+
+
 int structuremsa(int argc, const char **argv, const Command& command, bool preCluster) {
     FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
 
@@ -1137,20 +1355,24 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     std::vector<std::vector<Instruction> > cigars_aa(sequenceCnt);
     std::vector<std::vector<Instruction> > cigars_ss(sequenceCnt);
     
+    // Database ID <=> Index in vector
+    std::unordered_map<size_t, size_t> dbIdToIndex;
+
     // Current clusters of structures (indices)
     std::vector<std::vector<size_t> > groups(sequenceCnt);
-
-    // map i <=> dbKey. used in LDDT calculation to retrieve CA
-    std::vector<size_t> dbKeys(sequenceCnt);
-
-    std::vector<std::string> mappings(sequenceCnt);
+    
+    std::vector<std::string> masks(sequenceCnt);
     std::vector<size_t> idMappings(sequenceCnt);
     
-    // std::map<std::string, int> seqLens;
+    // TODO remove
+    std::vector<size_t> dbKeys(sequenceCnt); // map i <=> dbKey. used in LDDT calculation to retrieve CA
     std::vector<int> seqLens(sequenceCnt);
 
     // int maxSeqLength = 0;
     int maxSeqLength = par.maxSeqLen;
+    
+    // Master MSA container
+    MSAContainer msa;
 
     // TODO: could parallelise this, just need to have reduction for maxSeqLength
     for (size_t i = 0; i < sequenceCnt; i++) {
@@ -1158,7 +1380,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         unsigned int seqKey3Di = seqDbr3Di.getDbKey(i);
         size_t seqIdAA = seqDbrAA.getId(seqKeyAA);
         size_t seqId3Di = seqDbr3Di.getId(seqKey3Di);
-
+        
         dbKeys[i] = seqKeyAA;
 
         size_t length = seqDbrAA.getSeqLen(seqIdAA);
@@ -1168,11 +1390,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         groups[i].push_back(i);
 
         maxSeqLength = std::max(maxSeqLength, static_cast<int>(length));
-        mappings[i]  = std::string(length, '0');
+        masks[i]  = std::string(length, '0');
 
         // Map each sequence id to itself for now
         idMappings[i] = i;
         seqLens[i] = length;
+
+        // msa.add(seqIdAA);
     }
    
     // TODO: dynamically calculate and re-init PSSMCalculator/MsaFilter each iteration
@@ -1181,14 +1405,12 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     // Substitution matrices needed for query profile
     int8_t *tinySubMatAA  = (int8_t*) mem_align(ALIGN_INT, subMat_aa.alphabetSize * 32);
     int8_t *tinySubMat3Di = (int8_t*) mem_align(ALIGN_INT, subMat_3di.alphabetSize * 32);
-
     for (int i = 0; i < subMat_3di.alphabetSize; i++)
         for (int j = 0; j < subMat_3di.alphabetSize; j++)
             tinySubMat3Di[i * subMat_3di.alphabetSize + j] = subMat_3di.subMatrix[i][j]; // for farrar profile
     for (int i = 0; i < subMat_aa.alphabetSize; i++)
         for (int j = 0; j < subMat_aa.alphabetSize; j++)
             tinySubMatAA[i * subMat_aa.alphabetSize + j] = subMat_aa.subMatrix[i][j];
-
     Debug(Debug::INFO) << "Set up tiny substitution matrices\n";
 
     bool * alreadyMerged = new bool[sequenceCnt];
@@ -1219,6 +1441,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     std::string tree;
     std::vector<AlnSimple> hits;
     std::vector<size_t> merges;
+    
+    NewickParser::Node* root;
 
     if (par.guideTree != "") {
         std::string line;
@@ -1231,13 +1455,12 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     }
     if (tree != "") {
         Debug(Debug::INFO) << "Parsing tree: " << tree << '\n';
-        NewickParser::Node* root = NewickParser::parse(tree);
+        root = NewickParser::parse(tree);
         // std::string nw = NewickParser::toNewick(root);
         // assert(nw == tree);
         
         std::vector<std::string> linkage;
         NewickParser::postOrder(root, &linkage);
-        delete root;
 
         for (size_t i = 0; i < linkage.size(); i += 2) {
             AlnSimple hit;
@@ -1312,27 +1535,35 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         Debug(Debug::INFO) << "Generating guide tree\n";
         std::unordered_map<int, NewickParser::Node*> nodes;
         size_t nodeCounter = 0;
+        
+        // TODO use this as initialisaiton step BEFORE reading/making tree
+        // then can keep consistent internal indexes for cigars
+        // when reading tree, use header DB -> db ID then node map -> index
         for (const AlnSimple& aln : hits) {
             if (nodes.find(aln.queryId) == nodes.end()) {
-                nodes[aln.queryId] = new NewickParser::Node(nodeCounter++, aln.queryId, Util::parseFastaHeader(qdbrH.sequenceReader->getData(aln.queryId, 0)), 0);
+                nodes[aln.queryId] = new NewickParser::Node(nodeCounter, aln.queryId, Util::parseFastaHeader(qdbrH.sequenceReader->getData(aln.queryId, 0)), 0);
+                nodeCounter++;
             }
             if (nodes.find(aln.targetId) == nodes.end()) {
-                nodes[aln.targetId] = new NewickParser::Node(nodeCounter++, aln.targetId, Util::parseFastaHeader(qdbrH.sequenceReader->getData(aln.targetId, 0)), 0);
+                nodes[aln.targetId] = new NewickParser::Node(nodeCounter, aln.targetId, Util::parseFastaHeader(qdbrH.sequenceReader->getData(aln.targetId, 0)), 0);
+                nodeCounter++;
             }
         }
-        NewickParser::Node* root = mstNode(hits, nodes, nodeCounter);
+        root = mst(hits, nodes, nodeCounter);
         
-        // printAsciiTree(root);
+        // Vectorize all nodes
+        std::vector<NewickParser::Node*> nodeobjs;
+
+        // NewickParser::toVector(root, nodeobjs);
+        
+        for (auto it : nodes) {
+            nodeobjs.push_back(it.second);
+        }
 
         // Generate groups of independently alignable nodes
         // Sort by no. descendants, then by rank in the tree structure
         // Group all D=2 (leaf nodes), then group by equal rank
         Debug(Debug::INFO) << "Generating merge order\n";
-        std::vector<NewickParser::Node*> nodeobjs;
-        nodeobjs.reserve(nodes.size());
-        for (auto &it : nodes) {
-            nodeobjs.push_back(it.second);
-        }
         std::sort(nodeobjs.begin(), nodeobjs.end(), [](NewickParser::Node* a, NewickParser::Node* b) {
             if (a->descendants < b->descendants) return true;
             if (a->descendants > b->descendants) return false;
@@ -1340,64 +1571,47 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             if (a->rank > b->rank) return false;
             return false;
         });
-        std::vector<std::vector<NewickParser::Node*> > nodegroups;
-        size_t rank = nodeobjs[0]->rank;
-        nodegroups.emplace_back();
-        for (auto &it : nodeobjs) {
-            if (rank != it->rank) {
-                if (nodegroups.back().size() > 0) {
-                    merges.push_back(nodegroups.back().size());
-                }
-                nodegroups.emplace_back();
-                rank = it->rank;
-            }
-            nodegroups.back().push_back(it);
-        }
-
-        // Regenerate hits based on merge order
         hits.clear();
-        for (NewickParser::Node* node : nodeobjs) {
+        size_t rank = nodeobjs[0]->rank;
+        size_t groupSize = 0;
+        for (size_t i = 0; i < nodeobjs.size() - 1; i++) {
+            NewickParser::Node* node = nodeobjs[i];
+            if (rank != node->rank) {
+                if (groupSize > 0) merges.push_back(groupSize);
+                rank = node->rank;
+                groupSize = 0;
+            }
+            groupSize++;
             AlnSimple aln;
             aln.queryId = node->children[0]->dbId;
             aln.targetId = node->children[1]->dbId;
             hits.push_back(aln);
         }
-
+        if (groupSize > 0) {
+            merges.push_back(groupSize);  // add last merge
+        }
+        
+        // Write guide tree
         std::string nw = NewickParser::toNewick(root);
         std::string treeFile = par.filenames[par.filenames.size()-1] + ".nw";
         Debug(Debug::INFO) << "Writing guide tree to: " << treeFile << '\n';
         std::ofstream guideTree(treeFile, std::ofstream::out);
         guideTree << nw;
         guideTree.close();
-        delete root;
+        
+        // for (std::vector<NewickParser::Node*> &group : nodegroups) {
+        //     std::cout << "Merging " << group.size() << " sequences\n";            
+        //     for (NewickParser::Node* node : group) {
+        //         std::cout << "  "
+        //             << node->children[0]->id << "=" << node->children[0]->name << "\t"
+        //             << node->children[1]->id << "=" << node->children[1]->name << "\t-> "
+        //             << node->id << '\n';
+        //     }
+        // } 
     }
    
-    if (par.verbosity > Debug::INFO) {
-        int idx = 0;
-        size_t qHeaderId, tHeaderId;
-        unsigned int qKey, tKey;
-        std::string qHeader, tHeader;
-        for (size_t i = 0; i < merges.size(); i++) {
-            Debug(Debug::INFO) << "Merging " << merges[i] << " sequences\n";
-            for (size_t j = 0; j < merges[i]; j++) {
-                qKey = seqDbrAA.getDbKey(hits[idx + j].queryId);
-                qHeaderId = qdbrH.sequenceReader->getId(qKey);
-                qHeader = Util::parseFastaHeader(qdbrH.sequenceReader->getData(qHeaderId, 0));
-                tKey = seqDbrAA.getDbKey(hits[idx + j].targetId);
-                tHeaderId = qdbrH.sequenceReader->getId(tKey);
-                tHeader = Util::parseFastaHeader(qdbrH.sequenceReader->getData(tHeaderId, 0));
-                Debug(Debug::INFO) << "  " << qHeader << "\t" << tHeader << '\t' << hits[idx + j].score << '\n';
-            }
-            idx += merges[i];
-        }
-    }
-
     size_t finalMSAId = 0;
     
-    // FIXME this has to be outside OMP block I think?
-    // Store profile strings for each merged sequence using merged db key
-    std::unordered_map<unsigned int, std::pair<std::string, std::string>> profiles;
-
     Debug(Debug::INFO) << "Begin progressive alignment\n";
 
 #pragma omp parallel
@@ -1438,60 +1652,88 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     Sequence *seqMergedSs;
     Sequence *seqTargetAa;
     Sequence *seqTargetSs;
-    
+
     int index = 0; // in hit list
     for (size_t i = 0; i < merges.size(); i++) {
 
+        // Create merges[i] new sub alignments
+        // subMSAs.clear();
+        std::vector<SubMSA> subMSAs;
+        std::vector<size_t> toRemove;
+        subMSAs.reserve(merges[i]);
+
 #pragma omp for schedule(dynamic, 1)
         for (size_t j = 0; j < merges[i]; j++) {
-            size_t mergedId = std::min(hits[index + j].queryId, hits[index + j].targetId);
-            size_t targetId = std::max(hits[index + j].queryId, hits[index + j].targetId);
-            if (mergedId == targetId) continue;
-
-            mergedId = idMappings[mergedId];
-            targetId = idMappings[targetId];
-            bool queryIsProfile = false;
-            bool targetIsProfile = false;
+            // TODO
+            // the result of each iteration here should be one new SubMSA w/ mask, profiles and member list
+            // then update the MSA container afterwards to remap everything
             
-            // If there is an existing profile, use the Sequence::HMM_PROFILE type Sequence
-            auto profile = profiles.find(mergedId);
-            size_t key = seqDbrAA.getDbKey(mergedId);
-            size_t id  = seqDbrAA.getId(key);
-            if (profile != profiles.end()) {
-                seqMergedAaPr.mapSequence(id, key, profile->second.first.c_str(),  profile->second.first.length() / Sequence::PROFILE_READIN_SIZE);
-                seqMergedSsPr.mapSequence(id, key, profile->second.second.c_str(), profile->second.second.length() / Sequence::PROFILE_READIN_SIZE);
+            // Database IDs from updateAllScores
+            size_t mergedId = hits[index + j].queryId;
+            size_t targetId = hits[index + j].targetId;
+            if (mergedId == targetId) {
+                continue;
+            }
+            
+            // Lookup corresponding indices in global MSA container
+            // FIXME q/t can't be references here
+            size_t querySubMSA = msa.find(mergedId);
+            bool queryIsProfile = (querySubMSA != msa.size());
+            size_t targetSubMSA = msa.find(targetId);
+            bool targetIsProfile = (targetSubMSA != msa.size());
+
+            // if (t.id == q.id) continue;
+            
+            // mask e.g. 010101 <=> [ 0, 2, 4 ] index
+            std::vector<int> map1;
+            std::vector<int> map2;
+
+            // ids of members for each group
+            std::vector<size_t> qMembers;
+            std::vector<size_t> tMembers;
+            
+            // Initialise Sequence objects. 4 cases:
+            //  1) both found --> query profile + target profile
+            //  2) query found --> query profile + new target
+            //  3) target found --> target profile + new query
+            //  4) neither found --> new subMSA
+            if (queryIsProfile) {
+                SubMSA &q = msa[querySubMSA];
+                qMembers.insert(qMembers.end(), q.members.begin(), q.members.end());
+                seqMergedAaPr.mapSequence(mergedId, mergedId, q.profile_aa.c_str(), q.profile_aa.length() / Sequence::PROFILE_READIN_SIZE);
+                seqMergedSsPr.mapSequence(mergedId, mergedId, q.profile_ss.c_str(), q.profile_ss.length() / Sequence::PROFILE_READIN_SIZE);
                 seqMergedAa = &seqMergedAaPr;
                 seqMergedSs = &seqMergedSsPr;
-                queryIsProfile = true;
+                maskToMapping(q.mask, map1);
             } else {
-                seqMergedAaAa.mapSequence(id, key, seqDbrAA.getData(id, thread_idx), seqDbrAA.getSeqLen(id));
-                seqMergedSsAa.mapSequence(id, key, seqDbr3Di.getData(id, thread_idx), seqDbr3Di.getSeqLen(id));
+                size_t length = seqDbrAA.getSeqLen(mergedId);
+                qMembers.push_back(mergedId);
+                seqMergedAaAa.mapSequence(mergedId, mergedId, seqDbrAA.getData(mergedId, thread_idx), length);
+                seqMergedSsAa.mapSequence(mergedId, mergedId, seqDbr3Di.getData(mergedId, thread_idx), length);
                 seqMergedAa = &seqMergedAaAa;
                 seqMergedSs = &seqMergedSsAa;
+                maskToMapping(std::string(length, '0'), map1);
             }
-            profile = profiles.find(targetId);
-            key = seqDbrAA.getDbKey(targetId);
-            id  = seqDbrAA.getId(key);
-            if (profile != profiles.end()) {
-                seqTargetAaPr.mapSequence(id, key, profile->second.first.c_str(),  profile->second.first.length() / Sequence::PROFILE_READIN_SIZE);
-                seqTargetSsPr.mapSequence(id, key, profile->second.second.c_str(), profile->second.second.length() / Sequence::PROFILE_READIN_SIZE);
+            if (targetIsProfile) {
+                SubMSA &t = msa[targetSubMSA];
+                tMembers.insert(tMembers.end(), t.members.begin(), t.members.end());
+                seqTargetAaPr.mapSequence(targetId, targetId, t.profile_aa.c_str(), t.profile_aa.length() / Sequence::PROFILE_READIN_SIZE);
+                seqTargetSsPr.mapSequence(targetId, targetId, t.profile_ss.c_str(), t.profile_ss.length() / Sequence::PROFILE_READIN_SIZE);
                 seqTargetAa = &seqTargetAaPr;
                 seqTargetSs = &seqTargetSsPr;
-                targetIsProfile = true;
+                maskToMapping(t.mask, map2);
             } else {
-                seqTargetAaAa.mapSequence(id, key, seqDbrAA.getData(id, thread_idx), seqDbrAA.getSeqLen(id));
-                seqTargetSsAa.mapSequence(id, key, seqDbr3Di.getData(id, thread_idx), seqDbr3Di.getSeqLen(id));
+                size_t length = seqDbrAA.getSeqLen(targetId);
+                tMembers.push_back(targetId);
+                seqTargetAaAa.mapSequence(targetId, targetId, seqDbrAA.getData(targetId, thread_idx), length);
+                seqTargetSsAa.mapSequence(targetId, targetId, seqDbr3Di.getData(targetId, thread_idx), length);
                 seqTargetAa = &seqTargetAaAa;
                 seqTargetSs = &seqTargetSsAa;
+                maskToMapping(std::string(length, '0'), map2);
             }
-
-            // Always merge onto sequence with most information
-            if (targetIsProfile && !queryIsProfile) {
-                std::swap(mergedId, targetId);
-                std::swap(seqMergedAa, seqTargetAa);
-                std::swap(seqMergedSs, seqTargetSs);
-                std::swap(queryIsProfile, targetIsProfile);
-            } else if (targetIsProfile && queryIsProfile) {
+            
+            // Use most informative profile as query
+            if (queryIsProfile && targetIsProfile) {
                 float q_neff_sum = 0.0;
                 float t_neff_sum = 0.0;
                 for (int i = 0; i < seqMergedSs->L; i++) {
@@ -1505,19 +1747,26 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     std::swap(seqMergedAa, seqTargetAa);
                     std::swap(seqMergedSs, seqTargetSs);
                     std::swap(queryIsProfile, targetIsProfile);
+                    std::swap(querySubMSA, targetSubMSA);
+                    std::swap(qMembers, tMembers);
+                    std::swap(map1, map2);
                 }
+            } else if (targetIsProfile && !queryIsProfile) {
+                std::swap(mergedId, targetId);
+                std::swap(seqMergedAa, seqTargetAa);
+                std::swap(seqMergedSs, seqTargetSs);
+                std::swap(queryIsProfile, targetIsProfile);
+                std::swap(querySubMSA, targetSubMSA);
+                std::swap(qMembers, tMembers);
+                std::swap(map1, map2);
             }
 
-            // Make sure all relevant ids are updated
-            for (size_t k = 0; k < sequenceCnt; k++) {
-                if (idMappings[k] == targetId) {
-                    idMappings[k] = mergedId;
-                }
+            // Since we will update the query subMSA, need to remove the target one 
+            if (targetIsProfile) {
+                toRemove.push_back(targetSubMSA);
             }
 
-            // Convert 010101 mask to [ 0, 2, 4 ] index mapping
-            std::vector<int> map1 = maskToMapping(mappings[mergedId]);
-            std::vector<int> map2 = maskToMapping(mappings[targetId]);
+            // Do alignment
             structureSmithWaterman.ssw_init(
                 seqMergedAa,
                 seqMergedSs,
@@ -1551,15 +1800,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 std::vector<Instruction> tBtTM;
                 getMergeInstructions(tmRes, map1, map2, qBtTM, tBtTM);
 
-                // TODO put this info in struct?
-                int qPreSequence = map1[tmRes.qStartPos];
-                int qPreGaps     = map2[tmRes.dbStartPos];
-                int qEndSequence = map1[map1.size() - 1] - map1.at(tmRes.qEndPos);
-                int qEndGaps     = map2[map2.size() - 1] - map2.at(tmRes.dbEndPos);
-                int tPreSequence = qPreGaps;
-                int tPreGaps     = qPreSequence;
-                int tEndSequence = qEndGaps;
-                int tEndGaps     = qEndSequence;
+                GapData gaps = getGapData(tmRes, map1, map2); 
                 std::vector<Instruction> query_aa;
                 std::vector<Instruction> query_ss;
                 std::vector<Instruction> target_aa;
@@ -1568,8 +1809,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 copyInstructions(cigars_ss[mergedId], query_ss);
                 copyInstructions(cigars_aa[targetId], target_aa);
                 copyInstructions(cigars_ss[targetId], target_ss);
-                updateQueryCIGAR(query_aa, query_ss, qBtTM, qPreGaps, qPreSequence, qEndGaps, qEndSequence);
-                updateTargetCIGAR(target_aa, target_ss, tBtTM, tPreGaps, tPreSequence, tEndGaps, tEndSequence);
+                updateCIGAR(query_aa, query_ss, qBtTM, gaps, true);
+                updateCIGAR(target_aa, target_ss, qBtTM, gaps, false);
                 
                 // std::cout << "TM Alignment:\n";
                 // std::cout << expand(query_aa) << '\n';
@@ -1581,19 +1822,11 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 std::vector<size_t> subset_tm = { 0, 1 };
                 std::vector<size_t> indices_tm = { mergedId, targetId };
                 std::vector<int>    lengths_tm = { seqLens[mergedId], seqLens[targetId] };
-
                 float lddtTM = std::get<2>(calculate_lddt(cigars_tm, subset_tm, indices_tm, lengths_tm, &seqDbrCA, par.pairThreshold));
                 // std::cout << "got TM lddt: " << lddtTM << '\n';
                 
                 // adjust cigars with 3Di alignment result
-                qPreSequence = map1[res.qStartPos];
-                qPreGaps     = map2[res.dbStartPos];
-                qEndSequence = map1[map1.size() - 1] - map1.at(res.qEndPos);
-                qEndGaps     = map2[map2.size() - 1] - map2.at(res.dbEndPos);
-                tPreSequence = qPreGaps;
-                tPreGaps     = qPreSequence;
-                tEndSequence = qEndGaps;
-                tEndGaps     = qEndSequence;
+                gaps = getGapData(res, map1, map2); 
                 query_aa.clear();
                 query_ss.clear();
                 target_aa.clear();
@@ -1602,8 +1835,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 copyInstructions(cigars_ss[mergedId], query_ss);
                 copyInstructions(cigars_aa[targetId], target_aa);
                 copyInstructions(cigars_ss[targetId], target_ss);
-                updateQueryCIGAR(query_aa, query_ss, qBt, qPreGaps, qPreSequence, qEndGaps, qEndSequence);
-                updateTargetCIGAR(target_aa, target_ss, tBt, tPreGaps, tPreSequence, tEndGaps, tEndSequence);
+                updateCIGAR(query_aa, query_ss, qBt, gaps, true);
+                updateCIGAR(target_aa, target_ss, qBt, gaps, false);
                 cigars_tm[0] = query_aa;
                 cigars_tm[1] = target_aa;
                 
@@ -1621,90 +1854,90 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     tmaligned = true;
                 }
             }
-            updateCIGARS(groups[mergedId], groups[targetId], cigars_aa, cigars_ss, res, map1, map2, qBt, tBt);           
-            groups[mergedId].insert(groups[mergedId].end(), groups[targetId].begin(), groups[targetId].end());
-            groups[targetId].clear();
-            mappings[targetId].clear();
 
-            // testSeqLens(groups[mergedId], cigars_aa, seqLens);
-            
-            if (par.verbosity > Debug::INFO) {
-                unsigned int qKey = seqDbrAA.getDbKey(mergedId);
-                size_t qHeaderId = qdbrH.sequenceReader->getId(qKey);
-                unsigned int tKey = seqDbrAA.getDbKey(targetId);
-                size_t tHeaderId = qdbrH.sequenceReader->getId(tKey);
-                Debug(Debug::INFO)
-                    << std::to_string(queryIsProfile) << "\t"
-                    << std::to_string(targetIsProfile) << "\t"
-                    << Util::parseFastaHeader(qdbrH.sequenceReader->getData(qHeaderId, 0))
-                    << "\t"
-                    << Util::parseFastaHeader(qdbrH.sequenceReader->getData(tHeaderId, 0))
-                    << "\t"
-                    << SSTR(res.score);
-                if (tmaligned){
-                    Debug(Debug::INFO) << "\t(TM-align)";
-                }
-                Debug(Debug::INFO) << "\n";
+            // Update CIGARs with alignment, then merge in MSA container
+            GapData gaps = getGapData(res, map1, map2); 
+            for (size_t member : qMembers) {
+                updateCIGAR(cigars_aa[member], cigars_ss[member], qBt, gaps, true);
             }
-            
-            finalMSAId = mergedId;
-            alreadyMerged[targetId] = true;
-            
-            // Don't make profiles on final alignment
-            if (i == merges.size() - 1 && j == merges[i] - 1) {
-                profiles.erase(targetId);
-                profiles.erase(mergedId);
-                continue;
+            for (size_t member : tMembers) {
+                updateCIGAR(cigars_aa[member], cigars_ss[member], tBt, gaps, false);
             }
 
-            mappings[mergedId] = computeProfileMask(
-                groups[mergedId],
-                cigars_aa,
-                seqLens,
-                subMat_aa,
-                par.matchRatio
-            );
-            std::string profile_aa = msa2profile(
-                groups[mergedId],
-                cigars_aa,
-                mappings[mergedId],
-                calculator_aa,
-                filter_aa,
-                subMat_aa,
-                par.filterMsa,
-                par.compBiasCorrection,
-                par.qid,
-                par.filterMaxSeqId,
-                par.Ndiff,
-                par.covMSAThr,
-                par.qsc,
-                par.filterMinEnable,
-                par.wg
-            );
-            std::string profile_3di = msa2profile(
-                groups[mergedId],
-                cigars_ss,
-                mappings[mergedId],
-                calculator_3di,
-                filter_3di,
-                subMat_3di,
-                par.filterMsa,
-                par.compBiasCorrection,
-                par.qid,
-                par.filterMaxSeqId,
-                par.Ndiff,
-                par.covMSAThr,
-                par.qsc,
-                par.filterMinEnable,
-                par.wg
-            );
-            assert(profile_aa.length() == profile_3di.length());
-            profiles[mergedId] = std::make_pair(profile_aa, profile_3di);
-            if (targetIsProfile) {
-                profiles.erase(targetId);
+            SubMSA newSubMSA;
+            newSubMSA.id = mergedId;
+            newSubMSA.concat(qMembers);
+            newSubMSA.concat(tMembers);
+
+            // Don't need to make profiles on final alignment
+            if (!(i == merges.size() - 1 && j == merges[i] - 1)) {
+                newSubMSA.mask = computeProfileMask(
+                    newSubMSA.members,
+                    cigars_aa,
+                    seqLens,
+                    subMat_aa,
+                    par.matchRatio
+                );
+                newSubMSA.profile_aa = msa2profile(
+                    newSubMSA.members,
+                    cigars_aa,
+                    newSubMSA.mask,
+                    calculator_aa,
+                    filter_aa,
+                    subMat_aa,
+                    par.filterMsa,
+                    par.compBiasCorrection,
+                    par.qid,
+                    par.filterMaxSeqId,
+                    par.Ndiff,
+                    par.covMSAThr,
+                    par.qsc,
+                    par.filterMinEnable,
+                    par.wg
+                );
+                newSubMSA.profile_ss = msa2profile(
+                    newSubMSA.members,
+                    cigars_ss,
+                    newSubMSA.mask,
+                    calculator_3di,
+                    filter_3di,
+                    subMat_3di,
+                    par.filterMsa,
+                    par.compBiasCorrection,
+                    par.qid,
+                    par.filterMaxSeqId,
+                    par.Ndiff,
+                    par.covMSAThr,
+                    par.qsc,
+                    par.filterMinEnable,
+                    par.wg
+                );
             }
+            subMSAs.push_back(newSubMSA);
         }
         index += merges[i];
+
+
+#pragma omp critical
+        {
+            // cases
+            // 1: new submsa --> add to msa
+            // 2: query profile, new target -> add to query profile
+            // 3: target profile, new query -> ""
+            // 4: both profile -> merge into query
+            //
+            // cases 2 and 3 always identical since profile always made query
+            for (SubMSA sub : subMSAs) {
+                if (sub.members.size() == 2) {
+                    msa.add(sub);
+                } else {
+                    msa.updateSubMSA(sub);
+                }
+            }
+            if (toRemove.size() > 0) {
+                msa.remove(toRemove);
+            }
+        }
     }
 
     // Refine alignment -- MUSCLE5 style
@@ -1729,6 +1962,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 }
 
 }
+    
     // Write final MSA to file with correct headers
     DBWriter resultWriterAa(
         (par.filenames[par.filenames.size()-1] + "_aa.fa").c_str(),
@@ -1746,16 +1980,20 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     resultWriter3Di.writeStart(0);
     std::string buffer;
     buffer.reserve(10 * 1024);
-    for (size_t i = 0; i < cigars_aa.size(); i++) {
-        size_t idx = groups[finalMSAId][i];
-        unsigned int key = seqDbrAA.getDbKey(idx);
+
+    assert(msa.size() == 1);  // should be left with single MSA group
+    SubMSA &finalMSA = msa[0];
+    for (size_t member : finalMSA.members) {
+    //for (size_t i = 0; i < cigars_aa.size(); i++) {
+        // size_t idx = groups[finalMSAId][i];
+        unsigned int key = seqDbrAA.getDbKey(member);
         size_t headerId = qdbrH.sequenceReader->getId(key);
         std::string header = Util::parseFastaHeader(qdbrH.sequenceReader->getData(headerId, 0));
 
         buffer.append(1, '>');
         buffer.append(header);
         buffer.append(1, '\n');
-        buffer.append(expand(cigars_aa[idx]));
+        buffer.append(expand(cigars_aa[member]));
         buffer.append(1, '\n');
         resultWriterAa.writeAdd(buffer.c_str(), buffer.size(), 0);
         buffer.clear();
@@ -1763,7 +2001,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         buffer.append(1, '>');
         buffer.append(header);
         buffer.append(1, '\n');
-        buffer.append(expand(cigars_ss[idx]));
+        buffer.append(expand(cigars_ss[member]));
         buffer.append(1, '\n');
         resultWriter3Di.writeAdd(buffer.c_str(), buffer.size(), 0);
         buffer.clear();
@@ -1776,6 +2014,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     FileUtil::remove((par.filenames[par.filenames.size()-1] + "_3di.index").c_str());
 
     // Cleanup
+    delete root;
     delete[] alreadyMerged;
     free(tinySubMatAA);
     free(tinySubMat3Di);

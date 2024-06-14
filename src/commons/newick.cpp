@@ -105,6 +105,15 @@ void NewickParser::postOrder(NewickParser::Node *node, std::vector<std::string> 
     }
 }
 
+void NewickParser::toVector(NewickParser::Node* node, std::vector<NewickParser::Node*> &vec) {
+    if (node->descendants > 0) {
+        vec.push_back(node);
+    }
+    for (NewickParser::Node* child : node->children) {
+        NewickParser::toVector(child, vec);
+    }
+}
+
 /**
  * @brief Update nodeMap to point to newest root for ALL children of a Node
  * 
