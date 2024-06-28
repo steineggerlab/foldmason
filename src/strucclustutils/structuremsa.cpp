@@ -332,6 +332,7 @@ NewickParser::Node* mst(
             NewickParser::Node* nodeV = nodes[rootV];
 
             // Create a new parent node for the union
+            // TODO how does this differ to UnionFind ranks
             NewickParser::Node* newNode = new NewickParser::Node(counter++);
             newNode->dbId = std::min(nodeU->dbId, nodeV->dbId);
             newNode->rank = std::max(nodeU->rank, nodeV->rank) + 1;
@@ -1170,12 +1171,11 @@ void copyInstructionVectors(std::vector<std::vector<Instruction> > &one, std::ve
 
 
 struct SubMSA {
-    size_t id;
-    std::vector<size_t> members;  // CIGAR indices
+    size_t id;                    // Database ID of 'merged' representative
+    std::vector<size_t> members;  // Database IDs of member structures
     std::string profile_aa;       // Amino acid profile
     std::string profile_ss;       // 3Di profile        
     std::string mask;             // Profile mask string
-    bool cleared;
     SubMSA() {}
     SubMSA(size_t a) : id(a), members({ a }) {}
     SubMSA(size_t a, size_t b) : members({ a, b }) {}
@@ -1187,13 +1187,6 @@ struct SubMSA {
     }
     void concat(const std::vector<size_t> &other) {
         members.insert(members.end(), other.begin(), other.end());
-    }
-    void clear() {
-        members.clear();
-        profile_aa = "";
-        profile_ss = "";
-        mask = "";
-        cleared = true;
     }
 };
 
@@ -1209,18 +1202,18 @@ class MSAContainer {
         typename std::vector<SubMSA>::const_iterator end() const { return data.end(); } 
 
         SubMSA& operator[](size_t index) {
-            // if (index >= data.size()) {
-            //     throw std::out_of_range("Index out of range");
-            // }
+            if (index >= data.size()) {
+                throw std::out_of_range("Index out of range");
+            }
             return data[index];
         }
         SubMSA& operator[](const std::vector<SubMSA>::iterator& it) {
             return *it;
         }
         SubMSA& back() {
-            // if (data.empty()) {
-            //     throw std::out_of_range("MSAContainer is empty");
-            // }
+            if (data.empty()) {
+                throw std::out_of_range("MSAContainer is empty");
+            }
             return data.back();
         }
         
@@ -1301,16 +1294,6 @@ class MSAContainer {
             for (SubMSA msa : newMSAs) {
                 updateSubMSA(msa);
             }
-        }
-
-        SubMSA& getFinalMSA() {
-            SubMSA finalMsa;
-            for (size_t i = 0; i < data.size(); i++) {
-                if (!data[i].cleared) {
-                    finalMsa = data[i];
-                }
-            }
-            return finalMsa;
         }
 };
 
@@ -1555,7 +1538,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         std::vector<NewickParser::Node*> nodeobjs;
 
         // NewickParser::toVector(root, nodeobjs);
-        
         for (auto it : nodes) {
             nodeobjs.push_back(it.second);
         }
@@ -1598,20 +1580,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         std::ofstream guideTree(treeFile, std::ofstream::out);
         guideTree << nw;
         guideTree.close();
-        
-        // for (std::vector<NewickParser::Node*> &group : nodegroups) {
-        //     std::cout << "Merging " << group.size() << " sequences\n";            
-        //     for (NewickParser::Node* node : group) {
-        //         std::cout << "  "
-        //             << node->children[0]->id << "=" << node->children[0]->name << "\t"
-        //             << node->children[1]->id << "=" << node->children[1]->name << "\t-> "
-        //             << node->id << '\n';
-        //     }
-        // } 
     }
    
-    size_t finalMSAId = 0;
-    
     Debug(Debug::INFO) << "Begin progressive alignment\n";
 
 #pragma omp parallel
@@ -1657,7 +1627,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     for (size_t i = 0; i < merges.size(); i++) {
 
         // Create merges[i] new sub alignments
-        // subMSAs.clear();
         std::vector<SubMSA> subMSAs;
         std::vector<size_t> toRemove;
         subMSAs.reserve(merges[i]);
@@ -1674,9 +1643,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             if (mergedId == targetId) {
                 continue;
             }
-            
+
             // Lookup corresponding indices in global MSA container
-            // FIXME q/t can't be references here
             size_t querySubMSA = msa.find(mergedId);
             bool queryIsProfile = (querySubMSA != msa.size());
             size_t targetSubMSA = msa.find(targetId);
@@ -1792,7 +1760,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             getMergeInstructions(res, map1, map2, qBt, tBt);
         
             // If neither are profiles, do TM-align as well and take the best alignment
-            bool tmaligned = false;
+            // bool tmaligned = false;
             // if (false) {
             if (!queryIsProfile && !targetIsProfile) {
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
@@ -1824,7 +1792,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 std::vector<int>    lengths_tm = { seqLens[mergedId], seqLens[targetId] };
                 float lddtTM = std::get<2>(calculate_lddt(cigars_tm, subset_tm, indices_tm, lengths_tm, &seqDbrCA, par.pairThreshold));
                 // std::cout << "got TM lddt: " << lddtTM << '\n';
-                
+
                 // adjust cigars with 3Di alignment result
                 gaps = getGapData(res, map1, map2); 
                 query_aa.clear();
@@ -1851,7 +1819,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     res = tmRes;
                     qBt = qBtTM;
                     tBt = tBtTM;
-                    tmaligned = true;
+                    // tmaligned = true;
                 }
             }
 
@@ -1922,9 +1890,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         {
             // cases
             // 1: new submsa --> add to msa
-            // 2: query profile, new target -> add to query profile
-            // 3: target profile, new query -> ""
-            // 4: both profile -> merge into query
+            // 2: one profile, one structure -> add to profile
+            // 3: both profile -> merge into query
             //
             // cases 2 and 3 always identical since profile always made query
             for (SubMSA sub : subMSAs) {
@@ -1984,8 +1951,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     assert(msa.size() == 1);  // should be left with single MSA group
     SubMSA &finalMSA = msa[0];
     for (size_t member : finalMSA.members) {
-    //for (size_t i = 0; i < cigars_aa.size(); i++) {
-        // size_t idx = groups[finalMSAId][i];
         unsigned int key = seqDbrAA.getDbKey(member);
         size_t headerId = qdbrH.sequenceReader->getId(key);
         std::string header = Util::parseFastaHeader(qdbrH.sequenceReader->getData(headerId, 0));
