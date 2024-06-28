@@ -1,6 +1,9 @@
 #include <fstream>
 #include <iostream>
+#include <random>
+#include <algorithm>
 #include <vector>
+#include <set>
 #include "DBReader.h"
 #include "Sequence.h"
 #include "kseq.h"
@@ -74,6 +77,26 @@ void deleteGapCols(
     }
 }
 
+/**
+ * Generate two unsigned long longs representing split group bitmasks.
+ */
+std::pair<unsigned long long, unsigned long long> vectorBoolToULL(const std::vector<bool>& bitmask, size_t groupOneSize) {
+    unsigned long long longOne = 0;
+    unsigned long long longTwo = 0;
+    for (size_t i = 0; i < groupOneSize; i++) {
+        if (bitmask[i]) {
+            longOne |= (1ULL << i);
+        }
+    }
+    for (size_t i = groupOneSize; i < bitmask.size(); i++) {
+        if (bitmask[i]) {
+            longTwo |= (1ULL << i);
+        }
+    }
+    return std::make_pair(longOne, longTwo);
+}
+
+template<typename RNG>
 void refineOne(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
@@ -99,24 +122,40 @@ void refineOne(
     int gapExtend,
     int gapOpen,
     std::vector<Sequence*> &sequences_aa,
-    std::vector<Sequence*> &sequences_ss
+    std::vector<Sequence*> &sequences_ss,
+    RNG &rng
 ) {
     int sequenceCnt = cigars_aa.size();
 
-    // split into two groups
-    // TODO move this into refineMany
-    //      potentially add non-random sweep of combinations before random
+    // Choose random size of group 1 in distribution from 1 to (N-1)
+    std::uniform_int_distribution<> dist(1, sequenceCnt - 1);
+    size_t groupOneSize = dist(rng); 
+
+    // Create bitmask of length N, set group 1 size elements to true, then random shuffle
+    std::vector<bool> bitmask(sequenceCnt, false);
+    std::fill(bitmask.begin(), bitmask.begin() + groupOneSize, true);
+    std::shuffle(bitmask.begin(), bitmask.end(), rng);
+
+    // Build groups of subMSA indices based on this combination
     std::vector<size_t> group1;
     std::vector<size_t> group2;
-    for (int j = 0; j < sequenceCnt; j++) {
-        if (std::rand() % 2 == 0) {
-        // if (j >= (sequenceCnt / 2)) {
-            group1.push_back(j);
+    group1.reserve(groupOneSize);
+    group2.reserve(sequenceCnt - groupOneSize);
+    for (std::size_t i = 0; i < bitmask.size(); i++) {
+        if (bitmask[i]) {
+            group1.push_back(i);
         } else {
-            group2.push_back(j);
+            group2.push_back(i);
         }
     }
-   
+
+    // Basic version
+    // std::vector<size_t> numbers(sequenceCnt);
+    // std::iota(numbers.begin(), numbers.end(), 0);
+    // std::shuffle(numbers.begin(), numbers.end(), rng);
+    // std::vector<size_t> group1(numbers.begin(), numbers.begin() + groupOneSize);
+    // std::vector<size_t> group2(numbers.begin() + groupOneSize, numbers.end());
+    
     // delete all-gap columns, if any, from cigars
     // TODO probably not necessary, all-gap columns are ignored in profile anyway
     deleteGapCols(group1, cigars_aa, cigars_ss);
@@ -222,7 +261,8 @@ void refineMany(
     std::string qid,
     float pairThreshold,
     std::vector<size_t> indices,
-    std::vector<int> lengths
+    std::vector<int> lengths,
+    int seed
 ) {
     std::cout << "Running " << iterations << " refinement iterations\n";
 
@@ -245,7 +285,15 @@ void refineMany(
     sequences_aa[1] = new Sequence(maxSeqLen, Parameters::DBTYPE_HMM_PROFILE, (const BaseMatrix *) &subMat_aa,  0, false, compBiasCorrection);
     sequences_ss[1] = new Sequence(maxSeqLen, Parameters::DBTYPE_HMM_PROFILE, (const BaseMatrix *) &subMat_3di, 0, false, compBiasCorrection);
 
-    for (int i = 0; i < iterations; i++) {
+    if (seed == -1) {
+        std::random_device rd;
+        seed = rd();
+    }
+    std::mt19937 rng(seed);
+    std::cout << "Using seed: " << std::to_string(seed) << '\n';
+
+    int i = 0;
+    while (i < iterations) {
         copyInstructionVectors(cigars_aa, cigars_new_aa);
         copyInstructionVectors(cigars_ss, cigars_new_ss);
         refineOne(
@@ -256,19 +304,22 @@ void refineMany(
             structureSmithWaterman, lengths, filterMsa, compBiasCorrection,
             qid, filterMaxSeqId, Ndiff, covMSAThr, qsc, filterMinEnable,
             wg, gapExtend, gapOpen,
-            sequences_aa, sequences_ss
+            sequences_aa, sequences_ss,
+            rng
         );
         float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
         // std::cout << std::fixed << std::setprecision(4) << "New LDDT: " << lddtScore << '\t' << "(" << i + 1 << ")\n";
         // for (std::vector<Instruction> &ins : cigars_new_aa) {
         //     std::cout << expand(ins) << '\n';
         // }
+        // std::cout << std::fixed << std::setprecision(4) << prevLDDT << " -> " << lddtScore << " (+" << (lddtScore - prevLDDT) << ") #" << i + 1 << '\n';
         if (lddtScore > prevLDDT) {
             std::cout << std::fixed << std::setprecision(4) << prevLDDT << " -> " << lddtScore << " (+" << (lddtScore - prevLDDT) << ") #" << i + 1 << '\n';
             prevLDDT = lddtScore;
             std::swap(cigars_aa, cigars_new_aa);
             std::swap(cigars_ss, cigars_new_ss);
         }
+        i++;
     }
     float delta = prevLDDT - initLDDT;
     if (delta > 0.0) {
@@ -360,7 +411,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
         structureSmithWaterman, par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
         par.qsc, par.Ndiff, par.covMSAThr,
         par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
-        par.maxSeqLen, par.qid, par.pairThreshold, indices, lengths
+        par.maxSeqLen, par.qid, par.pairThreshold, indices, lengths, par.refinementSeed
     );
     
     // Write final MSA to file

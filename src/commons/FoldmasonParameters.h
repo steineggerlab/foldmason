@@ -46,6 +46,7 @@ public:
     PARAMETER(PARAM_BITFACTOR_3DI)
     PARAMETER(PARAM_PAIR_THRESHOLD)
     PARAMETER(PARAM_REPORT_COMMAND)
+    PARAMETER(PARAM_REFINE_SEED)
 
     MultiParam<PseudoCounts> pcaAa;
     MultiParam<PseudoCounts> pcbAa;
@@ -62,5 +63,6 @@ public:
     float bitFactor3Di;
     std::string reportCommand;
     float pairThreshold;
+    int refinementSeed;
 };
 #endif

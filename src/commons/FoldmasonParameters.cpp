@@ -18,7 +18,8 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_BITFACTOR_AA(PARAM_BITFACTOR_AA_ID, "--bitfactor-aa", "AA matrix bit factor", "AA matrix bit factor", typeid(float), (void *) &bitFactorAa, "^([0-9]*\\.[0-9]*)$"),
         PARAM_BITFACTOR_3DI(PARAM_BITFACTOR_3DI_ID, "--bitfactor-3di", "3Di matrix bit factor", "3Di matrix bit factor", typeid(float), (void *) &bitFactor3Di, "^([0-9]*\\.[0-9]*)$"),
         PARAM_PAIR_THRESHOLD(PARAM_PAIR_THRESHOLD_ID, "--pair-threshold", "LDDT pair threshold", "% of pair subalignments with LDDT information [0.0,1.0]",typeid(float), (void *) &pairThreshold, "^0(\\.[0-9]+)?|1(\\.0+)?$"),
-        PARAM_REPORT_COMMAND(PARAM_REPORT_COMMAND_ID, "--report-command", "", "", typeid(std::string), (void *) &reportCommand, "")
+        PARAM_REPORT_COMMAND(PARAM_REPORT_COMMAND_ID, "--report-command", "", "", typeid(std::string), (void *) &reportCommand, ""),
+        PARAM_REFINE_SEED(PARAM_REFINE_SEED_ID, "--refine-seed", "Random number generator seed", "Random number generator seed", typeid(int), (void *) &refinementSeed, "^([0-9]*)$")
 {
     // structuremsa
     structuremsa.push_back(&PARAM_WG);
@@ -48,6 +49,7 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_PAIR_THRESHOLD);
     structuremsa.push_back(&PARAM_NO_COMP_BIAS_CORR);
     structuremsa.push_back(&PARAM_V);
+    structuremsa.push_back(&PARAM_REFINE_SEED);
 
     structuremsacluster = combineList(structuremsacluster, structuremsa);
 
@@ -60,6 +62,7 @@ FoldmasonParameters::FoldmasonParameters() :
 
     // refinemsa
     refinemsa = combineList(refinemsa, structuremsa);
+    refinemsa.push_back(&PARAM_REFINE_SEED);
     
     // easymsa
     PARAM_REPORT_MODE.description = "MSA report mode 0: AA/3Di FASTA files only, 1: Compute LDDT and generate HTML report";
@@ -86,6 +89,7 @@ FoldmasonParameters::FoldmasonParameters() :
     bitFactor3Di = 2.1;
     pairThreshold = 0.0;
     wg = true;
+    refinementSeed = -1;
 
     citations.emplace(CITATION_FOLDMASON, " << TODO >> ");
 }
