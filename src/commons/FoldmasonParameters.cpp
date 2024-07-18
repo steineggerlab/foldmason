@@ -62,7 +62,6 @@ FoldmasonParameters::FoldmasonParameters() :
 
     // refinemsa
     refinemsa = combineList(refinemsa, structuremsa);
-    refinemsa.push_back(&PARAM_REFINE_SEED);
     
     // easymsa
     PARAM_REPORT_MODE.description = "MSA report mode 0: AA/3Di FASTA files only, 1: Compute LDDT and generate HTML report";
