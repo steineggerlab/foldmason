@@ -149,7 +149,7 @@ std::vector<int> countColumns(
     return counts;
 }
 
-std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
+std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     std::vector<std::vector<Instruction> > &cigars,
     std::vector<size_t> subset,
     std::vector<size_t> &indices,
@@ -281,7 +281,7 @@ std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
     // float lddtScore = sum / static_cast<double>(numPairs);
     // float lddtScore = (scaledSum / perColumnCount.size());  // get mean over all columns
     float lddtScore = (numCols > 0) ? scaledSum / static_cast<float>(numCols) : 0.0;
-    return std::make_tuple(perColumnScore, perColumnCount, lddtScore);
+    return std::make_tuple(perColumnScore, perColumnCount, lddtScore, numCols);
 }
 
 void parseFasta(
@@ -354,7 +354,8 @@ float getLDDTScore(
     std::vector<float> perColumnScore;
     std::vector<int>   perColumnCount;
     float lddtScore;
-    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, inds, inds, lens, &seqDbrCA, pairThreshold);
+    int numCols;
+    std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, inds, inds, lens, &seqDbrCA, pairThreshold);
 
     return lddtScore;
 }
@@ -387,16 +388,23 @@ int msa2lddt(int argc, const char **argv, const Command& command, bool makeRepor
     std::vector<float> perColumnScore;
     std::vector<int>   perColumnCount;
     float lddtScore;
+    int numCols;
     
     std::vector<size_t> subset(headers.size());
     for (size_t i = 0; i < subset.size(); i++)
         subset[i] = i;
     
-    std::tie(perColumnScore, perColumnCount, lddtScore) = calculate_lddt(cigars_aa, subset, indices, lengths, &seqDbrCA, par.pairThreshold);
+    std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, subset, indices, lengths, &seqDbrCA, par.pairThreshold);
     
-    // TODO common core = columns w/ no gaps, no distances >4 angstrom to reference (structure w/ longest non-gap alignment)
     
-    std::cout << "Average MSA LDDT: " << lddtScore << std::endl;
+    std::string scores;
+    for (float score : perColumnScore) {
+        if (scores.length() > 0) scores += ",";
+        scores += std::to_string(score);
+    }
+    std::cout << "Average MSA LDDT: " << lddtScore << '\n';
+    std::cout << "Columns considered: " << numCols << "/" << alnLength << '\n';
+    std::cout << "Column scores: " << scores << '\n';
     
     // Write clustal format MSA HTML
     if (makeReport) {
