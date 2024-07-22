@@ -19,7 +19,7 @@ void parseFasta(
     int &alnLength
 );
 
-std::tuple<std::vector<float>, std::vector<int>, float> calculate_lddt(
+std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     std::vector<std::vector<Instruction> > &cigars,
     std::vector<size_t> subset,
     std::vector<size_t> &indices,
