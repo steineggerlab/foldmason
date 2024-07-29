@@ -92,7 +92,7 @@ int easymsa(int argc, const char **argv, const Command &command) {
     cmd.addVariable("THREADS_PAR", par.createParameterString(par.onlythreads).c_str());
     cmd.addVariable("VERBOSITY", par.createParameterString(par.onlyverbosity).c_str());
     cmd.addVariable("PRECLUSTER", par.precluster ? "TRUE" : NULL); 
-    cmd.addVariable("MAKE_REPORT", (par.reportMode == 1) ? "TRUE" : NULL);
+    cmd.addVariable("MAKE_REPORT", std::to_string(par.reportMode).c_str());
     cmd.addVariable("CREATEDB_PAR", par.createParameterString(par.structurecreatedb).c_str());
 
     // needs to be last

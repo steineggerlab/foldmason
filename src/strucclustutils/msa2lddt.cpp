@@ -360,7 +360,7 @@ float getLDDTScore(
     return lddtScore;
 }
 
-int msa2lddt(int argc, const char **argv, const Command& command, bool makeReport) {
+int msa2lddt(int argc, const char **argv, const Command& command, int makeReport) {
     FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
 
     const bool touch = (par.preloadMode != Parameters::PRELOAD_MODE_MMAP);
@@ -419,12 +419,13 @@ int msa2lddt(int argc, const char **argv, const Command& command, bool makeRepor
         resultWriter.writeData(dst, realSize, 0, 0, false, false);
 */
         
-        size_t dstSize = ZSTD_findDecompressedSize(vendor_foldmason_js_zst, vendor_foldmason_js_zst_len);
-        char* dst = (char*)malloc(sizeof(char) * dstSize);
-        size_t realSize = ZSTD_decompress(dst, dstSize, vendor_foldmason_js_zst, vendor_foldmason_js_zst_len);
-        
-        std::string mainJS(const_cast<char *>(reinterpret_cast<const char *>(main_foldmason_js)), main_foldmason_js_len);
-        std::string htmlTemplate(
+        if (makeReport == 1) {
+            size_t dstSize = ZSTD_findDecompressedSize(vendor_foldmason_js_zst, vendor_foldmason_js_zst_len);
+            char* dst = (char*)malloc(sizeof(char) * dstSize);
+            size_t realSize = ZSTD_decompress(dst, dstSize, vendor_foldmason_js_zst, vendor_foldmason_js_zst_len);
+            
+            std::string mainJS(const_cast<char *>(reinterpret_cast<const char *>(main_foldmason_js)), main_foldmason_js_len);
+            std::string htmlTemplate(
 R"html(<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -436,26 +437,30 @@ R"html(<!DOCTYPE html>
 <div id="app"></div>
 )html");
         
-        resultWriter.writeData(htmlTemplate.c_str(), htmlTemplate.size(), 0, 0, false, false);
+            resultWriter.writeData(htmlTemplate.c_str(), htmlTemplate.size(), 0, 0, false, false);
 
-        std::string scriptStart = "<script>";
-        std::string scriptEnd   = "</script>";
+            std::string scriptStart = "<script>";
+            std::string scriptEnd   = "</script>";
 
-        // vendor.js
-        resultWriter.writeData(scriptStart.c_str(), scriptStart.size(), 0, 0, false, false);
-        resultWriter.writeData(dst, realSize, 0, 0, false, false);
-        resultWriter.writeData(scriptEnd.c_str(), scriptEnd.size(), 0, 0, false, false);
-        
-        // main.js
-        resultWriter.writeData(scriptStart.c_str(), scriptStart.size(), 0, 0, false, false);
-        resultWriter.writeData(mainJS.c_str(), mainJS.size(), 0, 0, false, false);
-        resultWriter.writeData(scriptEnd.c_str(), scriptEnd.size(), 0, 0, false, false);
-        
-        // Data <div>
-        const char* dataStart = "<div id=\"data\" style=\"display: none;\">\n{\"entries\": [";
-        resultWriter.writeData(dataStart, strlen(dataStart), 0, 0, false, false);
+            // vendor.js
+            resultWriter.writeData(scriptStart.c_str(), scriptStart.size(), 0, 0, false, false);
+            resultWriter.writeData(dst, realSize, 0, 0, false, false);
+            resultWriter.writeData(scriptEnd.c_str(), scriptEnd.size(), 0, 0, false, false);
+            
+            // main.js
+            resultWriter.writeData(scriptStart.c_str(), scriptStart.size(), 0, 0, false, false);
+            resultWriter.writeData(mainJS.c_str(), mainJS.size(), 0, 0, false, false);
+            resultWriter.writeData(scriptEnd.c_str(), scriptEnd.size(), 0, 0, false, false);
+            
+            // Data <div>
+            const char* dataStart = "<div id=\"data\" style=\"display: none;\">\n{\"entries\": [";
+            resultWriter.writeData(dataStart, strlen(dataStart), 0, 0, false, false);
 
-        free(dst);
+            free(dst);
+        } else if (makeReport == 2) {
+            const char* dataStart = "{\"entries\": [";
+            resultWriter.writeData(dataStart, strlen(dataStart), 0, 0, false, false);
+        }
         
         // tree: string (optional, from --guide-tree)
         // entries: [ { name, aa, ss, ca }, ... ]
@@ -519,8 +524,11 @@ R"html(<!DOCTYPE html>
             end.append(par.reportCommand);
             end.append("\"");
         }
-        end.append("}}</script>");
-
+        end.append("}}");
+        
+        if (makeReport == 1) {
+            end.append("</script>");
+        }
         resultWriter.writeData(end.c_str(), end.length(), 0, 0, false, false);
         resultWriter.writeEnd(0, 0, false, 0);
         resultWriter.close(true);
@@ -540,8 +548,11 @@ R"html(<!DOCTYPE html>
 
 
 int msa2lddt(int argc, const char **argv, const Command& command) {
-    return msa2lddt(argc, argv, command, false);
+    return msa2lddt(argc, argv, command, 0);
 }
 int msa2lddtreport(int argc, const char **argv, const Command& command) {
-    return msa2lddt(argc, argv, command, true);
+    return msa2lddt(argc, argv, command, 1);
+}
+int msa2lddtjson(int argc, const char **argv, const Command& command) {
+    return msa2lddt(argc, argv, command, 2);
 }

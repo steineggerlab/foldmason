@@ -64,7 +64,8 @@ FoldmasonParameters::FoldmasonParameters() :
     refinemsa = combineList(refinemsa, structuremsa);
     
     // easymsa
-    PARAM_REPORT_MODE.description = "MSA report mode 0: AA/3Di FASTA files only, 1: Compute LDDT and generate HTML report";
+    PARAM_REPORT_MODE.description = "MSA report mode 0: AA/3Di FASTA files only, 1: Compute LDDT and generate HTML report, 2: Compute LDDT and generate JSON";
+    PARAM_REPORT_MODE.regex = "^[0-2]{1}$";
     easymsaworkflow = combineList(easymsaworkflow, structurecreatedb);
     easymsaworkflow = combineList(easymsaworkflow, structuremsa);
     easymsaworkflow = combineList(easymsaworkflow, msa2lddt);
