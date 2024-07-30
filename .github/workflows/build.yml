@@ -193,7 +193,7 @@ jobs:
       - name: Archive Mac Binary
         run: |
           chmod +x foldmason/bin/foldmason
-          tar -czvf foldmason-osx-universal.tar.gz -C foldmason .
+          tar -czvf foldmason-osx-universal.tar.gz foldmason
 
       # Linux SSE41
       - name: Download foldmason-linux-SSE4_1 Artifact
@@ -205,7 +205,7 @@ jobs:
       - name: Archive SSE4_1 Binary
         run: |
           chmod +x foldmason/bin/foldmason
-          tar -czvf foldmason-linux-sse41.tar.gz -C foldmason .
+          tar -czvf foldmason-linux-sse41.tar.gz foldmason
 
       # Linux SSE2
       - name: Download foldmason-linux-SSE2 Artifact
@@ -217,7 +217,7 @@ jobs:
       - name: Archive SSE2 Binary
         run: |
           chmod +x foldmason/bin/foldmason
-          tar -czvf foldmason-linux-sse2.tar.gz -C foldmason .
+          tar -czvf foldmason-linux-sse2.tar.gz foldmason
 
       # Linux AVX2
       - name: Download foldmason-linux-AVX2 Artifact
@@ -229,7 +229,7 @@ jobs:
       - name: Archive AVX2 Binary
         run: |
           chmod +x foldmason/bin/foldmason
-          tar -czvf foldmason-linux-avx2.tar.gz -C foldmason .
+          tar -czvf foldmason-linux-avx2.tar.gz foldmason
 
       # Linux ARM64
       - name: Download foldmason-linux-ARM8 Artifact
@@ -241,7 +241,7 @@ jobs:
       - name: Archive ARM8 Binary
         run: |
           chmod +x foldmason/bin/foldmason
-          tar -czvf foldmason-linux-arm64.tar.gz -C foldmason .
+          tar -czvf foldmason-linux-arm64.tar.gz foldmason
 
       - name: Get Deployment Key 
         run: |
