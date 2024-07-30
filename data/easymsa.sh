@@ -50,9 +50,15 @@ else
     fi   
 fi
 
-if [ "${MAKE_REPORT}" ]; then
+if [ "${MAKE_REPORT}" -eq 1 ]; then
     # shellcheck disable=SC2086
     "$MMSEQS" msa2lddtreport "${STRUCTUREDB}" "${RESULTS}_aa.fa" "${RESULTS}.html" \
+        "--guide-tree" "${RESULTS}.nw" \
+        ${MSA2LDDT_PAR} \
+        || fail "msa2lddt died"
+elif [ "${MAKE_REPORT}" -eq 2 ]; then
+    # shellcheck disable=SC2086
+    "$MMSEQS" msa2lddtjson "${STRUCTUREDB}" "${RESULTS}_aa.fa" "${RESULTS}.json" \
         "--guide-tree" "${RESULTS}.nw" \
         ${MSA2LDDT_PAR} \
         || fail "msa2lddt died"
