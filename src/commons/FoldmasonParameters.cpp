@@ -19,6 +19,7 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_BITFACTOR_3DI(PARAM_BITFACTOR_3DI_ID, "--bitfactor-3di", "3Di matrix bit factor", "3Di matrix bit factor", typeid(float), (void *) &bitFactor3Di, "^([0-9]*\\.[0-9]*)$"),
         PARAM_PAIR_THRESHOLD(PARAM_PAIR_THRESHOLD_ID, "--pair-threshold", "LDDT pair threshold", "% of pair subalignments with LDDT information [0.0,1.0]",typeid(float), (void *) &pairThreshold, "^0(\\.[0-9]+)?|1(\\.0+)?$"),
         PARAM_REPORT_COMMAND(PARAM_REPORT_COMMAND_ID, "--report-command", "", "", typeid(std::string), (void *) &reportCommand, ""),
+        PARAM_REPORT_PATHS(PARAM_REPORT_PATHS_ID, "--report-paths", "", "", typeid(bool), (void *) &reportPaths, ""),
         PARAM_REFINE_SEED(PARAM_REFINE_SEED_ID, "--refine-seed", "Random number generator seed", "Random number generator seed", typeid(int), (void *) &refinementSeed, "^([-]?[0-9]*)$")
 {
     // structuremsa
@@ -59,6 +60,7 @@ FoldmasonParameters::FoldmasonParameters() :
     msa2lddt.push_back(&PARAM_GUIDE_TREE);
     msa2lddt.push_back(&PARAM_V);
     msa2lddt.push_back(&PARAM_REPORT_COMMAND);
+    msa2lddt.push_back(&PARAM_REPORT_PATHS);
 
     // refinemsa
     refinemsa = combineList(refinemsa, structuremsa);
@@ -81,6 +83,7 @@ FoldmasonParameters::FoldmasonParameters() :
     matchRatio = 0.51;
     guideTree = "";
     reportCommand = "";
+    reportPaths = true;
     recomputeScores = false;
     regressive = false;
     precluster = false;

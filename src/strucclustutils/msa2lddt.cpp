@@ -512,11 +512,15 @@ R"html(<!DOCTYPE html>
             end.append(tree);            
             end.append("\",");
         }
-        end.append("\"statistics\": {\"db\":\"");
-        end.append(par.db1);
-        end.append("\",\"msaFile\":\"");
-        end.append(par.db2);
-        end.append("\",\"msaLDDT\":");
+        end.append("\"statistics\": {");
+        if (par.reportPaths) {
+            end.append("\"db\":\"");
+            end.append(par.db1);
+            end.append("\",\"msaFile\":\"");
+            end.append(par.db2);
+            end.append("\",");
+        }
+        end.append("\"msaLDDT\":");
         end.append(std::to_string(lddtScore));
         
         if (par.reportCommand != "") {
