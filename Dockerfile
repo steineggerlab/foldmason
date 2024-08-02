@@ -1,4 +1,4 @@
-ARG APP=foldseek
+ARG APP=foldmason
 FROM --platform=$BUILDPLATFORM debian:stable-backports as builder
 ARG TARGETARCH
 ARG APP
