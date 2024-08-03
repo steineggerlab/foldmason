@@ -2,7 +2,7 @@
 Foldmason builds multiple alignments of large structure sets.
 
 ## Publications
-[van Kempen M, Kim S, Tumescheit C, Mirdita M, Lee J, Gilchrist C, Söding J, and Steinegger M. Fast and accurate protein structure search with Foldseek. Nature Biotechnology, doi:10.1038/s41587-023-01773-0 (2023)](https://www.nature.com/articles/s41587-023-01773-0)
+[Gilchrist CLM, Mirdita M, and Steinegger M. Multiple Protein Structure Alignment at Scale with FoldMason. bioRxiv, doi:10.1101/2024.08.01.606130 (2024)](https://www.biorxiv.org/content/10.1101/2024.08.01.606130v1)
 
 [![build workflow](https://github.com/steineggerlab/foldmason/actions/workflows/build.yml/badge.svg)](https://github.com/steineggerlab/foldmason/actions/workflows/build.yml)
 
@@ -22,8 +22,7 @@ Foldmason builds multiple alignments of large structure sets.
 - [Examples](#examples)
 
 ## Webserver 
-Align your protein structures quickly using our Foldmason webserver: ...
-<!-- Search your protein structures against the [AlphaFoldDB](https://alphafold.ebi.ac.uk/) and [PDB](https://www.rcsb.org/) in seconds using our Foldseek webserver: [search.foldseek.com](https://search.foldseek.com) 🚀 -->
+Align your protein structures quickly using our [Foldmason webserver](https://search.foldseek.com/foldmason).
 
 ## Installation
 ```
@@ -60,16 +59,16 @@ The `easy-msa` module allows you to align multiple query structures formatted in
 Foldmason generates alignments in FASTA-format, with both amino acid and 3Di alphabets (`_aa.fa` and `_3di.fa` suffixes, respectively).
 
 ##### Interactive HTML
-Foldmason can generate a HTML MSA visualisation using the `msa2lddtreport` module.
-
-```
-foldmason msa2lddtreport myDb result.fa result.html
-```
-
-This is generated automatically when using the `easy-msa`. The following will produce `result.fasta` and `result.html`.
+Foldmason generates a HTML MSA visualisation automatically when using the `easy-msa`. The following will produce `result.fasta` and `result.html`.
 
 ```
 foldmason easy-msa <PDB/mmCIF files> result tmpFolder
+```
+
+Internally, this happens using the `msa2lddtreport` module.
+
+```
+foldmason msa2lddtreport myDb result.fa result.html
 ```
 
 <p align="center"><img src="./.github/html.gif" height="400"/></p>
@@ -85,7 +84,7 @@ foldmason easy-msa <PDB/mmCIF files> result tmpFolder
 | `--pair-threshold` | Scoring   | Maximum proportion of gaps in column threshold for LDDT calculation (default: 0.0)
 
 #### Create custom databases and indexes
-The structure database can be pre-processed by `createdb`. This make sense if searched multiple times. 
+The structure database can be pre-processed by `createdb`. Doing this make sense if they inputs should be aligned multiple times. 
  
 ```
 foldmason createdb example/ structureDB
