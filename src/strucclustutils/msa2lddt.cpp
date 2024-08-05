@@ -369,8 +369,22 @@ int msa2lddt(int argc, const char **argv, const Command& command, int makeReport
     seqDbrAA.open(DBReader<unsigned int>::NOSORT);
     DBReader<unsigned int> seqDbr3Di((par.db1+"_ss").c_str(), (par.db1+"_ss.index").c_str(), par.threads, DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA);
     seqDbr3Di.open(DBReader<unsigned int>::NOSORT);
-    DBReader<unsigned int> seqDbrCA((par.db1+"_ca").c_str(), (par.db1+"_ca.index").c_str(), par.threads, DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA);
-    seqDbrCA.open(DBReader<unsigned int>::NOSORT);
+
+    // Check for CA database
+    DBReader<unsigned int> *seqDbrCA = NULL;
+    bool caExist = FileUtil::fileExists((par.db1 + "_ca.dbtype").c_str());
+    if (caExist == false) {
+        Debug(Debug::INFO) << "Did not find " << FileUtil::baseName(par.db1) << " C-alpha database, not calculating LDDT\n";
+    } else {
+        seqDbrCA = new DBReader<unsigned int>(
+            (par.db1 + "_ca").c_str(),
+            (par.db1 + "_ca.index").c_str(),
+            par.threads,
+            DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA
+        );
+        seqDbrCA->open(DBReader<unsigned int>::NOSORT);
+    }
+
     IndexReader headerDB(par.db1, par.threads, IndexReader::HEADERS, touch ? IndexReader::PRELOAD_INDEX : 0);
     
     // Read in MSA, mapping headers to database indices
@@ -394,20 +408,21 @@ int msa2lddt(int argc, const char **argv, const Command& command, int makeReport
     for (size_t i = 0; i < subset.size(); i++)
         subset[i] = i;
     
-    std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, subset, indices, lengths, &seqDbrCA, par.pairThreshold);
-    
-    
-    std::string scores;
-    for (float score : perColumnScore) {
-        if (scores.length() > 0) scores += ",";
-        scores += std::to_string(score);
+    if (caExist) {
+        std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, subset, indices, lengths, seqDbrCA, par.pairThreshold);
+        std::string scores;
+        for (float score : perColumnScore) {
+            if (scores.length() > 0) scores += ",";
+            scores += std::to_string(score);
+        }
+        Debug(Debug::INFO) << "Average MSA LDDT: " << lddtScore << '\n';
+        Debug(Debug::INFO) << "Columns considered: " << numCols << "/" << alnLength << '\n';
+        Debug(Debug::INFO) << "Column scores: " << scores << '\n';
     }
-    std::cout << "Average MSA LDDT: " << lddtScore << '\n';
-    std::cout << "Columns considered: " << numCols << "/" << alnLength << '\n';
-    std::cout << "Column scores: " << scores << '\n';
     
     // Write clustal format MSA HTML
     if (makeReport) {
+        Debug(Debug::INFO) << "Generating report\n";
         DBWriter resultWriter(par.db3.c_str(), (par.db3 + ".index").c_str(), static_cast<unsigned int>(par.threads), par.compressed, Parameters::DBTYPE_OMIT_FILE);
         resultWriter.open();
 
@@ -470,7 +485,6 @@ R"html(<!DOCTYPE html>
         for (size_t i = 0; i < cigars_aa.size(); i++) {
             std::string seq_aa = expand(cigars_aa[i]);
             std::string seq_ss = expand(cigars_ss[i]);
-            std::string seq_ca = getXYZstring(indices[i], lengths[i], &seqDbrCA);
             std::string entry;
             entry.append("{\"name\":\"");
             entry.append(headers[i]);
@@ -478,26 +492,39 @@ R"html(<!DOCTYPE html>
             entry.append(seq_aa);
             entry.append("\",\"ss\": \"");
             entry.append(seq_ss);
-            entry.append("\",\"ca\": \"");
-            entry.append(seq_ca);
-            entry.append("\"}");
-            if (i != cigars_aa.size() - 1)
+            entry.append("\"");
+            if (caExist) {
+                std::string seq_ca = getXYZstring(indices[i], lengths[i], seqDbrCA);
+                entry.append(",\"ca\": \"");
+                entry.append(seq_ca);
+                entry.append("\"");
+            }
+            entry.append("}");
+            if (i != cigars_aa.size() - 1) {
                 entry.append(",");
-            resultWriter.writeData(entry.c_str(), entry.length(), 0, 0, false, false);
-        } 
-
-        std::string middle = "],\"scores\": [";
-        resultWriter.writeData(middle.c_str(), middle.length(), 0, 0, false, false);
-
-        // Per-column scores, as [score, score, ...]
-        // TODO: optionally save this as .csv
-        for (int i = 0; i < alnLength; i++) {
-            std::string entry = (perColumnCount[i] == 0) ? "-1" : std::to_string(perColumnScore[i]);
-            if (i != alnLength - 1)
-                entry.append(",");
+            } else {
+                entry.append("]");
+            }
             resultWriter.writeData(entry.c_str(), entry.length(), 0, 0, false, false);
         }
-        std::string end = "],";
+
+        // Per-column scores, as [score, score, ...]
+        std::string middle = "";
+
+        if (caExist) {
+            middle.append(",\"scores\": [");
+            for (int i = 0; i < alnLength; i++) {
+                std::string entry = (perColumnCount[i] == 0) ? "-1" : std::to_string(perColumnScore[i]);
+                if (i != alnLength - 1) {
+                    entry.append(",");
+                }
+                middle.append(entry);
+            }
+            middle.append("]");
+        }
+        resultWriter.writeData(middle.c_str(), middle.length(), 0, 0, false, false);
+
+        std::string end = "";
 
         if (par.guideTree != "") {
             std::string tree;
@@ -508,25 +535,37 @@ R"html(<!DOCTYPE html>
                     tree += line;
                 newick.close();
             }
-            end.append("\"tree\": \"");
+            end.append(",\"tree\": \"");
             end.append(tree);            
-            end.append("\",");
+            end.append("\"");
         }
-        end.append("\"statistics\": {");
+        end.append(",\"statistics\": {");
+
+        bool hasPrev = false;
         if (par.reportPaths) {
             end.append("\"db\":\"");
             end.append(par.db1);
             end.append("\",\"msaFile\":\"");
             end.append(par.db2);
-            end.append("\",");
+            end.append("\"");
+            hasPrev = true;
         }
-        end.append("\"msaLDDT\":");
-        end.append(std::to_string(lddtScore));
-        
+        if (caExist) {
+            if (hasPrev) {
+                end.append(",");
+            }
+            end.append("\"msaLDDT\":");
+            end.append(std::to_string(lddtScore));
+            hasPrev = true;
+        }
         if (par.reportCommand != "") {
-            end.append(",\"cmdString\":\"");
+            if (hasPrev) {
+                end.append(",");
+            }
+            end.append("\"cmdString\":\"");
             end.append(par.reportCommand);
             end.append("\"");
+            hasPrev = true;
         }
         end.append("}}");
         
@@ -544,9 +583,10 @@ R"html(<!DOCTYPE html>
     }
     
     seqDbrAA.close();
-    seqDbrCA.close();
     seqDbr3Di.close();
-
+    if (caExist) {
+        seqDbrCA->close();
+    }
     return EXIT_SUCCESS;
 }
 

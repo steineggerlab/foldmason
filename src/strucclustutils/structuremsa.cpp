@@ -1054,26 +1054,26 @@ Matcher::result_t pairwiseTMAlign(
     int mergedId,
     int targetId,
     DBReader<unsigned int> &seqDbrAA,
-    DBReader<unsigned int> &seqDbrCA
+    DBReader<unsigned int> *seqDbrCA
 ) {
     int qLen = seqDbrAA.getSeqLen(mergedId);
     int tLen = seqDbrAA.getSeqLen(targetId);
     
     unsigned int qKey = seqDbrAA.getDbKey(mergedId);
-    size_t qCaId = seqDbrCA.getId(qKey);
+    size_t qCaId = seqDbrCA->getId(qKey);
 
     unsigned int tKey = seqDbrAA.getDbKey(targetId);
-    size_t tCaId = seqDbrCA.getId(tKey);
+    size_t tCaId = seqDbrCA->getId(tKey);
     
     Coordinate16 qcoords;
-    char *qcadata = seqDbrCA.getData(qCaId, 0);
-    size_t qCaLength = seqDbrCA.getEntryLen(qCaId);
+    char *qcadata = seqDbrCA->getData(qCaId, 0);
+    size_t qCaLength = seqDbrCA->getEntryLen(qCaId);
     float *qCaData = qcoords.read(qcadata, qLen, qCaLength);
     char *merged_aa_seq = seqDbrAA.getData(qCaId, 0);
     
     Coordinate16 tcoords;
-    char *tcadata = seqDbrCA.getData(tCaId, 0);
-    size_t tCaLength = seqDbrCA.getEntryLen(tCaId);
+    char *tcadata = seqDbrCA->getData(tCaId, 0);
+    size_t tCaLength = seqDbrCA->getEntryLen(tCaId);
     float *tCaData = tcoords.read(tcadata, tLen, tCaLength);
     char *target_aa_seq = seqDbrAA.getData(tCaId, 0);
 
@@ -1117,8 +1117,21 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     seqDbrAA.open(DBReader<unsigned int>::NOSORT);
     DBReader<unsigned int> seqDbr3Di((par.db1+"_ss").c_str(), (par.db1+"_ss.index").c_str(), par.threads, DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA);
     seqDbr3Di.open(DBReader<unsigned int>::NOSORT);
-    DBReader<unsigned int> seqDbrCA((par.db1+"_ca").c_str(), (par.db1+"_ca.index").c_str(), par.threads, DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA);
-    seqDbrCA.open(DBReader<unsigned int>::NOSORT);
+    
+    // Check for CA database
+    DBReader<unsigned int> *seqDbrCA = NULL;
+    bool caExist = FileUtil::fileExists((par.db1 + "_ca.dbtype").c_str());
+    if (caExist == false) {
+        Debug(Debug::INFO) << "Did not find " << FileUtil::baseName(par.db1) << " C-alpha database, not using\n";
+    } else {
+        seqDbrCA = new DBReader<unsigned int>(
+            (par.db1 + "_ca").c_str(),
+            (par.db1 + "_ca.index").c_str(),
+            par.threads,
+            DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA
+        );
+        seqDbrCA->open(DBReader<unsigned int>::NOSORT);
+    }
 
     IndexReader qdbrH(par.db1, par.threads, IndexReader::HEADERS, touch ? IndexReader::PRELOAD_INDEX : 0);
     
@@ -1512,7 +1525,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             // If neither are profiles, do TM-align as well and take the best alignment
             bool tmaligned = false;
             // if (false) {
-            if (!queryIsProfile && !targetIsProfile) {
+            if (caExist && !queryIsProfile && !targetIsProfile) {
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 std::vector<Instruction> qBtTM;
                 std::vector<Instruction> tBtTM;
@@ -1549,7 +1562,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 std::vector<size_t> indices_tm = { dbKeys[mergedId], dbKeys[targetId] };
                 std::vector<int>    lengths_tm = { seqLens[mergedId], seqLens[targetId] };
 
-                float lddtTM = std::get<2>(calculate_lddt(cigars_tm, subset_tm, indices_tm, lengths_tm, &seqDbrCA, par.pairThreshold));
+                float lddtTM = std::get<2>(calculate_lddt(cigars_tm, subset_tm, indices_tm, lengths_tm, seqDbrCA, par.pairThreshold));
                 // std::cout << "got TM lddt: " << lddtTM << '\n';
                 
                 // adjust cigars with 3Di alignment result
@@ -1578,7 +1591,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 // std::cout << expand(query_aa) << '\n';
                 // std::cout << expand(target_aa) << '\n';
 
-                float lddt3Di = std::get<2>(calculate_lddt(cigars_tm, subset_tm, indices_tm, lengths_tm, &seqDbrCA, par.pairThreshold));
+                float lddt3Di = std::get<2>(calculate_lddt(cigars_tm, subset_tm, indices_tm, lengths_tm, seqDbrCA, par.pairThreshold));
                 // std::cout << "got 3Di lddt: " << lddt3Di << '\n';
 
                 if (lddtTM > lddt3Di) {
@@ -1686,7 +1699,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 {
     if (par.refineIters > 0) {
         refineMany(
-            tinySubMatAA, tinySubMat3Di, &seqDbrCA, cigars_aa, cigars_ss, calculator_aa,
+            tinySubMatAA, tinySubMat3Di, seqDbrCA, cigars_aa, cigars_ss, calculator_aa,
             filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di, structureSmithWaterman,
             par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId, par.qsc,
             par.Ndiff, par.covMSAThr, par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(),
@@ -1749,7 +1762,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     free(tinySubMat3Di);
     seqDbrAA.close();
     seqDbr3Di.close();
-    seqDbrCA.close();
+    if (caExist) {
+        seqDbrCA->close();
+    }
   
     return EXIT_SUCCESS;
 }
