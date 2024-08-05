@@ -401,8 +401,8 @@ int msa2lddt(int argc, const char **argv, const Command& command, int makeReport
     // Calculate LDDT
     std::vector<float> perColumnScore;
     std::vector<int>   perColumnCount;
-    float lddtScore;
-    int numCols;
+    float lddtScore = 0;
+    int numCols = 0;
     
     std::vector<size_t> subset(headers.size());
     for (size_t i = 0; i < subset.size(); i++)
