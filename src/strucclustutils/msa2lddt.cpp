@@ -587,6 +587,7 @@ R"html(<!DOCTYPE html>
     if (caExist) {
         seqDbrCA->close();
     }
+    delete seqDbrCA;
     return EXIT_SUCCESS;
 }
 

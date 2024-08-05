@@ -1765,6 +1765,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     if (caExist) {
         seqDbrCA->close();
     }
+    delete seqDbrCA;
   
     return EXIT_SUCCESS;
 }
