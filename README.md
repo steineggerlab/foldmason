@@ -1,5 +1,5 @@
-# Foldmason
-Foldmason is a software tool for constructing accurate multiple alignments from large sets of protein structures.
+# FoldMason
+FoldMason is a software tool for constructing accurate multiple alignments from large sets of protein structures.
 
 <p align="center"><img src="https://github.com/steineggerlab/foldmason/blob/main/.github/foldmason_logo.png" height="250" /></p>
 
@@ -10,7 +10,7 @@ Foldmason is a software tool for constructing accurate multiple alignments from 
 
 # Table of Contents
 
-- [Foldmason](#foldmason)
+- [FoldMason](#foldmason)
 - [Webserver](#webserver)
 - [Installation](#installation)
 - [Documentation](#documentation)
@@ -24,7 +24,7 @@ Foldmason is a software tool for constructing accurate multiple alignments from 
 - [Examples](#examples)
 
 ## Webserver 
-Align your protein structures quickly using our [Foldmason webserver](https://search.foldseek.com/foldmason).
+Align your protein structures quickly using our [FoldMason webserver](https://search.foldseek.com/foldmason).
 
 ## Installation
 ```
@@ -58,10 +58,10 @@ The `easy-msa` module allows you to align multiple query structures formatted in
     
 #### Output
 ##### FASTA alignment
-Foldmason generates alignments in FASTA-format, with both amino acid and 3Di alphabets (`_aa.fa` and `_3di.fa` suffixes, respectively).
+FoldMason generates alignments in FASTA-format, with both amino acid and 3Di alphabets (`_aa.fa` and `_3di.fa` suffixes, respectively).
 
 ##### Interactive HTML
-Foldmason generates a HTML MSA visualisation automatically when using the `easy-msa`. The following will produce `result.fasta` and `result.html`.
+FoldMason generates a HTML MSA visualisation automatically when using the `easy-msa`. The following will produce `result.fasta` and `result.html`.
 
 ```
 foldmason easy-msa <PDB/mmCIF files> result tmpFolder
@@ -100,7 +100,7 @@ foldmason createdb example/ structureDB
 
 ## Examples
 ### Basic MSA workflow
-The easiest way to use Foldmason is to use the `easy-msa` workflow like so:
+The easiest way to use FoldMason is to use the `easy-msa` workflow like so:
 
 ```
 foldmason easy-msa <PDB/mmCIF files> result tmpFolder
@@ -132,7 +132,7 @@ foldmason msa2lddtreport myDb result_aa.fa result.html --guide-tree result.nw
 Note: the generated guide tree is passed to `msa2lddtreport` to display it inside the HTML report.
 
 ### Aligning large data sets
-Foldmason can use the clustering capabilities of Foldseek to pre-cluster input structures before alignment by specifying `--precluster`,
+FoldMason can use the clustering capabilities of Foldseek to pre-cluster input structures before alignment by specifying `--precluster`,
 allowing for alignments of large sets of proteins.
 
 ```
