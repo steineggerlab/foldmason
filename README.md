@@ -1,7 +1,7 @@
 # Foldmason
 Foldmason builds multiple alignments of large structure sets.
 
-<p align="center"><img src="https://github.com/steineggerlab/foldmason/blob/master/.github/foldmason_logo.png" height="250" /></p>
+<p align="center"><img src="https://github.com/steineggerlab/foldmason/blob/main/.github/foldmason_logo.png" height="250" /></p>
 
 ## Publications
 [Gilchrist CLM, Mirdita M, and Steinegger M. Multiple Protein Structure Alignment at Scale with FoldMason. bioRxiv, doi:10.1101/2024.08.01.606130 (2024)](https://www.biorxiv.org/content/10.1101/2024.08.01.606130v1)
