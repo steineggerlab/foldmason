@@ -54,23 +54,36 @@ Many of Foldseek's modules (subprograms) rely on MMseqs2. For more information a
 ### Multiple alignment
 The `easy-msa` module allows you to align multiple query structures formatted in PDB/mmCIF format (flat or gzipped). By default it outputs the alignment as a [FASTA-format file](#fasta-alignment) as well as an interactive [HTML](#interactive-html) output.
 
-    foldmason easy-msa <PDB/mmCIF files> result.fasta tmpFolder
-    
+```
+foldmason easy-msa <PDB/mmCIF files> result.fasta tmpFolder --report-mode 1
+```
+
+To generate the example output on the webserver:
+```
+foldmason easy-msa ./lib/foldseek/example/d* example.fasta tmpFolder --report-mode 1
+```
+ 
 #### Output
 ##### FASTA alignment
 FoldMason generates alignments in FASTA-format, with both amino acid and 3Di alphabets (`_aa.fa` and `_3di.fa` suffixes, respectively).
 
 ##### Interactive HTML
-FoldMason generates a HTML MSA visualisation automatically when using the `easy-msa`. The following will produce `result.fasta` and `result.html`.
+FoldMason generates a HTML MSA visualisation when using `easy-msa` with `--report-mode 1`. The following will produce `result.fasta` and `result.html`.
 
 ```
-foldmason easy-msa <PDB/mmCIF files> result tmpFolder
+foldmason easy-msa <PDB/mmCIF files> result tmpFolder --report-mode 1
 ```
 
 Internally, this happens using the `msa2lddtreport` module.
 
 ```
 foldmason msa2lddtreport myDb result.fa result.html
+```
+
+Additionally, you can generate a JSON data file which can be loaded into the webserver (`--report-mode 2` for `easy-msa`).
+
+```
+foldmason msa2lddtjson myDb result.fa result.json
 ```
 
 <p align="center"><img src="./.github/html.gif" height="400"/></p>
