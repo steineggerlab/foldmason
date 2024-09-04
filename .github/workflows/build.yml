@@ -37,7 +37,7 @@ jobs:
           ${{ github.workspace }}/regression/run_regression.sh ${{ github.workspace }}/build/foldmason ${{ github.workspace }}/scratch
 
       - name: Upload MacOS Universal
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: foldmason-darwin-universal
           path: ${{ github.workspace }}/build/foldmason
@@ -113,7 +113,7 @@ jobs:
 
       - name: Upload Linux
         if: matrix.STATIC == 1
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: foldmason-linux-${{ matrix.SIMD }}
           path: build/src/foldmason
@@ -164,7 +164,7 @@ jobs:
           make -j $(nproc --all)
 
       - name: Upload Linux Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: foldmason-linux-${{ matrix.SIMD }}
           path: build/src/foldmason
