@@ -185,7 +185,7 @@ jobs:
 
       # MacOS
       - name: Download foldmason-darwin-universal Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: foldmason-darwin-universal
           path: foldmason/bin
@@ -197,7 +197,7 @@ jobs:
 
       # Linux SSE41
       - name: Download foldmason-linux-SSE4_1 Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: foldmason-linux-SSE4_1
           path: foldmason/bin
@@ -209,7 +209,7 @@ jobs:
 
       # Linux SSE2
       - name: Download foldmason-linux-SSE2 Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: foldmason-linux-SSE2
           path: foldmason/bin
@@ -221,7 +221,7 @@ jobs:
 
       # Linux AVX2
       - name: Download foldmason-linux-AVX2 Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: foldmason-linux-AVX2
           path: foldmason/bin
@@ -233,7 +233,7 @@ jobs:
 
       # Linux ARM64
       - name: Download foldmason-linux-ARM8 Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: foldmason-linux-ARM8
           path: foldmason/bin
