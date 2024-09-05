@@ -1136,7 +1136,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     IndexReader qdbrH(par.db1, par.threads, IndexReader::HEADERS, touch ? IndexReader::PRELOAD_INDEX : 0);
     
     Debug(Debug::INFO) << "Got databases\n";
-
+    
     SubstitutionMatrix subMat_3di(par.scoringMatrixFile.values.aminoacid().c_str(), par.bitFactor3Di, par.scoreBias3di);
     std::string blosum;
     for (size_t i = 0; i < par.substitutionMatrices.size(); i++) {
@@ -1148,6 +1148,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             free(serializedMatrix);
         }
     }
+
     SubstitutionMatrix subMat_aa(blosum.c_str(), par.bitFactorAa, par.scoreBiasAa);
 
     Debug(Debug::INFO) << "Got substitution matrices\n";
@@ -1632,8 +1633,11 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             
             // Don't make profiles on final alignment
             if (i == merges.size() - 1 && j == merges[i] - 1) {
+#pragma omp critical
+{
                 profiles.erase(targetId);
                 profiles.erase(mergedId);
+}
                 continue;
             }
 
@@ -1679,8 +1683,10 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 par.wg
             );
             assert(profile_aa.length() == profile_3di.length());
+#pragma omp critical
             profiles[mergedId] = std::make_pair(profile_aa, profile_3di);
             if (targetIsProfile) {
+#pragma omp critical
                 profiles.erase(targetId);
             }
         }
