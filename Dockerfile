@@ -53,6 +53,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=builder /opt/build/${APP}_arch /opt/build/${APP}_sse2 /opt/build/${APP}_avx2 /usr/local/bin/
 ADD util/${APP}_wrapper.sh /usr/local/bin/entrypoint
+RUN chmod +x /usr/local/bin/entrypoint
 RUN if [ "$TARGETARCH" = "arm64" ]; then rm -f /usr/local/bin/entrypoint; ln -s /usr/local/bin/${APP}_arch /usr/local/bin/entrypoint; fi
 
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
