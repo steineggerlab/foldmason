@@ -79,6 +79,8 @@ void MSAContainer::remove(std::vector<size_t> &toRemove) {
 }
 
 void MSAContainer::addStructure(size_t id, unsigned int key, size_t length, const char* aa, const char* ss) {
+    cigars_aa[id].reserve(length);
+    cigars_ss[id].reserve(length);
     for (size_t j = 0; j < length; j++) {
         cigars_aa[id].emplace_back(aa[j]);
         cigars_ss[id].emplace_back(ss[j]);

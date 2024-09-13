@@ -185,7 +185,7 @@ double calculate_lddt_pair(
         &targetCaData[result.dbLen * 2]
     );
 
-    double sum;
+    double sum = 0.0;
     for (int i = 0; i < lddtres.scoreLength; i++) {
         sum += lddtres.perCaLddtScore[i];
     }
