@@ -184,6 +184,7 @@ double calculate_lddt_pair(
         &targetCaData[result.dbLen],
         &targetCaData[result.dbLen * 2]
     );
+    delete lddtcalculator;
 
     double sum = 0.0;
     for (int i = 0; i < lddtres.scoreLength; i++) {
