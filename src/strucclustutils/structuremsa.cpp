@@ -1337,8 +1337,10 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     std::vector<SubMSA> globalSubMSAs;
     std::vector<size_t> globalToRemove;
     int index = 0; // in hit list
+    size_t maxMerges = *std::max_element(merges.begin(), merges.end());
+    int maxThreads = std::min(par.threads, static_cast<int>(maxMerges));
 
-#pragma omp parallel num_threads(par.threads)
+#pragma omp parallel num_threads(maxThreads)
 {
     unsigned int thread_idx = 0;
 #ifdef OPENMP
