@@ -30,7 +30,6 @@ void refineMany(
     std::string qid,
     float pairThreshold,
     std::vector<size_t> indices,
-    std::vector<int> lengths,
     int seed
 );
 void deleteGapCols(std::vector<std::string> &sequences);

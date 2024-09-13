@@ -1,4 +1,8 @@
+#ifndef STRUCTUREMSA_H
+#define STRUCTUREMSA_H
+
 #include <iostream>
+#include "MSA.h"
 #include "Matcher.h"
 #include "PSSMCalculator.h"
 #include "MsaFilter.h"
@@ -6,56 +10,37 @@
 #include "StructureSmithWaterman.h"
 #include "Sequence.h"
 
-#ifndef STRUCTUREMSA_H
-#define STRUCTUREMSA_H
-
 enum State {
     SEQ = 0,
     GAP = 1
 };
 
-// Bit field version
-// First bit      = match or gap
-// Remaining bits = ASCII character or (gap) count
-union Instruction {
-    struct BitFields {
-        std::uint8_t state : 1;  // 0 = match, 1 = gap
-        std::uint8_t count : 7;  // count < 127
-    } bits;
-    unsigned char data;
-    Instruction() {
-        data = 0;
-    }
-    Instruction(int state, int count) {
-        data = 0;
-        bits.state = static_cast<std::uint8_t>(state);
-        bits.count = static_cast<std::uint8_t>(count);
-    }
-    Instruction(char c) {
-        data = 0;
-        bits.state = static_cast<std::uint8_t>(0);
-        bits.count = static_cast<std::uint8_t>(c);
-    }
-    Instruction(int count) {
-        data = 0;
-        bits.state = static_cast<std::uint8_t>(1);
-        bits.count = static_cast<std::uint8_t>(count);
-    }
-    char getCharacter() const {
-        return (bits.state == 0) ? static_cast<char>(bits.count) : '-';
-    }
-    bool isSeq() const {
-        return (bits.state == 0);
-    }
-    bool isFull() const {
-        return (bits.count == 127);
-    }
+// Query-oriented, just swap gaps/sequences for target
+struct GapData {
+    size_t preSequence;
+    size_t preGaps;
+    size_t endSequence;
+    size_t endGaps;
 };
+
+GapData getGapData(const Matcher::result_t &res, const std::vector<size_t>& qMap, const std::vector<size_t>& tMap);
+
+void updateCIGARs(
+    Matcher::result_t& result,
+    std::vector<size_t>& map1,
+    std::vector<size_t>& map2,
+    std::vector<std::vector<Instruction> >& cigars_aa,
+    std::vector<std::vector<Instruction> >& cigars_ss,
+    std::vector<size_t>& q_members,
+    std::vector<size_t>& t_members,
+    std::vector<Instruction>& q_ins,
+    std::vector<Instruction>& t_ins
+);
 
 void getMergeInstructions(
     Matcher::result_t &res,
-    std::vector<int> &map1,
-    std::vector<int> &map2,
+    std::vector<size_t> &map1,
+    std::vector<size_t> &map2,
     std::vector<Instruction> &qBt,
     std::vector<Instruction> &tBt
 );
@@ -73,13 +58,12 @@ Matcher::result_t pairwiseAlignment(
     int compBiasCorrection
 );
 
-std::vector<int> maskToMapping(std::string mask);
-int cigarLength(std::vector<Instruction> &cigar, bool withGaps);
+void maskToMapping(const std::string &mask, std::vector<size_t> &mapping);
+int cigarLength(const std::vector<Instruction> &cigar, bool withGaps);
 
 std::string computeProfileMask(
     std::vector<size_t> &indices,
     std::vector<std::vector<Instruction> > &cigars,
-    std::vector<int> &lengths,
     SubstitutionMatrix &subMat,
     float matchRatio
 );
@@ -102,20 +86,8 @@ std::string msa2profile(
     bool wg
 );
 
-void updateCIGARS(
-    std::vector<size_t> &group1,
-    std::vector<size_t> &group2,
-    std::vector<std::vector<Instruction> > &cigars_aa,
-    std::vector<std::vector<Instruction> > &cigars_ss,
-    Matcher::result_t &res,
-    std::vector<int> map1,
-    std::vector<int> map2,
-    std::vector<Instruction> &qBt,
-    std::vector<Instruction> &tBt
-);
-
-std::vector<Instruction> contract(std::string sequence);
-std::string expand(std::vector<Instruction> &instructions);
+std::vector<Instruction> contract(const std::string& sequence);
+std::string expand(const std::vector<Instruction> &instructions);
 
 void copyInstructions(std::vector<Instruction> &one, std::vector<Instruction> &two);
 void copyInstructionVectors(std::vector<std::vector<Instruction> > &one, std::vector<std::vector<Instruction> > &two);

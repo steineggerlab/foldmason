@@ -109,7 +109,6 @@ void refineOne(
     MsaFilter &filter_3di,
     SubstitutionMatrix &subMat_3di,
     StructureSmithWaterman &structureSmithWaterman,
-    std::vector<int> &seqLens,
     bool filterMsa,
     bool compBiasCorrection,
     std::string & qid,
@@ -162,10 +161,12 @@ void refineOne(
     deleteGapCols(group2, cigars_aa, cigars_ss);
     
     // generate masks for each sub MSA
-    std::string mask1 = computeProfileMask(group1, cigars_aa, seqLens, subMat_aa, 1.0);
-    std::string mask2 = computeProfileMask(group2, cigars_aa, seqLens, subMat_aa, 1.0);
-    std::vector<int> map1 = maskToMapping(mask1);
-    std::vector<int> map2 = maskToMapping(mask2);
+    std::string mask1 = computeProfileMask(group1, cigars_aa, subMat_aa, 1.0);
+    std::string mask2 = computeProfileMask(group2, cigars_aa, subMat_aa, 1.0);
+    std::vector<size_t> map1;
+    std::vector<size_t> map2;
+    maskToMapping(mask1, map1);
+    maskToMapping(mask2, map2);
 
     // msa2profile
     std::string profile1_aa = msa2profile(
@@ -227,10 +228,7 @@ void refineOne(
     std::vector<Instruction> qBt;
     std::vector<Instruction> tBt;
     getMergeInstructions(result, map1, map2, qBt, tBt);
-    updateCIGARS(group1, group2, cigars_aa, cigars_ss, result, map1, map2, qBt, tBt);
-    
-    // testSeqLens(group1, cigars_aa, seqLens);
-    // testSeqLens(group2, cigars_aa, seqLens);
+    updateCIGARs(result, map1, map2, cigars_aa, cigars_ss, group1, group2, qBt, tBt);
 }
 
 void refineMany(
@@ -261,7 +259,6 @@ void refineMany(
     std::string qid,
     float pairThreshold,
     std::vector<size_t> indices,
-    std::vector<int> lengths,
     int seed
 ) {
     std::cout << "Running " << iterations << " refinement iterations\n";
@@ -271,7 +268,7 @@ void refineMany(
         subset[i] = i;
     }
 
-    float prevLDDT = std::get<2>(calculate_lddt(cigars_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
+    float prevLDDT = std::get<2>(calculate_lddt(cigars_aa, subset, indices, seqDbrCA, pairThreshold));
     float initLDDT = prevLDDT;
     std::cout << "Initial LDDT: " << prevLDDT << '\n';
 
@@ -301,13 +298,13 @@ void refineMany(
             cigars_new_aa, cigars_new_ss,
             calculator_aa, filter_aa, subMat_aa,
             calculator_3di, filter_3di, subMat_3di,
-            structureSmithWaterman, lengths, filterMsa, compBiasCorrection,
+            structureSmithWaterman, filterMsa, compBiasCorrection,
             qid, filterMaxSeqId, Ndiff, covMSAThr, qsc, filterMinEnable,
             wg, gapExtend, gapOpen,
             sequences_aa, sequences_ss,
             rng
         );
-        float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, lengths, seqDbrCA, pairThreshold));
+        float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, seqDbrCA, pairThreshold));
         // std::cout << std::fixed << std::setprecision(4) << "New LDDT: " << lddtScore << '\t' << "(" << i + 1 << ")\n";
         // for (std::vector<Instruction> &ins : cigars_new_aa) {
         //     std::cout << expand(ins) << '\n';
@@ -356,12 +353,11 @@ int refinemsa(int argc, const char **argv, const Command& command) {
     std::vector<std::vector<Instruction> > cigars_aa;
     std::vector<std::vector<Instruction> > cigars_ss;
     std::vector<size_t> indices;
-    std::vector<int> lengths;
     std::vector<std::string> headers;
     int alnLength = 0;
 
     KSeqWrapper* kseq = KSeqFactory(par.db2.c_str());
-    parseFasta(kseq, &seqDbrAA, &seqDbr3Di, headers, indices, lengths, cigars_aa, cigars_ss, alnLength);
+    parseFasta(kseq, &seqDbrAA, &seqDbr3Di, headers, indices, cigars_aa, cigars_ss, alnLength);
     std::cout << "Parsed FASTA\n";
 
     int sequenceCnt = cigars_aa.size();
@@ -411,7 +407,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
         structureSmithWaterman, par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
         par.qsc, par.Ndiff, par.covMSAThr,
         par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
-        par.maxSeqLen, par.qid, par.pairThreshold, indices, lengths, par.refinementSeed
+        par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed
     );
     
     // Write final MSA to file

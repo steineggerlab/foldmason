@@ -5,4 +5,6 @@ set(commons_source_files
         commons/StructureSmithWaterman.h
         commons/newick.cpp
         commons/newick.h
+        commons/MSA.cpp
+        commons/MSA.h
         PARENT_SCOPE)

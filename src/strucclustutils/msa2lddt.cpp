@@ -21,6 +21,7 @@
 #include "KSeqWrapper.h"
 #include "LDDT.h"
 #include "Coordinate16.h"
+#include "MSA.h"
 #include "structuremsa.h"
 
 #ifdef OPENMP
@@ -58,12 +59,13 @@ std::string getXYZstring(size_t index, int length, DBReader<unsigned int> *db) {
 }
 
 Matcher::result_t makeMockAlignment(
-    Matcher::result_t &result,
-    std::vector<Instruction> &instructions1,
-    std::vector<Instruction> &instructions2,
+    const std::vector<Instruction>& instructions1,
+    const std::vector<Instruction>& instructions2,
     std::vector<int> &match_to_msa,
     int alnLength
 ) {
+    Matcher::result_t result;
+
     result.backtrace = "";
 
     // current instruction index
@@ -124,7 +126,6 @@ Matcher::result_t makeMockAlignment(
             count2 = 0;
         }
     }
-    
     return result;
 }
 
@@ -149,14 +150,108 @@ std::vector<int> countColumns(
     return counts;
 }
 
+double calculate_lddt_pair(
+    size_t q_key,
+    size_t t_key,
+    Matcher::result_t& result,
+    DBReader<unsigned int> * seqDbrCA,
+    int thread_idx
+) {
+    // full alignment length, not just aligned region
+    // also required for averaging LDDT at end
+    size_t alnLength = result.alnLength + result.qStartPos + result.dbStartPos + (result.qLen - result.qEndPos) + (result.dbLen - result.dbEndPos);
+    LDDTCalculator *lddtcalculator = new LDDTCalculator(alnLength, alnLength);
+
+    Coordinate16 qcoords;
+    size_t q_id = seqDbrCA->getId(q_key); 
+    char *qcadata = seqDbrCA->getData(q_id, thread_idx);
+    size_t qCaLength = seqDbrCA->getEntryLen(q_id);
+    float *queryCaData = qcoords.read(qcadata, result.qLen, qCaLength);
+    lddtcalculator->initQuery(result.qLen, queryCaData, &queryCaData[result.qLen], &queryCaData[result.qLen * 2]);
+
+    Coordinate16 tcoords;
+    size_t t_id = seqDbrCA->getId(t_key);
+    char *tcadata = seqDbrCA->getData(t_id, thread_idx);
+    size_t tCaLength = seqDbrCA->getEntryLen(t_id);
+    float *targetCaData = tcoords.read(tcadata, result.dbLen, tCaLength);
+
+    LDDTCalculator::LDDTScoreResult lddtres = lddtcalculator->computeLDDTScore(
+        result.dbLen,
+        result.qStartPos,
+        result.dbStartPos,
+        result.backtrace,
+        targetCaData,
+        &targetCaData[result.dbLen],
+        &targetCaData[result.dbLen * 2]
+    );
+
+    double sum;
+    for (int i = 0; i < lddtres.scoreLength; i++) {
+        sum += lddtres.perCaLddtScore[i];
+    }
+
+    return sum / alnLength;
+}
+
+double calculate_lddt_pair(
+    std::vector<Instruction> &q_cigar,
+    std::vector<Instruction> &t_cigar,
+    size_t q_key,
+    size_t t_key,
+    DBReader<unsigned int> * seqDbrCA,
+    int thread_idx
+) {
+    int alnLength = cigarLength(q_cigar, true); 
+    LDDTCalculator *lddtcalculator = new LDDTCalculator(alnLength, alnLength);
+
+    Coordinate16 qcoords;
+    int q_length = cigarLength(q_cigar, false); 
+    size_t q_id = seqDbrCA->getId(q_key); 
+    char *qcadata = seqDbrCA->getData(q_id, thread_idx);
+    size_t qCaLength = seqDbrCA->getEntryLen(q_id);
+    float *queryCaData = qcoords.read(qcadata, q_length, qCaLength);
+    lddtcalculator->initQuery(q_length, queryCaData, &queryCaData[q_length], &queryCaData[q_length * 2]);
+
+    Coordinate16 tcoords;
+    int t_length = cigarLength(t_cigar, false); 
+    size_t t_id = seqDbrCA->getId(t_key);
+    char *tcadata = seqDbrCA->getData(t_id, thread_idx);
+    size_t tCaLength = seqDbrCA->getEntryLen(t_id);
+    float *targetCaData = tcoords.read(tcadata, t_length, tCaLength);
+
+    std::vector<int> match_to_msa;
+    match_to_msa.reserve(q_length);
+    Matcher::result_t result = makeMockAlignment(q_cigar, t_cigar, match_to_msa, alnLength);
+    result.backtrace.shrink_to_fit();
+    size_t k;
+    for (k = result.backtrace.length() - 1; result.backtrace[k] != 'M'; k--);
+    result.backtrace.erase(k + 1);
+
+    LDDTCalculator::LDDTScoreResult lddtres = lddtcalculator->computeLDDTScore(
+        t_length,
+        result.qStartPos,
+        result.dbStartPos,
+        result.backtrace,
+        targetCaData,
+        &targetCaData[t_length],
+        &targetCaData[t_length * 2]
+    );
+
+    return lddtres.avgLddtScore;
+}
+
 std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     std::vector<std::vector<Instruction> > &cigars,
-    std::vector<size_t> subset,
-    std::vector<size_t> &indices,
-    std::vector<int> &lengths,
+    std::vector<size_t> &subset,
+    std::vector<size_t> &keys,
     DBReader<unsigned int> * seqDbrCA,
     float pairThreshold
 ) {
+    // mapping:
+    // cigar vectors can be any size
+    // subset vector = indices of cigars in cigar vectors to calculate lddt on
+    // keys vector = db keys (not ids) of selected ids for lookups
+
     int alnLength = cigarLength(cigars[subset[0]], true); 
     
     // Track per-column scores and no. non-gaps to avg
@@ -168,7 +263,7 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     
     // Sort subset vector by indices so we can initQuery in outer loop
     // AND ensure it is only ever done in one direction
-    std::sort(subset.begin(), subset.end(), [&indices](int a, int b){ return indices[a] < indices[b]; });
+    std::sort(subset.begin(), subset.end(), [&keys](int a, int b) { return keys[a] < keys[b]; });
     
 #pragma omp parallel reduction(+:sum) reduction(vsum:perColumnScore,perColumnCount)
 {
@@ -184,16 +279,21 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
 #pragma omp for schedule(dynamic, 1)
     for (size_t i = 0; i < subset.size(); i++) {
         size_t i_idx = subset[i]; 
-        char *qcadata = seqDbrCA->getData(indices[i_idx], thread_idx);
-        size_t qCaLength = seqDbrCA->getEntryLen(indices[i_idx]);
-        float *queryCaData = qcoords.read(qcadata, lengths[i_idx], qCaLength);
+        size_t i_key = keys[i_idx];
+        const std::vector<Instruction>& i_cigar = cigars[i_idx];
+        size_t i_length = cigarLength(i_cigar, false);
+        size_t i_id = seqDbrCA->getId(i_key); 
+        char *qcadata = seqDbrCA->getData(i_id, thread_idx);
+        size_t qCaLength = seqDbrCA->getEntryLen(i_id);
+        float *queryCaData = qcoords.read(qcadata, i_length, qCaLength);
+
         Matcher::result_t result;
 
         lddtcalculator->initQuery(
-            lengths[i_idx],
+            i_length,
             queryCaData,
-            &queryCaData[lengths[i_idx]],
-            &queryCaData[lengths[i_idx] * 2]
+            &queryCaData[i_length],
+            &queryCaData[i_length * 2]
         );
 
         // indices of matches in gappy msa
@@ -202,17 +302,21 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
 
         for (size_t j = i + 1; j < subset.size(); j++) {
             size_t j_idx = subset[j];
-            char *tcadata = seqDbrCA->getData(indices[j_idx], thread_idx);
-            size_t tCaLength = seqDbrCA->getEntryLen(indices[j_idx]);
-            float *targetCaData = tcoords.read(tcadata, lengths[j_idx], tCaLength);
+            size_t j_key = keys[j_idx];
+            const std::vector<Instruction> &j_cigar = cigars[j_idx];
+            size_t j_length = cigarLength(j_cigar, false);
+            size_t j_id = seqDbrCA->getId(j_key);
+            char *tcadata = seqDbrCA->getData(j_id, thread_idx);
+            size_t tCaLength = seqDbrCA->getEntryLen(j_id);
+            float *targetCaData = tcoords.read(tcadata, j_length, tCaLength);
 
-            assert(expand(cigars[i_idx]).length() == expand(cigars[j_idx]).length());
+            // assert(expand(i_cigar).length() == expand(j_cigar).length());
 
             // Generate a CIGAR string from qId-tId sub-alignment, ignoring -- columns
             // e.g. --X-XX-X---XX-
             //      Y---YYYY---YYY
             //          MMDM   MM
-            makeMockAlignment(result, cigars[i_idx], cigars[j_idx], match_to_msa, alnLength);
+            result = makeMockAlignment(i_cigar, j_cigar, match_to_msa, alnLength);
 
             // If no alignment between the two sequences, skip
             if (result.backtrace.length() == 0)
@@ -225,13 +329,13 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
             result.backtrace.erase(k + 1);
 
             LDDTCalculator::LDDTScoreResult lddtres = lddtcalculator->computeLDDTScore(
-                lengths[j_idx],
+                j_length,
                 result.qStartPos,
                 result.dbStartPos,
                 result.backtrace,
                 targetCaData,
-                &targetCaData[lengths[j_idx]],
-                &targetCaData[lengths[j_idx] * 2]
+                &targetCaData[j_length],
+                &targetCaData[j_length * 2]
             );
             
             if (std::isnan(lddtres.avgLddtScore)) {
@@ -284,13 +388,33 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     return std::make_tuple(perColumnScore, perColumnCount, lddtScore, numCols);
 }
 
+void fillCigars(
+    const char* aln_seq,
+    const char* aa_seq,
+    const char* ss_seq,
+    std::vector<Instruction>& aa_cigar,
+    std::vector<Instruction>& ss_cigar
+) {
+    std::vector<Instruction> base = contract(aln_seq);
+    int index = 0;
+    for (Instruction ins : base) {
+        if (ins.isSeq()) {
+            aa_cigar.emplace_back(aa_seq[index]);
+            ss_cigar.emplace_back(ss_seq[index]);
+            index++;
+        } else {
+            aa_cigar.emplace_back(static_cast<int>(ins.bits.count));
+            ss_cigar.emplace_back(static_cast<int>(ins.bits.count));
+        }
+    }
+}
+
 void parseFasta(
     KSeqWrapper *kseq,
     DBReader<unsigned int> * seqDbrAA,
     DBReader<unsigned int> * seqDbr3Di,
     std::vector<std::string> &headers,
     std::vector<size_t>      &indices,
-    std::vector<int>         &lengths,
     std::vector<std::vector<Instruction> > &cigars_aa,
     std::vector<std::vector<Instruction> > &cigars_ss,
     int &alnLength
@@ -306,29 +430,16 @@ void parseFasta(
         if (seqId3Di == UINT_MAX)
             Debug(Debug::WARNING) << "Key not found in seqDbr3di: " << key << "\n";
         headers.push_back(entry.name.s);
-        indices.push_back(seqIdAA);
-        std::string seqAA = seqDbrAA->getData(seqIdAA, 0);
-        seqAA.pop_back();
-        std::string seq3Di = seqDbr3Di->getData(seqId3Di, 0);
-        seq3Di.pop_back();
-        lengths.push_back(seqAA.length());
-
-        std::vector<Instruction> base = contract(entry.sequence.s);
-        std::vector<Instruction> cigar_aa;
-        std::vector<Instruction> cigar_ss;
-        int index = 0;
-        for (Instruction ins : base) {
-            if (ins.isSeq()) {
-                cigar_aa.emplace_back(seqAA[index]);
-                cigar_ss.emplace_back(seq3Di[index]);
-                index++;
-            } else {
-                cigar_aa.emplace_back(static_cast<int>(ins.bits.count));
-                cigar_ss.emplace_back(static_cast<int>(ins.bits.count));
-            }
-        }
-        cigars_aa.push_back(cigar_aa); 
-        cigars_ss.push_back(cigar_ss); 
+        indices.push_back(key);
+        cigars_aa.emplace_back(); 
+        cigars_ss.emplace_back(); 
+        fillCigars(
+            entry.sequence.s,
+            seqDbrAA->getData(seqIdAA, 0),
+            seqDbr3Di->getData(seqId3Di, 0),
+            cigars_aa.back(),
+            cigars_ss.back()
+        );
         if (alnLength == 0)
             alnLength = (int)entry.sequence.l;
     }
@@ -345,17 +456,16 @@ float getLDDTScore(
     int alnLength = 0;
     std::vector<std::string> hdrs;
     std::vector<size_t>      inds;
-    std::vector<int>         lens;
     std::vector<std::vector<Instruction> > cigars_aa;
     std::vector<std::vector<Instruction> > cigars_ss;
-    parseFasta(kseq, &seqDbrAA, &seqDbr3Di, hdrs, inds, lens, cigars_aa, cigars_ss, alnLength);
+    parseFasta(kseq, &seqDbrAA, &seqDbr3Di, hdrs, inds, cigars_aa, cigars_ss, alnLength);
     delete kseq;
 
     std::vector<float> perColumnScore;
     std::vector<int>   perColumnCount;
     float lddtScore;
     int numCols;
-    std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, inds, inds, lens, &seqDbrCA, pairThreshold);
+    std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, inds, inds, &seqDbrCA, pairThreshold);
 
     return lddtScore;
 }
@@ -392,10 +502,9 @@ int msa2lddt(int argc, const char **argv, const Command& command, int makeReport
     int alnLength = 0;
     std::vector<std::string> headers;
     std::vector<size_t> indices;
-    std::vector<int> lengths;
     std::vector<std::vector<Instruction> > cigars_aa;
     std::vector<std::vector<Instruction> > cigars_ss;
-    parseFasta(kseq, &seqDbrAA, &seqDbr3Di, headers, indices, lengths, cigars_aa, cigars_ss, alnLength);
+    parseFasta(kseq, &seqDbrAA, &seqDbr3Di, headers, indices, cigars_aa, cigars_ss, alnLength);
     delete kseq;
     
     // Calculate LDDT
@@ -405,11 +514,10 @@ int msa2lddt(int argc, const char **argv, const Command& command, int makeReport
     int numCols = 0;
     
     std::vector<size_t> subset(headers.size());
-    for (size_t i = 0; i < subset.size(); i++)
-        subset[i] = i;
+    std::iota(subset.begin(), subset.end(), 0);
     
     if (caExist) {
-        std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, subset, indices, lengths, seqDbrCA, par.pairThreshold);
+        std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, subset, indices, seqDbrCA, par.pairThreshold);
         std::string scores;
         for (float score : perColumnScore) {
             if (scores.length() > 0) scores += ",";
@@ -494,7 +602,8 @@ R"html(<!DOCTYPE html>
             entry.append(seq_ss);
             entry.append("\"");
             if (caExist) {
-                std::string seq_ca = getXYZstring(indices[i], lengths[i], seqDbrCA);
+                size_t length = std::count_if(seq_aa.begin(), seq_aa.end(), [](char c) { return (c != '-'); });
+                std::string seq_ca = getXYZstring(indices[i], length, seqDbrCA);
                 entry.append(",\"ca\": \"");
                 entry.append(seq_ca);
                 entry.append("\"");

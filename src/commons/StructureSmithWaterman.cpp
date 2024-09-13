@@ -877,6 +877,7 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
     // Adjust CIGAR string to start/end on M
     // q/dbStart and q/dbEnd are already correct, no need to adjust here
     // q/dbStart set to last M j/i, q/dbEnd last M .ref/.read
+    size_t alnLength = cigar.length();
     trimCIGAR(cigar, qEnd, dbEnd);
 
     delete[] workspace;
@@ -889,7 +890,7 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
         0,               // align.tCov,
         0,               // seqId
         0,               // align.evalue,
-        0,               // alnLength
+        alnLength,               // alnLength
         qStart,     
         qEnd,
         query_end,
