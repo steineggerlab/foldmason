@@ -160,14 +160,14 @@ double calculate_lddt_pair(
     // full alignment length, not just aligned region
     // also required for averaging LDDT at end
     size_t alnLength = result.alnLength + result.qStartPos + result.dbStartPos + (result.qLen - result.qEndPos) + (result.dbLen - result.dbEndPos);
-    LDDTCalculator *lddtcalculator = new LDDTCalculator(alnLength, alnLength);
+    LDDTCalculator lddtcalculator(alnLength, alnLength);
 
     Coordinate16 qcoords;
     size_t q_id = seqDbrCA->getId(q_key); 
     char *qcadata = seqDbrCA->getData(q_id, thread_idx);
     size_t qCaLength = seqDbrCA->getEntryLen(q_id);
     float *queryCaData = qcoords.read(qcadata, result.qLen, qCaLength);
-    lddtcalculator->initQuery(result.qLen, queryCaData, &queryCaData[result.qLen], &queryCaData[result.qLen * 2]);
+    lddtcalculator.initQuery(result.qLen, queryCaData, &queryCaData[result.qLen], &queryCaData[result.qLen * 2]);
 
     Coordinate16 tcoords;
     size_t t_id = seqDbrCA->getId(t_key);
@@ -175,7 +175,7 @@ double calculate_lddt_pair(
     size_t tCaLength = seqDbrCA->getEntryLen(t_id);
     float *targetCaData = tcoords.read(tcadata, result.dbLen, tCaLength);
 
-    LDDTCalculator::LDDTScoreResult lddtres = lddtcalculator->computeLDDTScore(
+    LDDTCalculator::LDDTScoreResult lddtres = lddtcalculator.computeLDDTScore(
         result.dbLen,
         result.qStartPos,
         result.dbStartPos,
@@ -184,7 +184,6 @@ double calculate_lddt_pair(
         &targetCaData[result.dbLen],
         &targetCaData[result.dbLen * 2]
     );
-    delete lddtcalculator;
 
     double sum = 0.0;
     for (int i = 0; i < lddtres.scoreLength; i++) {
