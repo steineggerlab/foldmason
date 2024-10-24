@@ -159,6 +159,15 @@ case "${SELECTION}" in
         push_back "${TMP_PATH}/cath50"
         INPUT_TYPE="FOLDSEEK_DB"
     ;;
+    "BFMD")
+        if notExists "${TMP_PATH}/bfmd.tar.gz"; then
+            downloadFile "https://foldseek.steineggerlab.workers.dev/bfmd.tar.gz" "${TMP_PATH}/bfmd.tar.gz"
+            downloadFile "https://foldseek.steineggerlab.workers.dev/bfmd.version" "${TMP_PATH}/version"
+        fi
+        tar xvfz "${TMP_PATH}/bfmd.tar.gz" -C "${TMP_PATH}"
+        push_back "${TMP_PATH}/bfmd"
+        INPUT_TYPE="FOLDSEEK_DB"
+    ;;
     "ProstT5")
         MODEL=prostt5-f16-safetensors.tar.gz
         if [ -n "${PROSTT5_QUANTIZED}" ]; then
@@ -173,6 +182,14 @@ case "${SELECTION}" in
         tar xvfz "${TMP_PATH}/${MODEL}" -C "${OUTDB}"
         INPUT_TYPE="MODEL_WEIGHTS"
     ;;
+    "BFVD")
+        if notExists "${TMP_PATH}/bfvd.tar.gz"; then
+            downloadFile "https://bfvd.steineggerlab.workers.dev/bfvd_foldseekdb.tar.gz" "${TMP_PATH}/bfvd.tar.gz"
+            downloadFile "https://bfvd.steineggerlab.workers.dev/bfvd.version" "${TMP_PATH}/version"
+        fi
+        tar xvfz "${TMP_PATH}/bfvd.tar.gz" -C "${TMP_PATH}"
+        push_back "${TMP_PATH}/bfvd"
+        INPUT_TYPE="FOLDSEEK_DB"
 esac
 
 if notExists "${OUTDB}.dbtype"; then
