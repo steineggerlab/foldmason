@@ -38,6 +38,8 @@
 #include "newick.h"
 #include "MSA.h"
 
+#include "Fwbw.h"
+
 #ifdef OPENMP
 #include <omp.h>
 #endif
@@ -166,6 +168,29 @@ Matcher::result_t pairwiseAlignment(
         gapOpen,
         gapExtend
     );
+    
+    size_t length = 16;
+    size_t blocks = (target_aa->L / length) + (target_aa->L % length != 0);
+    float mact = 0.035;
+    FwBwAligner fwbwAligner(query_aa->L, target_aa->L, length, blocks, subMat);
+    FwBwAligner::s_align fwbwResult = fwbwAligner.align(
+        query_aa_seq,
+        query_3di_seq,
+        target_aa_seq,
+        target_3di_seq,
+        query_aa->L,
+        target_aa->L,
+        aligner->length,
+        aligner->blocks,
+        length,
+        blocks,
+        query_profile_scores_aa,
+        query_profile_scores_3di,
+        target_profile_scores_aa,
+        target_profile_scores_3di,
+        mact 
+    );
+    std::cout << fwbwResult.cigar << '\n';
 
     for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
         delete[] query_profile_scores_aa[i];

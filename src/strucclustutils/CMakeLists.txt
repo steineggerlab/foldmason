@@ -5,5 +5,7 @@ set(strucclustutils_source_files
 	strucclustutils/refinemsa.h
 	strucclustutils/msa2lddt.cpp
 	strucclustutils/msa2lddt.h
+	strucclustutils/Fwbw.cpp
+	strucclustutils/Fwbw.h
         PARENT_SCOPE
         )
