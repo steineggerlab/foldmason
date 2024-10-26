@@ -76,10 +76,10 @@ Matcher::result_t pairwiseAlignment(
     bool targetIsProfile = (Parameters::isEqualDbtype(target_aa->getSeqType(), Parameters::DBTYPE_HMM_PROFILE));
     bool queryIsProfile = (Parameters::isEqualDbtype(query_aa->getSeqType(), Parameters::DBTYPE_HMM_PROFILE));
 
-    unsigned char * query_aa_seq = query_aa->numSequence;
-    unsigned char * query_3di_seq = query_3di->numSequence;
-    unsigned char * target_aa_seq = target_aa->numSequence;
-    unsigned char * target_3di_seq = target_3di->numSequence;
+    unsigned char* query_aa_seq = query_aa->numSequence;
+    unsigned char* query_3di_seq = query_3di->numSequence;
+    unsigned char* target_aa_seq = target_aa->numSequence;
+    unsigned char* target_3di_seq = target_3di->numSequence;
     if (queryIsProfile) {
         query_aa_seq = query_aa->numConsensusSequence;
         query_3di_seq = query_3di->numConsensusSequence;
@@ -89,9 +89,9 @@ Matcher::result_t pairwiseAlignment(
         target_3di_seq = target_3di->numConsensusSequence;
     }
 
-    float *composition_bias_aa  = new float[query_aa->L];
-    float *composition_bias_ss  = new float[query_aa->L];
-    float *tmp_composition_bias = new float[query_aa->L];
+    float* composition_bias_aa  = new float[query_aa->L];
+    float* composition_bias_ss  = new float[query_aa->L];
+    float* tmp_composition_bias = new float[query_aa->L];
     if (compBiasCorrection) {
         SubstitutionMatrix::calcLocalAaBiasCorrection(mat_aa, query_aa->numSequence, query_aa->L, tmp_composition_bias, 1.0);
         for (int i =0; i < query_aa->L; i++) {
@@ -171,8 +171,8 @@ Matcher::result_t pairwiseAlignment(
     
     size_t length = 16;
     size_t blocks = (target_aa->L / length) + (target_aa->L % length != 0);
-    float mact = 0.035;
-    FwBwAligner fwbwAligner(query_aa->L, target_aa->L, length, blocks, subMat);
+    float mact = 0.005;
+    FwBwAligner fwbwAligner(query_aa->L, target_aa->L, length, blocks);
     FwBwAligner::s_align fwbwResult = fwbwAligner.align(
         query_aa_seq,
         query_3di_seq,
@@ -180,8 +180,6 @@ Matcher::result_t pairwiseAlignment(
         target_3di_seq,
         query_aa->L,
         target_aa->L,
-        aligner->length,
-        aligner->blocks,
         length,
         blocks,
         query_profile_scores_aa,
@@ -190,7 +188,33 @@ Matcher::result_t pairwiseAlignment(
         target_profile_scores_3di,
         mact 
     );
-    std::cout << fwbwResult.cigar << '\n';
+    std::cout << "Gotoh: " << gAlign.backtrace << '\n';
+    std::cout << "FWBW:  " << fwbwResult.cigar << '\n';
+
+    std::cout << "# Gotoh\n";
+    std::cout << "qStart:  " << gAlign.qStartPos << '\n';
+    std::cout << "qEnd:    " << gAlign.qEndPos << '\n';
+    std::cout << "qLen:    " << gAlign.qLen << '\n';
+    std::cout << "dbStart: " << gAlign.dbStartPos << '\n';
+    std::cout << "dbEnd:   " << gAlign.dbEndPos << '\n';
+    std::cout << "dbLen:   " << gAlign.dbLen << '\n';
+    std::cout << "alnLen:  " << gAlign.alnLength << '\n';
+
+    gAlign.backtrace = fwbwResult.cigar;
+    gAlign.qStartPos = fwbwResult.qStartPos1;
+    gAlign.qEndPos = fwbwResult.qEndPos1;
+    gAlign.dbStartPos = fwbwResult.dbStartPos1;
+    gAlign.dbEndPos = fwbwResult.dbEndPos1;
+    gAlign.alnLength = fwbwResult.cigarLen;
+    
+    std::cout << "# FWBW\n";
+    std::cout << "qStart:  " << gAlign.qStartPos << '\n';
+    std::cout << "qEnd:    " << gAlign.qEndPos << '\n';
+    std::cout << "qLen:    " << gAlign.qLen << '\n';
+    std::cout << "dbStart: " << gAlign.dbStartPos << '\n';
+    std::cout << "dbEnd:   " << gAlign.dbEndPos << '\n';
+    std::cout << "dbLen:   " << gAlign.dbLen << '\n';
+    std::cout << "alnLen:  " << gAlign.alnLength << '\n';
 
     for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
         delete[] query_profile_scores_aa[i];
@@ -776,7 +800,9 @@ void getMergeInstructions(
     int t = res.dbStartPos + 1;
  
     // Generate instructions for query/target sequences from backtrace
+    Debug(Debug::INFO) << res.backtrace << '\n';
     for (size_t i = 1; i < res.backtrace.length(); ++i) {
+        // Debug(Debug::INFO) << map1.size() << '\t' << q << '\t' << map2.size() << '\t' << t << '\t' << res.backtrace[i] << '\n';
         switch (res.backtrace[i]) {
             case 'M': {
                 new_q = map1[q];
@@ -811,11 +837,11 @@ void getMergeInstructions(
                 break;
             }
             case 'I': {
-                ++q;
+                ++t;
                 break;
             }
             case 'D': {
-                ++t;
+                ++q;
                 break;
             }
         }
@@ -1526,13 +1552,14 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             getMergeInstructions(res, map1, map2, qBt, tBt);
 
             // If neither are profiles, do TM-align as well and take the best alignment
-            if (caExist && !queryIsProfile && !targetIsProfile) {
+            if (false && caExist && !queryIsProfile && !targetIsProfile) {
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
                 double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
                 if (lddtTM > lddt3Di) {
                     qBt.clear();
                     tBt.clear();
+                    Debug(Debug::INFO) << "# TMalign\n";
                     getMergeInstructions(tmRes, map1, map2, qBt, tBt);
                     std::swap(res, tmRes);
                 }

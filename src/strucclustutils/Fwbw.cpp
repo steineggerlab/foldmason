@@ -35,8 +35,7 @@ inline void calculate_max4(float& max, float& term1, float& term2, float& term3,
     if (term4 > max) { max = term4; state = States::I; };
 }
 
-FwBwAligner::FwBwAligner(size_t queryLen, size_t targetLen, size_t length, size_t blocks,
-                         SubstitutionMatrix &subMat){
+FwBwAligner::FwBwAligner(size_t queryLen, size_t targetLen, size_t length, size_t blocks){
 
     zmForward = malloc_matrix<float>(queryLen, targetLen);
     zeForward = malloc_matrix<float>(queryLen, targetLen);
@@ -64,13 +63,6 @@ FwBwAligner::FwBwAligner(size_t queryLen, size_t targetLen, size_t length, size_
     zmaxBackward = static_cast<float*>(malloc((queryLen + 1) * sizeof(float)));
     memset(zmaxBackward, 0, (queryLen + 1) * sizeof(float)); 
 
-    // mat3di = malloc_matrix<float>(21, 21);
-    blosum = malloc_matrix<float>(21, 21);
-    for (int i = 0; i < subMat.alphabetSize; ++i) {
-        for (int j = 0; j < subMat.alphabetSize; ++j) {
-            blosum[i][j] = static_cast<float>(subMat.subMatrix[i][j]);
-        }
-    }
     //Debug: print blosum
     // std::cout << "blosum" << std::endl;
     // for (int i = 0; i < 21; ++i) {
@@ -83,10 +75,10 @@ FwBwAligner::FwBwAligner(size_t queryLen, size_t targetLen, size_t length, size_
 
 
 void FwBwAligner::computeForwardScoreMatrix(
-    unsigned char * query_aa_seq,
-    unsigned char * query_3di_seq,
-    unsigned char * target_aa_seq,
-    unsigned char * target_3di_seq,
+    unsigned char* query_aa_seq,
+    unsigned char* query_3di_seq,
+    unsigned char* target_aa_seq,
+    unsigned char* target_3di_seq,
     unsigned int queryLen,
     unsigned int targetLen,
     short** query_profile_scores_aa,
@@ -97,15 +89,15 @@ void FwBwAligner::computeForwardScoreMatrix(
     float ** scoreForward
 ) {
     for (size_t i = 0; i < queryLen; ++i) {
-        const short *query_profile_aa  = query_profile_scores_aa[target_aa_seq[i]];
-        const short *query_profile_3di = query_profile_scores_3di[target_3di_seq[i]];
+        const short* target_profile_aa = target_profile_scores_aa[query_aa_seq[i]];
+        const short* target_profile_3di = target_profile_scores_3di[query_3di_seq[i]]; 
         for (size_t j = 0; j < targetLen; ++j) {
-            const short *target_profile_aa = target_profile_scores_aa[query_aa_seq[j-1]];
-            const short *target_profile_3di = target_profile_scores_3di[query_3di_seq[j-1]]; 
+            const short* query_profile_aa  = query_profile_scores_aa[target_aa_seq[j]];
+            const short* query_profile_3di = query_profile_scores_3di[target_3di_seq[j]];
             scoreForward[i][j] = static_cast<float>(
-                (static_cast<float>(query_profile_aa[j-1]) + static_cast<float>(target_profile_aa[i])) / 2.0
-                + (static_cast<float>(query_profile_3di[j-1]) + static_cast<float>(target_profile_3di[i])) / 2.0
-            );
+                (static_cast<float>(query_profile_aa[i]) + static_cast<float>(target_profile_aa[j])) / 2.0
+                + (static_cast<float>(query_profile_3di[i]) + static_cast<float>(target_profile_3di[j])) / 2.0
+            ) / 2.0;
             scoreForward[i][j] = exp(scoreForward[i][j] / T);
         }
     }
@@ -129,9 +121,8 @@ FwBwAligner::~FwBwAligner(){
     free(zmaxBackward);
     free(vj);
     free(wj);
-    free(blosum);
+    // free(blosum);
 }
-
 
 FwBwAligner::s_align FwBwAligner::align(
     unsigned char * query_aa_seq,
@@ -174,11 +165,11 @@ FwBwAligner::s_align FwBwAligner::align(
     // std::cout << "scoreForward: " << std::endl;
     // for (size_t i = 0; i < queryLen; ++i) {
     //     for (size_t j = 0; j < targetLen; ++j) {
-    //         std::cout << scoreForward[i][j] << " ";
+    //         std::cout << std::fixed << std::setprecision(4) << scoreForward[i][j] << "\t";
     //     }
-
-    //     std::cout << std::endl;
+    //     std::cout << '\n';
     // }
+    // std::cout << '\n';
     // Debug: print scorebackward
     // std::cout << "scoreBackward" << std::endl;
     // for (size_t i = 0; i < queryLen; ++i) {
@@ -195,17 +186,28 @@ FwBwAligner::s_align FwBwAligner::align(
         vj[i] = exp(((length - 1) * ge + go - i * ge) / T);
         wj[i] = exp(((length - 1) * ge - i * ge) / T);
     }
+    
+    float fltmax = std::numeric_limits<float>::max();
 
     for (size_t i = 0; i < queryLen; ++i) {
         for (size_t j = 0; j < targetLen; ++j) {
-            zmForward[i][j] = -DBL_MAX;
-            zeForward[i][j] = -DBL_MAX;
-            zfForward[i][j] = -DBL_MAX;
-            zmBackward[i][j] = -DBL_MAX;
-            zeBackward[i][j] = -DBL_MAX;
-            zfBackward[i][j] = -DBL_MAX;
+            // zmForward[i][j]  = 0.0;
+            // zeForward[i][j]  = 0.0;
+            // zfForward[i][j]  = 0.0;
+            // zmBackward[i][j] = 0.0;
+            // zeBackward[i][j] = 0.0;
+            // zfBackward[i][j] = 0.0;
+            zmForward[i][j]  = -fltmax;
+            zeForward[i][j]  = -fltmax;
+            zfForward[i][j]  = -fltmax;
+            zmBackward[i][j] = -fltmax;
+            zeBackward[i][j] = -fltmax;
+            zfBackward[i][j] = -fltmax;
         }
     }
+    // zmForward[0][0] = 0.0;
+    // zeForward[0][0] = 0.0;
+    // zfForward[0][0] = 0.0;
 
     //initialize zInit
     float* zInitForward[3];
@@ -234,7 +236,7 @@ FwBwAligner::s_align FwBwAligner::align(
     }
 
     ///////////////////////////////////Backward////////////////////////////////////////
-    
+
     float* zInitBackward[3];
     zInitBackward[0] = new float[queryLen];
     zInitBackward[1] = new float[queryLen];
@@ -344,10 +346,10 @@ FwBwAligner::s_align FwBwAligner::align(
     float score_MAC = -std::numeric_limits<float>::max();
     for (size_t j = 0; j <= targetLen; ++j) {
         S_prev[j] = 0.0; 
-        S_curr[j] = 0.0;
+        // S_curr[j] = 0.0;
     }
-    btMatrix[0] = States::STOP;
     for (size_t i = 0; i < queryLen; ++i) {
+        S_curr[0] = 0.0;
         for (size_t j = 0; j < targetLen; ++j) {
             term1 = P[i][j] - mact;
             term2 = S_prev[j] + P[i][j] - mact;
@@ -355,19 +357,27 @@ FwBwAligner::s_align FwBwAligner::align(
             term4 = S_curr[j] - 0.5 * mact;
             calculate_max4(S_curr[j + 1], term1, term2, term3, term4, val);
             btMatrix[i * targetLen + j] = val;
+            // Debug(Debug::INFO) << (int)val << '\t';
             // global (i == queryLen - 1 || j ==targetLen - 1) && 
             // Debug(Debug::INFO) << i << '\t' << j << '\t' << P[i][j] << '\t' << term1 << '\t' << term2 << '\t' << term3 << '\t' << term4 << '\t' << S_curr[j + 1] << '\n';
             // Debug(Debug::INFO) << i << '\t' << j << '\t' << S_curr[j + 1] << '\t' << score_MAC << '\n';
-            if (S_curr[j + 1] > score_MAC) {
+            if ((i == queryLen - 1) && S_curr[j + 1] > score_MAC) {
                 max_i = i;
                 max_j = j;
                 score_MAC = S_curr[j + 1];
             }
         }
+        if (S_curr[targetLen - 1] > score_MAC) {
+            max_i = i;
+            max_j = targetLen - 1;
+            score_MAC = S_curr[targetLen - 1];
+        }
+        // Debug(Debug::INFO) << '\n';
         for (size_t j = 0; j <= targetLen; ++j) {
             S_prev[j] = S_curr[j];
         }
     }
+    // Debug(Debug::INFO) << '\n';
 
     // traceback 
     s_align result;
@@ -387,18 +397,16 @@ FwBwAligner::s_align FwBwAligner::align(
             --max_j;
             result.cigar.push_back('I');
         } else if (state == States::D) {
-            --max_i;
+            --max_i;               
             result.cigar.push_back('D');
         } else {
             break;
         }
     }
-    result.qStartPos1 = max_i;
-    result.dbStartPos1 = max_j;
+    result.qStartPos1 = max_i + 1;
+    result.dbStartPos1 = max_j + 1;
     result.cigarLen = result.cigar.length();
     std::reverse(result.cigar.begin(), result.cigar.end());
-    
-    // Debug(Debug::INFO) << result.qStartPos1 << '\t' << result.qEndPos1 << '\t' << result.score1 << '\t' << result.score2 << '\n';
 
     delete[] zInitForward[0];
     delete[] zInitForward[1];
@@ -551,179 +559,4 @@ void FwBwAligner::rescaleBlocks(float **matrix, float **scale, size_t rows, size
             }
         }
     }
-}
-
-int fwbw(int argc, const char **argv, const Command &command) {
-    //Prepare the parameters & DB
-    Parameters &par = Parameters::getInstance();
-    par.parseParameters(argc, argv, command, true, 0, MMseqsParameter::COMMAND_ALIGN);
-    DBReader<unsigned int> qdbr(par.db1.c_str(), par.db1Index.c_str(), par.threads, DBReader<unsigned int>::USE_DATA | DBReader<unsigned int>::USE_INDEX);
-    qdbr.open(DBReader<unsigned int>::NOSORT);
-    DBReader<unsigned int> tdbr(par.db2.c_str(), par.db2Index.c_str(), par.threads, DBReader<unsigned int>::USE_DATA | DBReader<unsigned int>::USE_INDEX);
-    tdbr.open(DBReader<unsigned int>::NOSORT);
-    DBReader<unsigned int> alnRes (par.db3.c_str(), par.db3Index.c_str(), par.threads, DBReader<unsigned int>::USE_DATA | DBReader<unsigned int>::USE_INDEX);
-    alnRes.open(DBReader<unsigned int>::LINEAR_ACCCESS);
-
-    DBWriter fwbwAlnWriter(par.db4.c_str(), par.db4Index.c_str(), par.threads, par.compressed, Parameters::DBTYPE_ALIGNMENT_RES);
-    fwbwAlnWriter.open();
-
-    // const size_t targetColumn = (par.targetTsvColumn == 0) ? SIZE_T_MAX :  par.targetTsvColumn - 1;
-
-    // Initialize the alignment mode
-    // float gapOpen, gapExtend, Temperature;
-    const int querySeqType = qdbr.getDbtype();
-    if (Parameters::isEqualDbtype(querySeqType, Parameters::DBTYPE_NUCLEOTIDES)) {
-        // m = new NucleotideMatrix(par.scoringMatrixFile.values.nucleotide().c_str(), 1.0, par.scoreBias);
-        // gapOpen = par.gapOpen.values.nucleotide();
-        // gapExtend = par.gapExtend.values.nucleotide();
-        Debug(Debug::ERROR) << "Invalid datatype. Nucleotide.\n";
-        EXIT(EXIT_FAILURE);
-    } 
-    SubstitutionMatrix subMat = SubstitutionMatrix(par.scoringMatrixFile.values.aminoacid().c_str(), 8.0, par.scoreBias); // Check : par.scoreBias = 0.0
-        // gapOpen = -3.5;
-        // gapExtend = -0.3;
-        // Temperature = 10;
-
-    const size_t flushSize = 100000000;
-    size_t iterations = static_cast<int>(ceil(static_cast<double>(alnRes.getSize()) / static_cast<double>(flushSize)));
-    Debug(Debug::INFO) << "Processing " << iterations << " iterations\n";
-    for (size_t i = 0; i < iterations; i++) {
-        size_t start = (i * flushSize);
-        size_t bucketSize = std::min(alnRes.getSize() - (i * flushSize), flushSize);
-        Debug::Progress progress(bucketSize);
-
-#pragma omp parallel
-        {
-            unsigned int thread_idx = 0;
-
-#ifdef OPENMP
-            thread_idx = (unsigned int) omp_get_thread_num();
-#endif
-            const char *entry[255];
-            // std::string alnResultsOutString;
-            // alnResultsOutString.reserve(1024*1024);
-            std::string alnResultsOutString;
-            char buffer[1024 + 32768*4];
-            std::vector<Matcher::result_t> alnResults;
-            alnResults.reserve(300);
-            std::vector<Matcher::result_t> localFwbwResults;
-#pragma omp for schedule(dynamic,1)
-            for (size_t id = start; id < (start + bucketSize); id++) {
-                progress.updateProgress();
-                unsigned int key = alnRes.getDbKey(id);
-                //Debug(Debug::INFO) << "start " << id << "\n";
-                const unsigned int queryId = qdbr.getId(key);
-                const unsigned int queryKey = qdbr.getDbKey(queryId);
-                char *alnData = alnRes.getData(id, thread_idx);
-                alnResults.clear();
-                localFwbwResults.clear();
-                while (*alnData!='\0'){
-                    const size_t columns = Util::getWordsOfLine(alnData, entry, 255);
-                    if (columns >= Matcher::ALN_RES_WITHOUT_BT_COL_CNT) {
-                        alnResults.emplace_back(Matcher::parseAlignmentRecord(alnData, true));                        
-                    } else {
-                        Debug(Debug::ERROR) << "Invalid input result format ("<<columns<<" columns).\n";
-                        EXIT(EXIT_FAILURE);
-                    }
-                    alnData = Util::skipLine(alnData);
-                }
-                if (alnResults.size() == 0){
-                    continue;
-                }
-
-                // FIXME:: Temporary way to fix the issue of the last newline character in the sequence
-                const char* originalQuerySeq = qdbr.getData(queryKey, thread_idx);
-                size_t qlen = strlen(originalQuerySeq); 
-                char* querySeq = new char[qlen];
-                if (qlen > 0 && originalQuerySeq[qlen - 1] == '\n') {
-                    strncpy(querySeq, originalQuerySeq, qlen - 1);  // Copy all but the last character
-                    querySeq[qlen - 1] = '\0';  // Null-terminate the new string
-                } else {
-                    strcpy(querySeq, originalQuerySeq);  // Copy the entire string if no newline
-                }
-                size_t queryLen = strlen(querySeq);
-
-
-                fwbwAlnWriter.writeStart(thread_idx);
-                // char * tmpBuff = Itoa::u32toa_sse2((uint32_t) queryKey, buffer);
-                // *(tmpBuff-1) = '\t';
-                // const unsigned int queryIdLen = tmpBuff - buffer;
-                for (size_t i=0; i < alnResults.size(); i++){
-                    unsigned int targetKey = alnResults[i].dbKey;
-
-                    // FIXME:: Temporary way to fix the issue of the last newline character in the sequence
-                    const char* originalTargetSeq = tdbr.getData(targetKey, thread_idx);
-                    size_t len = strlen(originalTargetSeq); 
-                    char* targetSeq = new char[len];
-                    if (len > 0 && originalTargetSeq[len - 1] == '\n') {
-                        strncpy(targetSeq, originalTargetSeq, len - 1);  // Copy all but the last character
-                        targetSeq[len - 1] = '\0';  // Null-terminate the new string
-                    } else {
-                        strcpy(targetSeq, originalTargetSeq);  // Copy the entire string if no newline
-                    }
-                    size_t targetLen = strlen(targetSeq);
-
-
-                    size_t length = 16;
-                    size_t blocks = (targetLen / length) + (targetLen % length != 0);
-                    FwBwAligner fwbwAligner(queryLen, targetLen, length, blocks, subMat);
-                    FwBwAligner::s_align fwbwAlignment = fwbwAligner.align(querySeq, targetSeq, queryLen, targetLen, length, blocks, subMat, par.mact);
-                    // initialize values of result_t
-                    float qcov = 0.0;
-                    float dbcov = 0.0;
-                    float seqId = 0.0;
-                    // float evalue = -fwbwAlignment.score2;
-                    float evalue = 1.0f - fwbwAlignment.score1;
-
-                    const unsigned int alnLength = fwbwAlignment.cigarLen;
-                    const int score = 0;
-                    const unsigned int qStartPos = fwbwAlignment.qStartPos1;
-                    const unsigned int dbStartPos = fwbwAlignment.dbStartPos1;
-                    const unsigned int qEndPos = fwbwAlignment.qEndPos1;
-                    const unsigned int dbEndPos = fwbwAlignment.dbEndPos1;
-                    std::string backtrace = fwbwAlignment.cigar;
-
-                    // Debug(Debug::INFO) << fwbwAlignment.score1 << '\t' << fwbwAlignment.score2 << '\t' << backtrace << '\n';
-
-                    // Map s_align values to result_t
-                    localFwbwResults.emplace_back(targetKey, score, qcov, dbcov, seqId, evalue, alnLength, qStartPos, qEndPos, queryLen, dbEndPos, dbStartPos, targetLen, backtrace);
-                    // FIXME: will not be needed after the newline character issue is fixed
-                    delete[] targetSeq;
-                }
-
-                // sort local results. They will currently be sorted by first fwbwscore, then targetlen, then by targetkey.
-                SORT_SERIAL(localFwbwResults.begin(), localFwbwResults.end(), Matcher::compareHits);
-                for (size_t result = 0; result < localFwbwResults.size(); result++) {
-                    size_t len = Matcher::resultToBuffer(buffer, localFwbwResults[result], true, true);
-                    alnResultsOutString.append(buffer, len);
-                }
-                // Debug(Debug::INFO) << "debug " << alnResultsOutString.c_str() << " ";
-                fwbwAlnWriter.writeData(alnResultsOutString.c_str(), alnResultsOutString.length(), queryKey, thread_idx);
-                alnResultsOutString.clear();
-                // for (size_t i=0; i < localFwbwResults.size(); i++){
-                //     char* basePos = tmpBuff;
-                //     tmpBuff = Util::fastSeqIdToBuffer(localFwbwResults[i].first, tmpBuff);
-                //     *(tmpBuff-1) = '\t';
-                //     const unsigned int probLen = tmpBuff - basePos;
-                //     size_t alnLen = Matcher::resultToBuffer(tmpBuff, localFwbwResults[i].second, par.addBacktrace);
-                //     fwbwAlnWriter.writeAdd(buffer, queryIdLen+probLen+alnLen, thread_idx);
-                // }
-                // fwbwAlnWriter.writeEnd(queryKey, thread_idx);
-                alnResults.clear();
-                localFwbwResults.clear();
-                //Debug(Debug::INFO) << "end " << id << "\n";
-                
-                // FIXME: will not be needed after the newline character issue is fixed
-                delete[] querySeq;
-            }
-        }
-        alnRes.remapData();
-    }
-    Debug(Debug::INFO) << "All Done\n";
-    fwbwAlnWriter.close();
-    alnRes.close();
-    qdbr.close();
-    tdbr.close();
-    return EXIT_SUCCESS;
-
 }

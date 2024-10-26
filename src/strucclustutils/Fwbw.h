@@ -29,8 +29,7 @@ public:
         int word;
     } s_align;
 
-    FwBwAligner(size_t maxQueryLen, size_t maxTargetLen, size_t length, size_t blocks,
-                SubstitutionMatrix & subMat);
+    FwBwAligner(size_t maxQueryLen, size_t maxTargetLen, size_t length, size_t blocks);
     ~FwBwAligner();
 
     s_align align(
