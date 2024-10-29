@@ -48,6 +48,10 @@ public:
     PARAMETER(PARAM_REPORT_COMMAND)
     PARAMETER(PARAM_REPORT_PATHS)
     PARAMETER(PARAM_REFINE_SEED)
+    PARAMETER(PARAM_FWBW_T)
+    PARAMETER(PARAM_FWBW_GO)
+    PARAMETER(PARAM_FWBW_GE)
+    PARAMETER(PARAM_FWBW_MACT)
 
     MultiParam<PseudoCounts> pcaAa;
     MultiParam<PseudoCounts> pcbAa;
@@ -66,5 +70,10 @@ public:
     bool reportPaths;
     float pairThreshold;
     int refinementSeed;
+    
+    float fwbwT;
+    float fwbwMACT;
+    float fwbwGO;
+    float fwbwGE;
 };
 #endif

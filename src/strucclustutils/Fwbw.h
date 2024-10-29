@@ -45,7 +45,10 @@ public:
         short** query_profile_scores_3di,
         short** target_profile_scores_aa,
         short** target_profile_scores_3di,
-        float mact
+        const float mact,
+        const float T,
+        const float go,
+        const float ge
     );
 
     void computeForwardScoreMatrix(

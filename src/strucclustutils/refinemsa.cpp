@@ -120,6 +120,10 @@ void refineOne(
     bool wg,
     int gapExtend,
     int gapOpen,
+    float mact,
+    float T,
+    float fwbwGapOpen,
+    float fwbwGapExtend,
     std::vector<Sequence*> &sequences_aa,
     std::vector<Sequence*> &sequences_ss,
     RNG &rng
@@ -222,6 +226,8 @@ void refineOne(
         sequences_aa[qId], sequences_ss[qId],
         sequences_aa[tId], sequences_ss[tId],
         gapOpen, gapExtend,
+        mact, T,
+        fwbwGapOpen, fwbwGapExtend,
         &subMat_aa, &subMat_3di,
         compBiasCorrection
     );
@@ -255,6 +261,10 @@ void refineMany(
     int filterMsa,
     int gapExtend,
     int gapOpen,
+    float mact,
+    float T,
+    float fwbwGapOpen,
+    float fwbwGapExtend,
     int maxSeqLen,
     std::string qid,
     float pairThreshold,
@@ -300,7 +310,7 @@ void refineMany(
             calculator_3di, filter_3di, subMat_3di,
             structureSmithWaterman, filterMsa, compBiasCorrection,
             qid, filterMaxSeqId, Ndiff, covMSAThr, qsc, filterMinEnable,
-            wg, gapExtend, gapOpen,
+            wg, gapExtend, gapOpen, mact, T, fwbwGapOpen, fwbwGapExtend,
             sequences_aa, sequences_ss,
             rng
         );
@@ -407,6 +417,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
         structureSmithWaterman, par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
         par.qsc, par.Ndiff, par.covMSAThr,
         par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
+        par.fwbwMACT, par.fwbwT, par.fwbwGO, par.fwbwGE,
         par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed
     );
     

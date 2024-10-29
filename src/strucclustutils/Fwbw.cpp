@@ -88,12 +88,16 @@ void FwBwAligner::computeForwardScoreMatrix(
     float T,
     float ** scoreForward
 ) {
+    short* query_profile_aa;
+    short* query_profile_3di;
+    short* target_profile_aa;
+    short* target_profile_3di;
     for (size_t i = 0; i < queryLen; ++i) {
-        const short* target_profile_aa = target_profile_scores_aa[query_aa_seq[i]];
-        const short* target_profile_3di = target_profile_scores_3di[query_3di_seq[i]]; 
+        target_profile_aa = target_profile_scores_aa[query_aa_seq[i]];
+        target_profile_3di = target_profile_scores_3di[query_3di_seq[i]]; 
         for (size_t j = 0; j < targetLen; ++j) {
-            const short* query_profile_aa  = query_profile_scores_aa[target_aa_seq[j]];
-            const short* query_profile_3di = query_profile_scores_3di[target_3di_seq[j]];
+            query_profile_aa  = query_profile_scores_aa[target_aa_seq[j]];
+            query_profile_3di = query_profile_scores_3di[target_3di_seq[j]];
             scoreForward[i][j] = static_cast<float>(
                 (static_cast<float>(query_profile_aa[i]) + static_cast<float>(target_profile_aa[j])) / 2.0
                 + (static_cast<float>(query_profile_3di[i]) + static_cast<float>(target_profile_3di[j])) / 2.0
@@ -137,11 +141,11 @@ FwBwAligner::s_align FwBwAligner::align(
     short** query_profile_scores_3di,
     short** target_profile_scores_aa,
     short** target_profile_scores_3di,
-    float mact
+    const float mact,
+    const float T,
+    const float go,
+    const float ge
 ){
-    const float T = 10;
-    const float go = -3.5;
-    const float ge = -0.3;
     computeForwardScoreMatrix(
         query_aa_seq,
         query_3di_seq,
@@ -188,15 +192,8 @@ FwBwAligner::s_align FwBwAligner::align(
     }
     
     float fltmax = std::numeric_limits<float>::max();
-
     for (size_t i = 0; i < queryLen; ++i) {
         for (size_t j = 0; j < targetLen; ++j) {
-            // zmForward[i][j]  = 0.0;
-            // zeForward[i][j]  = 0.0;
-            // zfForward[i][j]  = 0.0;
-            // zmBackward[i][j] = 0.0;
-            // zeBackward[i][j] = 0.0;
-            // zfBackward[i][j] = 0.0;
             zmForward[i][j]  = -fltmax;
             zeForward[i][j]  = -fltmax;
             zfForward[i][j]  = -fltmax;
@@ -344,40 +341,61 @@ FwBwAligner::s_align FwBwAligner::align(
     float S_curr[targetLen + 1];
     float term1, term2, term3, term4 = 0.0f;
     float score_MAC = -std::numeric_limits<float>::max();
-    for (size_t j = 0; j <= targetLen; ++j) {
-        S_prev[j] = 0.0; 
-        // S_curr[j] = 0.0;
+    S_prev[0] = 0.0f;
+    for (size_t j = 1; j <= targetLen; ++j) {
+        // S_prev[j] = S_prev[j - 1] - 0.5f * mact;
+        S_prev[j] = 0.0f;
+        // S_prev[j] = -fltmax;
     }
     for (size_t i = 0; i < queryLen; ++i) {
-        S_curr[0] = 0.0;
+        // S_curr[0] = 0.0f;
+        S_curr[0] = -fltmax;
+        // if (i == 0) {
+        //     S_curr[0] = -0.5f * mact;
+        // } else {
+        //     S_curr[0] = S_prev[0] - 0.5f * mact;
+        // }
         for (size_t j = 0; j < targetLen; ++j) {
             term1 = P[i][j] - mact;
+            // term1 = 0.0;
             term2 = S_prev[j] + P[i][j] - mact;
             term3 = S_prev[j + 1] - 0.5 * mact;
             term4 = S_curr[j] - 0.5 * mact;
             calculate_max4(S_curr[j + 1], term1, term2, term3, term4, val);
+
+            // char state;
+            // if (val == States::M) state = 'M';
+            // else if (val == States::I) state = 'I';
+            // else if (val == States::D) state = 'D';
+            // else state = 'S';
+            // Debug(Debug::INFO) << state << '\t';
+            // if (state == 'S')
+            //     Debug(Debug::INFO) << term1 << '\t' << term2 << '\t' << term3 << '\t' << term4 << '\t' << state << '\n';
+
             btMatrix[i * targetLen + j] = val;
             // Debug(Debug::INFO) << (int)val << '\t';
             // global (i == queryLen - 1 || j ==targetLen - 1) && 
             // Debug(Debug::INFO) << i << '\t' << j << '\t' << P[i][j] << '\t' << term1 << '\t' << term2 << '\t' << term3 << '\t' << term4 << '\t' << S_curr[j + 1] << '\n';
             // Debug(Debug::INFO) << i << '\t' << j << '\t' << S_curr[j + 1] << '\t' << score_MAC << '\n';
-            if ((i == queryLen - 1) && S_curr[j + 1] > score_MAC) {
+            if (i == queryLen -1 && S_curr[j + 1] > score_MAC) {
                 max_i = i;
                 max_j = j;
                 score_MAC = S_curr[j + 1];
             }
         }
-        if (S_curr[targetLen - 1] > score_MAC) {
-            max_i = i;
-            max_j = targetLen - 1;
-            score_MAC = S_curr[targetLen - 1];
-        }
+        // if (S_curr[targetLen - 1] > score_MAC) {
+        //     max_i = i;
+        //     max_j = targetLen - 1;
+        //     score_MAC = S_curr[targetLen - 1];
+        // }
         // Debug(Debug::INFO) << '\n';
         for (size_t j = 0; j <= targetLen; ++j) {
             S_prev[j] = S_curr[j];
         }
     }
     // Debug(Debug::INFO) << '\n';
+    // max_i = queryLen - 1;
+    // max_j = targetLen - 1;
 
     // traceback 
     s_align result;
@@ -387,24 +405,28 @@ FwBwAligner::s_align FwBwAligner::align(
     result.dbEndPos1 = max_j;
     result.score1 = maxP;
     result.score2 = score_MAC;
-    while (max_i > 0 && max_j > 0) {
+    // while (max_i > 0 && max_j > 0) {
+    while (true) {
         uint8_t state = btMatrix[max_i * targetLen + max_j];
         if (state == States::M) {
+            result.cigar.push_back('M');
+            if (max_i == 0 || max_j == 0) break;
             --max_i;
             --max_j;
-            result.cigar.push_back('M');
         } else if (state == States::I) {
-            --max_j;
             result.cigar.push_back('I');
+            if (max_j == 0) break;
+            --max_j;
         } else if (state == States::D) {
-            --max_i;               
             result.cigar.push_back('D');
+            if (max_i == 0) break;
+            --max_i;               
         } else {
             break;
         }
     }
-    result.qStartPos1 = max_i + 1;
-    result.dbStartPos1 = max_j + 1;
+    result.qStartPos1 = max_i;
+    result.dbStartPos1 = max_j;
     result.cigarLen = result.cigar.length();
     std::reverse(result.cigar.begin(), result.cigar.end());
 

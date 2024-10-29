@@ -58,6 +58,17 @@ GapData getGapData(const Matcher::result_t &res, const std::vector<size_t>& qMap
     return data;
 }
 
+void printResult(Matcher::result_t& result) {
+    Debug(Debug::INFO) << "CIGAR:   " << result.backtrace << '\n';
+    Debug(Debug::INFO) << "qStart:  " << result.qStartPos << '\n';
+    Debug(Debug::INFO) << "qEnd:    " << result.qEndPos << '\n';
+    Debug(Debug::INFO) << "qLen:    " << result.qLen << '\n';
+    Debug(Debug::INFO) << "dbStart: " << result.dbStartPos << '\n';
+    Debug(Debug::INFO) << "dbEnd:   " << result.dbEndPos << '\n';
+    Debug(Debug::INFO) << "dbLen:   " << result.dbLen << '\n';
+    Debug(Debug::INFO) << "alnLen:  " << result.alnLength << '\n';
+}
+
 Matcher::result_t pairwiseAlignment(
     StructureSmithWaterman & aligner,
     unsigned int querySeqLen,
@@ -67,6 +78,10 @@ Matcher::result_t pairwiseAlignment(
     Sequence *target_3di,
     int gapOpen,
     int gapExtend,
+    float mact,
+    float T,
+    float fwbwGapOpen,
+    float fwbwGapExtend,
     SubstitutionMatrix *mat_aa,
     SubstitutionMatrix *mat_3di,
     int compBiasCorrection
@@ -171,7 +186,6 @@ Matcher::result_t pairwiseAlignment(
     
     size_t length = 16;
     size_t blocks = (target_aa->L / length) + (target_aa->L % length != 0);
-    float mact = 0.005;
     FwBwAligner fwbwAligner(query_aa->L, target_aa->L, length, blocks);
     FwBwAligner::s_align fwbwResult = fwbwAligner.align(
         query_aa_seq,
@@ -186,19 +200,14 @@ Matcher::result_t pairwiseAlignment(
         query_profile_scores_3di,
         target_profile_scores_aa,
         target_profile_scores_3di,
-        mact 
+        mact,
+        T,
+        -fwbwGapOpen,
+        -fwbwGapExtend        
     );
-    std::cout << "Gotoh: " << gAlign.backtrace << '\n';
-    std::cout << "FWBW:  " << fwbwResult.cigar << '\n';
 
     std::cout << "# Gotoh\n";
-    std::cout << "qStart:  " << gAlign.qStartPos << '\n';
-    std::cout << "qEnd:    " << gAlign.qEndPos << '\n';
-    std::cout << "qLen:    " << gAlign.qLen << '\n';
-    std::cout << "dbStart: " << gAlign.dbStartPos << '\n';
-    std::cout << "dbEnd:   " << gAlign.dbEndPos << '\n';
-    std::cout << "dbLen:   " << gAlign.dbLen << '\n';
-    std::cout << "alnLen:  " << gAlign.alnLength << '\n';
+    printResult(gAlign);
 
     gAlign.backtrace = fwbwResult.cigar;
     gAlign.qStartPos = fwbwResult.qStartPos1;
@@ -208,13 +217,7 @@ Matcher::result_t pairwiseAlignment(
     gAlign.alnLength = fwbwResult.cigarLen;
     
     std::cout << "# FWBW\n";
-    std::cout << "qStart:  " << gAlign.qStartPos << '\n';
-    std::cout << "qEnd:    " << gAlign.qEndPos << '\n';
-    std::cout << "qLen:    " << gAlign.qLen << '\n';
-    std::cout << "dbStart: " << gAlign.dbStartPos << '\n';
-    std::cout << "dbEnd:   " << gAlign.dbEndPos << '\n';
-    std::cout << "dbLen:   " << gAlign.dbLen << '\n';
-    std::cout << "alnLen:  " << gAlign.alnLength << '\n';
+    printResult(gAlign);
 
     for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
         delete[] query_profile_scores_aa[i];
@@ -784,9 +787,9 @@ void addCigarStates(std::vector<Instruction> &cigar, int state, int count) {
  * @param tBt  - vector to store target merge instructions
  */
 void getMergeInstructions(
-    Matcher::result_t &res,
-    std::vector<size_t> &map1,
-    std::vector<size_t> &map2,
+    const Matcher::result_t &res,
+    const std::vector<size_t> &map1,
+    const std::vector<size_t> &map2,
     std::vector<Instruction> &qBt,
     std::vector<Instruction> &tBt
 ) {
@@ -794,13 +797,14 @@ void getMergeInstructions(
     tBt.emplace_back(SEQ, 1);
     int new_q, dq;
     int new_t, dt;
+    // Debug(Debug::INFO) << res.qStartPos << '\t' << map1.size() << '\t' << res.dbStartPos << '\t' << map2.size() << '\n';
     int old_q = map1[res.qStartPos];
     int old_t = map2[res.dbStartPos];
     int q = res.qStartPos + 1;  // indices in non-gappy sequence
     int t = res.dbStartPos + 1;
  
     // Generate instructions for query/target sequences from backtrace
-    Debug(Debug::INFO) << res.backtrace << '\n';
+    // Debug(Debug::INFO) << res.backtrace << '\n';
     for (size_t i = 1; i < res.backtrace.length(); ++i) {
         // Debug(Debug::INFO) << map1.size() << '\t' << q << '\t' << map2.size() << '\t' << t << '\t' << res.backtrace[i] << '\n';
         switch (res.backtrace[i]) {
@@ -1543,28 +1547,38 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 seqTargetSs,
                 par.gapOpen.values.aminoacid(),
                 par.gapExtend.values.aminoacid(),
+                par.fwbwMACT,
+                par.fwbwT,
+                par.fwbwGO,
+                par.fwbwGE,
                 &subMat_aa,
                 &subMat_3di,
                 par.compBiasCorrection
             );
-            std::vector<Instruction> qBt;
-            std::vector<Instruction> tBt;
-            getMergeInstructions(res, map1, map2, qBt, tBt);
 
             // If neither are profiles, do TM-align as well and take the best alignment
-            if (false && caExist && !queryIsProfile && !targetIsProfile) {
+            if (caExist && !queryIsProfile && !targetIsProfile) {
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
                 double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
                 if (lddtTM > lddt3Di) {
-                    qBt.clear();
-                    tBt.clear();
                     Debug(Debug::INFO) << "# TMalign\n";
-                    getMergeInstructions(tmRes, map1, map2, qBt, tBt);
+                    printResult(tmRes);
+
+                    // FIXME this is done in different direction than fwbw
+                    // so have to adjust cigar
+                    for (size_t z = 0; z < tmRes.backtrace.length(); z++) {
+                        if (tmRes.backtrace[z] == 'I') tmRes.backtrace[z] = 'D';
+                        else if (tmRes.backtrace[z] == 'D') tmRes.backtrace[z] = 'I';
+                    }
+
                     std::swap(res, tmRes);
                 }
             }
 
+            std::vector<Instruction> qBt;
+            std::vector<Instruction> tBt;
+            getMergeInstructions(res, map1, map2, qBt, tBt);
             updateCIGARs(res, map1, map2, msa.cigars_aa, msa.cigars_ss, qMembers, tMembers, qBt, tBt);
 
             SubMSA *newSubMSA;
@@ -1658,7 +1672,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di, structureSmithWaterman,
             par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId, par.qsc,
             par.Ndiff, par.covMSAThr, par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(),
-            par.gapOpen.values.aminoacid(), par.maxSeqLen, par.qid, par.pairThreshold, msa.dbKeys,
+            par.gapOpen.values.aminoacid(), par.fwbwMACT, par.fwbwT, par.fwbwGO, par.fwbwGE,
+            par.maxSeqLen, par.qid, par.pairThreshold, msa.dbKeys,
             par.refinementSeed
         );
     }

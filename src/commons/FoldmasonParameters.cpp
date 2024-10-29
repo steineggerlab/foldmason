@@ -20,8 +20,13 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_PAIR_THRESHOLD(PARAM_PAIR_THRESHOLD_ID, "--pair-threshold", "LDDT pair threshold", "% of pair subalignments with LDDT information [0.0,1.0]",typeid(float), (void *) &pairThreshold, "^0(\\.[0-9]+)?|1(\\.0+)?$"),
         PARAM_REPORT_COMMAND(PARAM_REPORT_COMMAND_ID, "--report-command", "", "", typeid(std::string), (void *) &reportCommand, ""),
         PARAM_REPORT_PATHS(PARAM_REPORT_PATHS_ID, "--report-paths", "", "", typeid(bool), (void *) &reportPaths, ""),
-        PARAM_REFINE_SEED(PARAM_REFINE_SEED_ID, "--refine-seed", "Random number generator seed", "Random number generator seed", typeid(int), (void *) &refinementSeed, "^([-]?[0-9]*)$")
+        PARAM_REFINE_SEED(PARAM_REFINE_SEED_ID, "--refine-seed", "Random number generator seed", "Random number generator seed", typeid(int), (void *) &refinementSeed, "^([-]?[0-9]*)$"),
+        PARAM_FWBW_T(PARAM_FWBW_T_ID, "--fwbw-t", "FWBW temperature", "FWBW temperature", typeid(float), (void *) &fwbwT, "^([0-9]*\\.[0-9]*)$"),
+        PARAM_FWBW_GO(PARAM_FWBW_GO_ID, "--fwbw-go", "FWBW gap open penalty", "FWBW gap open penalty", typeid(float), (void *) &fwbwGO, "^([0-9]*\\.[0-9]*)$"),
+        PARAM_FWBW_GE(PARAM_FWBW_GE_ID, "--fwbw-ge", "FWBW gap extend penalty", "FWBW gap extend penalty", typeid(float), (void *) &fwbwGE, "^([0-9]*\\.[0-9]*)$"),
+        PARAM_FWBW_MACT(PARAM_FWBW_MACT_ID, "--fwbw-mact", "MAC temperature", "MAC temperature", typeid(float), (void *) &fwbwMACT, "^0(\\.[0-9]+)?|1(\\.0+)?$")
 {
+    
     // structuremsa
     structuremsa.push_back(&PARAM_WG);
     structuremsa.push_back(&PARAM_MATCH_RATIO);
@@ -51,6 +56,10 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_NO_COMP_BIAS_CORR);
     structuremsa.push_back(&PARAM_V);
     structuremsa.push_back(&PARAM_REFINE_SEED);
+    structuremsa.push_back(&PARAM_FWBW_T);
+    structuremsa.push_back(&PARAM_FWBW_MACT);
+    structuremsa.push_back(&PARAM_FWBW_GE);
+    structuremsa.push_back(&PARAM_FWBW_GO);
 
     structuremsacluster = combineList(structuremsacluster, structuremsa);
 
@@ -93,6 +102,11 @@ FoldmasonParameters::FoldmasonParameters() :
     pairThreshold = 0.0;
     wg = true;
     refinementSeed = -1;
+    
+    fwbwT = 10.0;
+    fwbwMACT = 0.001;
+    fwbwGO = 3.5;
+    fwbwGE = 0.3;
 
     citations.emplace(CITATION_FOLDMASON, " << TODO >> ");
 }
