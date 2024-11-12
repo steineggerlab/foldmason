@@ -38,6 +38,8 @@
                 APP_NAME: "Foldseek",
                 APP_DESCRIPTION: "Foldseek Server offers fast and sensitive protein structure alignments against large protein structure collections",
                 CITATION: 'van Kempen M, Kim S, Tumescheit C, Mirdita M, Lee J, Gilchrist CLM, Söding J, and Steinegger M. <a href="https://www.nature.com/articles/s41587-023-01773-0" target="_blank" rel="noopener">Fast and accurate protein structure search with Foldseek</a>. Nature Biotechnology, 2023.',
+                CITATION_MULTIMER: 'Kim W, Mirdita M, Levy Karin E, Gilchrist CLM, Schweke H, Soeding J, Levy E, and Steinegger M. <a href="https://www.biorxiv.org/content/10.1101/2024.04.14.589414v2" target="_blank" rel="noopener">Rapid and Sensitive Protein Complex Alignment with Foldseek-Multimer</a>. bioRxiv, 2024.',
+                CITATION_FOLDMASON: 'Gilchrist CLM, Mirdita M and Steinegger M. <a href="https://www.biorxiv.org/content/10.1101/2024.08.01.606130v1" target="_blank" rel="noopener">Multiple Protein Structure Alignment at Scale with FoldMason</a>. bioRxiv, 2024.',
                 NAV_URL_COUNT: "3",
                 NAV_TITLE_1: "GitHub",
                 NAV_URL_1: "https://foldseek.com",
@@ -45,9 +47,9 @@
                 NAV_URL_2: "https://www.mpinat.mpg.de/soeding",
                 NAV_TITLE_3: "Steinegger Lab",
                 NAV_URL_3: "https://steineggerlab.com/",
-                QUERIES_HELP: "Enter a protein structure in PDB format or upload a PDB file.",
+                QUERIES_HELP: "Enter a protein structure in PDB or mmCIF format or upload a PDB or mmCIF file.",
                 UPLOAD_LABEL: "Upload PDB",
-                CURL_INTRO: " Use this command to get a submit a file in PDB format to the Foldseek search server. Replace the ‘PATH_TO_FILE’ string with the path to the file.",
+                CURL_INTRO: " Use this command to get a submit a file in PDB or mmCIF format to the Foldseek search server. Replace the ‘PATH_TO_FILE’ string with the path to the file.",
                 MODE_HELP: "<strong>3Di/AA:</strong> fast prefilter using the 3Di alphabet and alignment using the 3Di alphabet+BLOSUM62 based Smith-Waterman-Gotoh (local alignment)<br>\n<strong>TM-align:</strong> fast prefilter using the 3Di alphabet and alignment using TM-align (global-alignment)",
                 MODE_COUNT: "2",
                 MODE_DEFAULT_KEY: "3diaa",
@@ -91,7 +93,7 @@
         },
         509: (e, n, t) => {
             "use strict";
-            var r = t(144), i = t(6828), a = t(1002), s = {
+            var r = t(144), i = t(123), a = t(1002), s = {
                 selector: "vue-portal-target"
             };
             const o = s;
@@ -215,7 +217,9 @@
                 CloudDownloadOutline: A.REA,
                 Delete: A.x9U,
                 Dns: A.cfj,
+                File: A.iA5,
                 FileDownloadOutline: A.wLz,
+                FileUpload: A.ruG,
                 FormatListBulleted: A.Ir0,
                 Fullscreen: A.h40,
                 HelpCircleOutline: A.Gir,
@@ -236,7 +240,11 @@
                 LayersSearchOutline: A.Qpb,
                 API: "M 22.23 1.96 c -0.98 0 -1.77 0.8 -1.77 1.77 c 0 0.21 0.05 0.4 0.12 0.6 l -8.31 14.23 c -0.8 0.17 -1.42 0.85 -1.42 1.7 a 1.77 1.77 0 0 0 3.54 0 c 0 -0.2 -0.05 -0.37 -0.1 -0.55 l 8.34 -14.29 a 1.75 1.75 0 0 0 1.37 -1.69 c 0 -0.97 -0.8 -1.77 -1.77 -1.77 M 14.98 1.96 c -0.98 0 -1.77 0.8 -1.77 1.77 c 0 0.21 0.05 0.4 0.12 0.6 l -8.3 14.24 c -0.81 0.16 -1.43 0.84 -1.43 1.7 a 1.77 1.77 0 0 0 3.55 0 c 0 -0.2 -0.06 -0.38 -0.12 -0.56 L 15.4 5.42 a 1.75 1.75 0 0 0 1.37 -1.69 c 0 -0.97 -0.8 -1.77 -1.78 -1.77 M 1.75 6 a 1.75 1.75 0 1 0 0 3.5 a 1.75 1.75 0 0 0 0 -3.5 z m 0 6 a 1.75 1.75 0 1 0 0 3.5 a 1.75 1.75 0 0 0 0 -3.5 z",
                 CloseCircle: A.lY3,
-                CloseCircleOutline: A.DNZ
+                CloseCircleOutline: A.DNZ,
+                Monomer: "m13.9 4.4.8.5a7.7 7.7 90 0 0 1.3.6 2.3 2.3 90 0 1 .5.2l.5.2.4.2.1.2a.4.4 90 0 1-.1.3A6.2 6.2 90 0 1 16 7a11.3 11.3 0 0 0-1.2.6l-.5-.2-1.1-.6a2 2 0 0 1-.5-.6 1.8 1.8 90 0 1-.2-1V3A5.3 5.3 90 0 0 14 4.4Zm-1.6-2c-.4-.8-1-1.3-1.6-1.3-1-.1-1.7.3-2.2 1.2a4.2 4.2 90 0 0-.3 1.3H10v12.9h2l-3.4 3.4.1 1.6c0 .4-.1.5-.4.5-.2 0 1.2-1-.4-.4L7.6 20l-3.3-3.4h1.9V3.6h1.1a7.4 7.4 90 0 1 .5-1.7C8.3.7 9.3.1 10.8.2a2.2 2.2 90 0 1 1.2.6A4.3 4.3 90 0 1 13 2v.3c0 .2 0 .4-.3.4-.2 0-.3 0-.4-.2Zm4.3 20.8a3 3 0 0 1-2.6-.5c-.8-.5-1.2-1.4-1.2-2.7 0-.3.1-.4.4-.4.3 0 .4.1.4.4 0 1 .3 1.7.8 2a2.5 2.5 90 0 0 2 .3h.1c.3 0 .5.2.5.5 0 .2-.1.3-.4.4Zm1.4-8v1a2.1 2.1 90 0 1-.3.5 2.6 2.6 90 0 1-.8.5l-.7.3-.6.3c-1.3.4-2 .7-2 .8a2.5 2.5 90 0 0-.8.5l-.2.3a3.3 3.3 90 0 1-.1-.8 5 5 90 0 1 0-1.3 2.4 2.4 90 0 1 .4-.8 3.6 3.6 90 0 1 .6-.4 38.4 38.4 0 0 1 4-1.9l.2-.3a2.6 2.6 90 0 1 .2.3 3.2 3.2 90 0 1 0 1Zm-5.2-1.8V13l.2-.4.7-.5 1-.3a7.7 7.7 90 0 0 1.3.6l.5.2.5.2.4.2.1.2-.1.2a2.4 2.4 90 0 1-.8.4 3 3 90 0 0-.5.2 1.9 1.9 90 0 1-.6.2l-.7.4-.5-.3a4.6 4.6 90 0 1-1.1-.5l-.2-.3-.2-.2ZM18 8.2a5.8 5.8 90 0 1 0 1 1.2 1.2 90 0 1-.3.5l-.5.3a189.3 189.3 90 0 0-3.6 1.5 2.5 2.5 90 0 0-.8.6l-.2.3-.1-.7v-1.3l.4-.9.5-.3L15.6 8l.6-.3a3.5 3.5 90 0 1 .5-.2l.9-.4.2-.3v.2l.2 1.1Z",
+                Multimer: "M14 19.3c0-.3.2-.4.3-.5h.2c.3 0 .4.1.4.3.1.8.4 1.4 1 1.7.5.2 1 .3 1.5.1H17.7c.2-.1.4 0 .5.2 0 .3 0 .4-.3.5l-.4.2h-.3c-.5.1-1 0-1.7-.3-.4-.1-.7-.4-.9-.8a2.4 2.4 0 0 1-.4-1l-.1-.4Zm3.2-2h-.4a18.4 18.4 0 0 0-2.6.8l-.2.3v-.7c0-.5.1-.8.3-1l.6-.7.5-.3A63.2 63.2 0 0 1 18 15l.5-.2h.3l.3-.1.1-.1.3-.3v.2a7.5 7.5 0 0 1-.2 1.9l-.2.4-.8.4a15 15 0 0 0-.8.1h-.2Zm-5.1-.1v.6h-.6l-.4-.5-.6-.7-4.6-.8 1.5-1-5.9-8 .9-.7-.6-1.5c-.3-1.3.2-2.4 1.3-3.1l1.3-.3h.4l.4.1.2.1.6.4c.2 0 .3.2.2.5l-.4.2h-.2l-.4-.2-.8-.2c-.3 0-.6 0-.9.2a2 2 0 0 0-1 2.2l.6 1.1 1.3-1 1 1.4L5 8.6l1.4-1 3.8 5 1.5-1-.6 4.6.9 1Zm7-4-.1.3-.8.3a9 9 0 0 0-1.7.4 100.6 100.6 0 0 1-1.4-1.1v-.5c0-.1 0-.3.2-.4l.7-.3.8-.2.1.1.5.3.6.3a2092.6 2092.6 0 0 0 1.1.8Zm-8-2L7.2 6l-1.1.8.6-4 4 .7-1.1.8 4.2 5.7c-.4.5-.5 1.5-.4 3l-.6.4-.7-.9.2-2.2-1.2 1Zm9.2-3.7v1.2l-.2.8c0 .3-.2.4-.2.4l-.5.3a49.2 49.2 0 0 1-4.1 1l-.2.3V11c0-.4 0-.8.2-1.1l.5-.7.4-.3a19.2 19.2 0 0 1 4-1V7.4Zm-3.9-4.2c.3.5.6.9 1 1.1.2.4.5.6.6.6l.5.3a15.8 15.8 0 0 1 .8.6h.3l.1.2h.2c0 .2.2.3.3.3V7h-.5a2 2 0 0 0-.3.2l-.5.1-.5.1h-.1l-.3.1a1 1 0 0 0-.3 0l-.5-.2a4.7 4.7 0 0 1-1-1l-.2-.2V5l.4-2v.3Zm1.9-1.8c.1 0 .9-1.4 0-1.1-.9.2-1.5.7-1.8 1.5 0 .4 0 .7.5.8.4 0 .6-.1.7-.5 0-.3.3-.5.6-.7Z",
+                Wall: A.MxW,
+                TextBoxOutline: A.eLz
             };
             var g = function() {
                 var e = this, n = e.$createElement, t = e._self._c || n;
@@ -298,7 +306,7 @@
                 });
             };
             m._withStripped = !0;
-            var f = t(2982), v = t(885), b = t(8197);
+            var f = t(9062), b = t(3324), v = t(8197);
             function y(e, n) {
                 var t = "undefined" != typeof Symbol && e[Symbol.iterator] || e["@@iterator"];
                 if (!t) {
@@ -357,14 +365,18 @@
                 return r;
             }
             function w(e, n) {
-                var t = n.toLowerCase();
-                return t.startsWith("pfam") ? "https://pfam.xfam.org/family/" + e : t.startsWith("pdb") ? "https://www.rcsb.org/pdb/explore.do?structureId=" + e.replaceAll(/\.(cif|pdb)(\.gz)?/g, "").split("_")[0] : t.startsWith("uniclust") || t.startsWith("uniprot") || t.startsWith("sprot") || t.startsWith("swissprot") ? "https://www.uniprot.org/uniprot/" + e : t.startsWith("eggnog_") ? "http://eggnogdb.embl.de/#/app/results?target_nogs=" + e : t.startsWith("cdd") ? "https://www.ncbi.nlm.nih.gov/Structure/cdd/cddsrv.cgi?uid=" + e : null;
+                try {
+                    var t = n.toLowerCase();
+                    return t.startsWith("pfam") ? "https://www.ebi.ac.uk/interpro/entry/pfam/" + e : t.startsWith("pdb") ? "https://www.rcsb.org/pdb/explore.do?structureId=" + e.replaceAll(/-assembly[0-9]+/g, "").replaceAll(/\.(cif|pdb)(\.gz)?/g, "").split("_")[0] : t.startsWith("uniclust") || t.startsWith("uniprot") || t.startsWith("sprot") || t.startsWith("swissprot") ? "https://www.uniprot.org/uniprot/" + e : t.startsWith("eggnog_") ? "http://eggnogdb.embl.de/#/app/results?target_nogs=" + e : t.startsWith("cdd") ? "https://www.ncbi.nlm.nih.gov/Structure/cdd/cddsrv.cgi?uid=" + e : null;
+                } catch (e) {
+                    return null;
+                }
             }
-            function S(e, n) {
+            function x(e, n) {
                 n.toLowerCase();
                 return e;
             }
-            function x(e) {
+            function S(e) {
                 return e.startsWith("AF-") && (e = e.replaceAll(/(AF[-_]|[-_]F[0-9]+[-_]model[-_]v[0-9]+)/g, "")), 
                 e.replaceAll(/\.(cif|pdb|gz)/g, "");
             }
@@ -377,7 +389,7 @@
                     for (var o in i.alignments) for (var l in i.alignments[o]) {
                         var c, u = i.alignments[o][l], d = u.target.split(" ");
                         u.target = d[0], u.description = d.slice(1).join(" "), u.description.length > 1 && (i.hasDescription = !0), 
-                        u.href = w(u.target, a), u.target = S(u.target, a), u.id = "result-" + r + "-" + o, 
+                        u.href = w(u.target, a), u.target = x(u.target, a), u.id = "result-" + r + "-" + o, 
                         u.active = !1, u.eval = "string" == typeof u.eval ? u.eval : u.eval.toExponential(2), 
                         "taxId" in u && (i.hasTaxonomy = !0);
                         var h = null !== (c = u.complexid) && void 0 !== c ? c : l;
@@ -399,12 +411,12 @@
                 }), i = document.createElement("a");
                 i.href = URL.createObjectURL(r), i.download = n, i.click(), URL.revokeObjectURL(i.href);
             }
-            function O(e, n) {
+            function k(e, n) {
                 for (var t = Array(n.length), r = 0, i = 0; r < n.length; r++) "-" === n[r] ? (t[r] = null, 
                 i++) : t[r] = e + r - i;
                 return t;
             }
-            var k = {
+            var E = {
                 A: "ALA",
                 R: "ARG",
                 N: "ASN",
@@ -436,18 +448,18 @@
                         var n = e.serial, t = e.atomname, r = e.resname, i = e.chainname, a = e.resno, s = e.inscode, o = e.x, l = e.y, c = e.z;
                         return "ATOM  ".concat(n.toString().padStart(5)).concat(t.padStart(4), "  ").concat(r.padStart(3), " ").concat(i.padStart(1)).concat(a.toString().padStart(4), " ").concat(s.padStart(1), "  ").concat(o.toFixed(3).padStart(8)).concat(l.toFixed(3).padStart(8)).concat(c.toFixed(3).padStart(8));
                     }(e));
-                }), new b.Y1(n)), t.join("\n");
+                }), new v.Y1(n)), t.join("\n");
             }
-            function R(e, n, t) {
+            function O(e, n, t) {
                 for (var r = e.split(","), i = new Array, a = 1, s = 0; s < r.length; s += 3, a++) {
                     var o = r.slice(s, s + 3).map((function(e) {
                         return parseFloat(e);
-                    })), l = (0, v.Z)(o, 3), c = l[0], u = l[1], d = l[2];
-                    i.push("ATOM  " + a.toString().padStart(5) + "  CA  " + k["" != n && r.length / 3 == n.length ? n[s / 3] : "A"] + t.toString().padStart(2) + a.toString().padStart(4) + "    " + c.toFixed(3).padStart(8) + u.toFixed(3).padStart(8) + d.toFixed(3).padStart(8) + "  1.00  0.00           C  ");
+                    })), l = (0, b.Z)(o, 3), c = l[0], u = l[1], d = l[2];
+                    i.push("ATOM  " + a.toString().padStart(5) + "  CA  " + E["" != n && r.length / 3 == n.length ? n[s / 3] : "A"] + t.toString().padStart(2) + a.toString().padStart(4) + "    " + c.toFixed(3).padStart(8) + u.toFixed(3).padStart(8) + d.toFixed(3).padStart(8) + "  1.00  0.00           C  ");
                 }
                 return i.join("\n");
             }
-            function E(e, n, t) {
+            function R(e, n, t) {
                 e.eachAtom((function(e) {
                     var r = [ e.x, e.y, e.z ], i = r[0], a = r[1], s = r[2];
                     e.x = n[0] + t[0][0] * i + t[0][1] * a + t[0][2] * s, e.y = n[1] + t[1][0] * i + t[1][1] * a + t[1][2] * s, 
@@ -463,12 +475,12 @@
                     }), n);
                 };
             }
-            function D(e, n) {
+            function B(e, n) {
                 for (var t, r = n.slice(), i = 0; i < 3; i++) r[i].push(e[i]);
-                var a = new b.yG, s = (t = []).concat.apply(t, (0, f.Z)(r).concat([ [ 0, 0, 0, 1 ] ]));
+                var a = new v.yG, s = (t = []).concat.apply(t, (0, f.Z)(r).concat([ [ 0, 0, 0, 1 ] ]));
                 return a.set.apply(a, (0, f.Z)(s)), a;
             }
-            var P = "1f77b4aec7e8ff7f0effbb782ca02c98df8ad62728ff98969467bdc5b0d58c564bc49c94e377c2f7b6d27f7f7fc7c7c7bcbd22dbdb8d17becf9edae5".match(/.{6}/g).map((function(e) {
+            var D = "1f77b4aec7e8ff7f0effbb782ca02c98df8ad62728ff98969467bdc5b0d58c564bc49c94e377c2f7b6d27f7f7fc7c7c7bcbd22dbdb8d17becf9edae5".match(/.{6}/g).map((function(e) {
                 return "#" + e;
             }));
             function q(e) {
@@ -482,7 +494,7 @@
                 return o ? (s = n === a ? (t - r) / o + 6 * (t < r) : t === a ? (r - n) / o + 2 : (n - t) / o + 4, 
                 o /= l < .5 ? a + i : 2 - a - i, s *= 60) : o = l > 0 && l < 1 ? 0 : s, [ s, o, l ];
             }
-            function B(e, n) {
+            function P(e, n) {
                 var t = "undefined" != typeof Symbol && e[Symbol.iterator] || e["@@iterator"];
                 if (!t) {
                     if (Array.isArray(e) || (t = function(e, n) {
@@ -539,8 +551,8 @@
                 for (var t = 0, r = new Array(n); t < n; t++) r[t] = e[t];
                 return r;
             }
-            const V = {
-                name: "result",
+            const F = {
+                name: "ResultMixin",
                 data: function() {
                     return {
                         ticket: "",
@@ -561,8 +573,8 @@
                         if (this.hits) {
                             var e, n, t, r, i, a, s, o, l, c = (e = [], n = 1, function(t) {
                                 var r = t + "", i = e[r];
-                                return i || (i = e[r] = n++), P[(i - 1) % P.length];
-                            }), u = B(this.currentResult.results);
+                                return i || (i = e[r] = n++), D[(i - 1) % D.length];
+                            }), u = P(this.currentResult.results);
                             try {
                                 for (u.s(); !(t = u.n()).done; ) {
                                     var d = t.value;
@@ -572,30 +584,30 @@
                                     }, p = {
                                         score: Number.MAX_VALUE
                                     }, g = 0, m = Object.values(d.alignments); g < m.length; g++) {
-                                        var f, v = B(m[g]);
+                                        var f, b = P(m[g]);
                                         try {
-                                            for (v.s(); !(f = v.n()).done; ) {
-                                                var b = f.value;
-                                                for (var y in p) p[y] = b[y] < p[y] ? b[y] : p[y], A[y] = b[y] > A[y] ? b[y] : A[y];
+                                            for (b.s(); !(f = b.n()).done; ) {
+                                                var v = f.value;
+                                                for (var y in p) p[y] = v[y] < p[y] ? v[y] : p[y], A[y] = v[y] > A[y] ? v[y] : A[y];
                                             }
                                         } catch (e) {
-                                            v.e(e);
+                                            b.e(e);
                                         } finally {
-                                            v.f();
+                                            b.f();
                                         }
                                     }
                                     for (var C = 0, w = Object.values(d.alignments); C < w.length; C++) {
-                                        var S, x = B(w[C]);
+                                        var x, S = P(w[C]);
                                         try {
-                                            for (x.s(); !(S = x.n()).done; ) {
-                                                var M = S.value, T = (s = p.score / A.score, o = 1, l = M.score / A.score, s * (1 - l) + o * l), I = (r = h[2] * Math.pow(.55, -(1 - T)), 
+                                            for (S.s(); !(x = S.n()).done; ) {
+                                                var M = x.value, T = (s = p.score / A.score, o = 1, l = M.score / A.score, s * (1 - l) + o * l), I = (r = h[2] * Math.pow(.55, -(1 - T)), 
                                                 i = .1, a = .9, Math.max(i, Math.min(a, r)));
                                                 M.color = "hsl(".concat(h[0], ", ").concat(100 * h[1], "%, ").concat(100 * I, "%)");
                                             }
                                         } catch (e) {
-                                            x.e(e);
+                                            S.e(e);
                                         } finally {
-                                            x.f();
+                                            S.f();
                                         }
                                     }
                                 }
@@ -613,7 +625,7 @@
                     }
                 }
             };
-            var F = t(1900), j = (0, F.Z)(V, undefined, undefined, !1, null, null, null);
+            var V = t(1900), j = (0, V.Z)(F, undefined, undefined, !1, null, null, null);
             j.options.__file = "frontend/ResultMixin.vue";
             const U = j.exports;
             var z = function() {
@@ -740,9 +752,37 @@
                     attrs: {
                         xs8: ""
                     }
-                }, [ r("h3", [ e._v("Still Pending") ]), e._v(" "), r("p", [ e._v("Please wait a moment") ]) ]) ], 1) ], 1) ], 1), e._v(" "), e.hits && e.hits.results ? r("template", {
+                }, [ r("h3", [ e._v("Still Pending") ]), e._v(" "), r("p", [ e._v("Please wait a moment") ]) ]) ], 1) ], 1) ], 1), e._v(" "), "RESULT" == e.resultState && e.hits && e.hits.results ? r("template", {
                     slot: "content"
-                }, [ e.hits.results.length > 1 ? r("v-tabs", {
+                }, [ r("v-menu", {
+                    ref: "menuwrapper",
+                    attrs: {
+                        "offset-y": "",
+                        absolute: ""
+                    },
+                    scopedSlots: e._u([ {
+                        key: "activator",
+                        fn: function(n) {
+                            var t = n.on;
+                            n.attrs;
+                            return [ r("div", {
+                                staticStyle: {
+                                    display: "none"
+                                }
+                            }, [ e._v(e._s(e.menuActivator = t)) ]) ];
+                        }
+                    } ], null, !1, 3471006822)
+                }, [ e._v(" "), r("v-list", e._l(e.menuItems, (function(n, t) {
+                    return r("v-list-item", {
+                        key: t,
+                        attrs: {
+                            "two-line": "",
+                            href: n.href,
+                            target: "_blank",
+                            rel: "noopener"
+                        }
+                    }, [ r("v-list-item-content", [ r("v-list-item-title", [ e._v(e._s(n.label)) ]), e._v(" "), r("v-list-item-subtitle", [ e._v("\n                                    " + e._s(n.accession) + "\n                                ") ]) ], 1) ], 1);
+                })), 1) ], 1), e._v(" "), e.hits.results.length > 1 ? r("v-tabs", {
                     staticStyle: {
                         "margin-bottom": "2em"
                     },
@@ -963,7 +1003,21 @@
                                 attrs: {
                                     id: i.id
                                 }
-                            }), e._v(" "), e.isComplex ? [ e._v("\n                                    " + e._s(-1 != i.query.lastIndexOf("_") ? i.query.substring(i.query.lastIndexOf("_") + 1) : "") + " ➔ \n                                ") ] : e._e(), e._v(" "), r("a", {
+                            }), e._v(" "), e.isComplex ? [ e._v("\n                                    " + e._s(-1 != i.query.lastIndexOf("_") ? i.query.substring(i.query.lastIndexOf("_") + 1) : "") + " ➔ \n                                ") ] : e._e(), e._v(" "), Array.isArray(i.href) ? r("a", {
+                                staticStyle: {
+                                    "text-decoration": "underline",
+                                    color: "#2196f3"
+                                },
+                                attrs: {
+                                    rel: "noopener",
+                                    title: i.target
+                                },
+                                on: {
+                                    click: function(n) {
+                                        return e.forwardDropdown(n, i.href);
+                                    }
+                                }
+                            }, [ e._v(e._s(i.target)) ]) : r("a", {
                                 attrs: {
                                     href: i.href,
                                     target: "_blank",
@@ -1047,8 +1101,8 @@
                                     type: "button"
                                 },
                                 on: {
-                                    click: function(n) {
-                                        return e.showAlignment(t, n);
+                                    click: function(r) {
+                                        return e.showAlignment(t, n.db, r);
                                     }
                                 }
                             }, [ r("span", {
@@ -1146,7 +1200,7 @@
             };
             G._withStripped = !0;
             var Q = 0;
-            const Z = {
+            const H = {
                 name: "panel",
                 props: {
                     header: {
@@ -1188,14 +1242,14 @@
                 }
             };
             t(9146);
-            var H = t(3453), Y = t.n(H), W = t(5934), K = t(5893), J = t(5255), X = t(4786), $ = t(2515), ee = t(5664), ne = (0, 
-            F.Z)(Z, G, [], !1, null, "0d9b5935", null);
-            Y()(ne, {
-                VBtn: W.Z,
-                VCard: K.Z,
-                VCardText: J.ZB,
-                VIcon: X.Z,
-                VSpacer: $.Z,
+            var Z = t(3453), $ = t.n(Z), Y = t(920), W = t(5893), K = t(5255), J = t(4786), X = t(2515), ee = t(241), ne = (0, 
+            V.Z)(H, G, [], !1, null, "0d9b5935", null);
+            $()(ne, {
+                VBtn: Y.Z,
+                VCard: W.Z,
+                VCardText: K.ZB,
+                VIcon: J.Z,
+                VSpacer: X.Z,
                 VToolbar: ee.Z
             }), ne.options.__file = "frontend/Panel.vue";
             const te = ne.exports;
@@ -1365,7 +1419,7 @@
                 }
             };
             t(5367);
-            var oe = (0, F.Z)(se, ae, [], !1, null, null, null);
+            var oe = (0, V.Z)(se, ae, [], !1, null, null, null);
             oe.options.__file = "frontend/ResidueSpan.vue";
             const le = oe.exports;
             var ce = [ "AG", "AS", "DE", "DN", "ED", "EK", "EQ", "FL", "FM", "FW", "FY", "GA", "HN", "HQ", "HY", "IL", "IM", "IV", "KE", "KQ", "KR", "LF", "LI", "LM", "LV", "MF", "MI", "ML", "MV", "ND", "NH", "NQ", "NS", "QE", "QH", "QK", "QN", "QR", "RK", "RQ", "SA", "SN", "ST", "TS", "VI", "VL", "VM", "WF", "WY", "YF", "YH", "YW" ];
@@ -1376,10 +1430,10 @@
                 },
                 methods: {
                     getSelectionStart: function(e) {
-                        return this.highlights[e - 1][0];
+                        return e > 0 && e <= this.highlights.length ? this.highlights[e - 1][0] : 0;
                     },
                     getSelectionEnd: function(e) {
-                        return this.highlights[e - 1][1];
+                        return e > 0 && e <= this.highlights.length ? this.highlights[e - 1][1] : 0;
                     },
                     getQueryIndex: function(e) {
                         return this.queryMap[e];
@@ -1414,7 +1468,7 @@
                 }
             };
             t(603);
-            var de = (0, F.Z)(ue, ie, [], !1, null, null, null);
+            var de = (0, V.Z)(ue, ie, [], !1, null, null, null);
             de.options.__file = "frontend/Alignment.vue";
             function he(e, n) {
                 var t = "undefined" != typeof Symbol && e[Symbol.iterator] || e["@@iterator"];
@@ -1564,7 +1618,7 @@
                         this.setEmptyHighlight();
                         var n, t = he(e);
                         try {
-                            for (t.s(); !(n = t.n()).done; ) for (var r = (0, v.Z)(n.value, 6), i = r[0], a = r[1], s = r[2], o = r[3], l = r[4], c = (r[5], 
+                            for (t.s(); !(n = t.n()).done; ) for (var r = (0, b.Z)(n.value, 6), i = r[0], a = r[1], s = r[2], o = r[3], l = r[4], c = (r[5], 
                             a); c <= o; c++) this.highlights[i][c] = c === a ? [ s, c === o ? l : this.lineLen ] : c === o ? [ 0, l ] : [ 0, this.lineLen ];
                         } catch (e) {
                             t.e(e);
@@ -1579,7 +1633,7 @@
                             try {
                                 for (n.s(); !(e = n.n()).done; ) {
                                     var t = e.value;
-                                    this.queryMaps.push(O(t.qStartPos, t.qAln)), this.targetMaps.push(O(t.dbStartPos, t.dbAln));
+                                    this.queryMaps.push(k(t.qStartPos, t.qAln)), this.targetMaps.push(k(t.dbStartPos, t.dbAln));
                                 }
                             } catch (e) {
                                 n.e(e);
@@ -1605,11 +1659,11 @@
                             if (o) {
                                 if (l != o) {
                                     a.push([ parseInt(o.id), d, s ]), s = "", o = l;
-                                    var b = A.startContainer.textContent.slice(0, m);
+                                    var v = A.startContainer.textContent.slice(0, m);
                                     d = {
                                         startLine: c,
                                         startOffset: m,
-                                        seqStart: this.getTargetRowStartPos(u, c) + m - ge(b, "-")
+                                        seqStart: this.getTargetRowStartPos(u, c) + m - ge(v, "-")
                                     };
                                 }
                             } else {
@@ -1625,11 +1679,11 @@
                         }
                         a.push([ parseInt(o.id), d, s ]);
                         for (var C = 0, w = a; C < w.length; C++) {
-                            var S = (0, v.Z)(w[C], 3), x = S[0], M = S[1].seqStart, T = S[2];
-                            this.structureHighlights.splice(x, 1, [ M, T.replace(/[-]/g, "").length ]);
+                            var x = (0, b.Z)(w[C], 3), S = x[0], M = x[1].seqStart, T = x[2];
+                            this.structureHighlights.splice(S, 1, [ M, T.replace(/[-]/g, "").length ]);
                         }
                         this.setAlignmentSelection(a.map((function(e) {
-                            var n = (0, v.Z)(e, 3), t = n[0], r = n[1];
+                            var n = (0, b.Z)(e, 3), t = n[0], r = n[1];
                             return [ t, r.startLine - 1, r.startOffset, r.endLine - 1, r.endOffset, n[2].length ];
                         }))), this.resetUserSelect(), window.getSelection().removeAllRanges();
                     },
@@ -1649,13 +1703,13 @@
                 }
             };
             t(5685), t(2237);
-            var fe = (0, F.Z)(me, re, [], !1, null, "89abb500", null);
-            Y()(fe, {
-                VBtn: W.Z,
-                VIcon: X.Z
+            var fe = (0, V.Z)(me, re, [], !1, null, "89abb500", null);
+            $()(fe, {
+                VBtn: Y.Z,
+                VIcon: J.Z
             }), fe.options.__file = "frontend/AlignmentPanel.vue";
-            const ve = fe.exports;
-            var be = function() {
+            const be = fe.exports;
+            var ve = function() {
                 var e = this, n = e.$createElement, t = e._self._c || n;
                 return t("div", {
                     staticClass: "ruler"
@@ -1697,7 +1751,7 @@
                     }
                 }, [ e._v(e._s(e.maxEnd)) ]) ]);
             };
-            be._withStripped = !0;
+            ve._withStripped = !0;
             const ye = {
                 props: {
                     length: Number,
@@ -1740,18 +1794,18 @@
                 }
             };
             t(5941);
-            var Ce = (0, F.Z)(ye, be, [], !1, null, "2b7861b2", null);
+            var Ce = (0, V.Z)(ye, ve, [], !1, null, "2b7861b2", null);
             Ce.options.__file = "frontend/Ruler.vue";
             function we(e) {
                 for (var n = 0; e; ) n += e.offsetTop, e = e.offsetParent;
                 return n;
             }
-            var Se, xe, Me, Te;
+            var xe, Se, Me, Te;
             const Ie = {
-                name: "result",
+                name: "ResultView",
                 components: {
                     Panel: te,
-                    AlignmentPanel: ve,
+                    AlignmentPanel: be,
                     Ruler: Ce.exports
                 },
                 data: function() {
@@ -1760,7 +1814,9 @@
                         activeTarget: null,
                         alnBoxOffset: 0,
                         selectedDatabases: 0,
-                        tableMode: 0
+                        tableMode: 0,
+                        menuActivator: null,
+                        menuItems: []
                     };
                 },
                 props: {
@@ -1778,19 +1834,19 @@
                 },
                 computed: {
                     mode: function() {
-                        return this.hits ? this.hits.mode : "";
+                        var e, n;
+                        return null !== (e = null === (n = this.hits) || void 0 === n ? void 0 : n.mode) && void 0 !== e ? e : "";
                     },
                     isComplex: function() {
-                        return !!(this.hits && this.hits.results.length > 0 && null != this.hits.results[0].alignments && this.hits.results[0].alignments[0].length > 0 && null != this.hits.results[0].alignments[0][0].complexqtm);
+                        var e;
+                        return null != (null === (e = this.hits) || void 0 === e || null === (e = e.results) || void 0 === e || null === (e = e[0]) || void 0 === e || null === (e = e.alignments) || void 0 === e || null === (e = e[0]) || void 0 === e || null === (e = e[0]) || void 0 === e ? void 0 : e.complexqtm);
                     },
                     fluidLineLen: function() {
                         return this.$vuetify.breakpoint.xsOnly ? 30 : this.$vuetify.breakpoint.smAndDown ? 45 : this.$vuetify.breakpoint.mdAndDown ? 60 : 80;
                     },
-                    filteredResults: function() {
-                        return this.hits ? 0 === this.selectedDatabases ? this.hits.results : [ this.hits.results[this.selectedDatabases - 1] ] : [];
-                    },
                     resultState: function() {
-                        if (null == this.hits && "" == this.error) return "PENDING";
+                        if ("" != this.error) return "ERROR";
+                        if (null == this.hits) return "PENDING";
                         if (!this.hits.results) return "ERROR";
                         if (0 == this.hits.results.length) return "EMPTY";
                         for (var e in this.hits.results) if (null != this.hits.results[e].alignments) return "RESULT";
@@ -1801,41 +1857,52 @@
                     log: function(e) {
                         return console.log(e), e;
                     },
-                    showAlignment: function(e, n) {
-                        var t = this;
+                    showAlignment: function(e, n, t) {
+                        var r = this;
                         this.alignment === e ? this.closeAlignment() : (this.alignment = null, this.$nextTick((function() {
-                            t.alignment = e, t.activeTarget = n.target.closest(".alignment-action"), t.alnBoxOffset = we(t.activeTarget) + t.activeTarget.offsetHeight;
+                            e.map((function(e) {
+                                return e.db = n;
+                            })), r.alignment = e, r.activeTarget = t.target.closest(".alignment-action"), r.alnBoxOffset = we(r.activeTarget) + r.activeTarget.offsetHeight;
                         })));
                     },
                     closeAlignment: function() {
                         this.alignment = null, this.activeTarget = null;
                     },
-                    handleAlignmentBoxResize: (Se = function() {
+                    handleAlignmentBoxResize: (xe = function() {
                         null != this.activeTarget && (this.alnBoxOffset = we(this.activeTarget) + this.activeTarget.offsetHeight);
-                    }, xe = 32, Me = !1, function() {
+                    }, Se = 32, Me = !1, function() {
                         var e = this, n = arguments, t = Me && !Te;
                         clearTimeout(Te), Te = setTimeout((function() {
-                            Te = null, Me || Se.apply(e, n);
-                        }), xe), t && Se.apply(e, n);
-                    })
+                            Te = null, Me || xe.apply(e, n);
+                        }), Se), t && xe.apply(e, n);
+                    }),
+                    forwardDropdown: function(e, n) {
+                        this.menuActivator && (this.menuItems = n, this.menuActivator.click(e));
+                    }
                 }
             };
             t(5264);
-            var Oe = t(6584), ke = t(6530), Le = t(683), Re = t(9456), Ee = t(756), Ne = t(7259), De = t(8917), Pe = (0, 
-            F.Z)(Ie, z, [], !1, null, null, null);
-            Y()(Pe, {
-                VBtn: W.Z,
-                VBtnToggle: Oe.Z,
-                VContainer: ke.Z,
+            var ke = t(6584), Ee = t(6530), Le = t(683), Oe = t(9456), Re = t(2545), Ne = t(3347), Be = t(2641), De = t(245), qe = t(756), Pe = t(7259), _e = t(6640), Fe = (0, 
+            V.Z)(Ie, z, [], !1, null, null, null);
+            $()(Fe, {
+                VBtn: Y.Z,
+                VBtnToggle: ke.Z,
+                VContainer: Ee.Z,
                 VFlex: Le.Z,
-                VIcon: X.Z,
-                VLayout: Re.Z,
-                VTab: Ee.Z,
-                VTabs: Ne.Z,
-                VTooltip: De.Z
-            }), Pe.options.__file = "frontend/ResultView.vue";
-            const qe = Pe.exports;
-            var Be = function() {
+                VIcon: J.Z,
+                VLayout: Oe.Z,
+                VList: Re.Z,
+                VListItem: Ne.Z,
+                VListItemContent: Be.km,
+                VListItemSubtitle: Be.oZ,
+                VListItemTitle: Be.V9,
+                VMenu: De.Z,
+                VTab: qe.Z,
+                VTabs: Pe.Z,
+                VTooltip: _e.Z
+            }), Fe.options.__file = "frontend/ResultView.vue";
+            const Ve = Fe.exports;
+            var je = function() {
                 var e = this, n = e.$createElement, t = e._self._c || n;
                 return t("div", {
                     staticStyle: {
@@ -1957,8 +2024,8 @@
                     }
                 }) ]) ], 1) ], 1) ], 1) ], 1) ], 2);
             };
-            Be._withStripped = !0;
-            const _e = {
+            je._withStripped = !0;
+            const Ue = {
                 props: {
                     title: {
                         type: String,
@@ -1987,27 +2054,27 @@
                 }
             };
             t(4869), t(55);
-            var Ve = t(1690), Fe = t(8895), je = t(9955), Ue = t(3845), ze = (0, F.Z)(_e, Be, [], !1, null, "1e22231c", null);
-            Y()(ze, {
-                VAppBar: Ve.Z,
-                VAppBarTitle: Fe.Z,
-                VBtn: W.Z,
-                VCard: K.Z,
-                VCardTitle: J.EB,
-                VContainer: ke.Z,
-                VFileInput: je.Z,
+            var ze = t(1690), Ge = t(8895), Qe = t(9955), He = t(3845), Ze = (0, V.Z)(Ue, je, [], !1, null, "1e22231c", null);
+            $()(Ze, {
+                VAppBar: ze.Z,
+                VAppBarTitle: Ge.Z,
+                VBtn: Y.Z,
+                VCard: W.Z,
+                VCardTitle: K.EB,
+                VContainer: Ee.Z,
+                VFileInput: Qe.Z,
                 VFlex: Le.Z,
-                VIcon: X.Z,
-                VLayout: Re.Z,
-                VSpacer: $.Z,
-                VToolbarItems: Ue.lj
-            }), ze.options.__file = "frontend/Local.vue";
-            const Ge = ze.exports, Qe = {
-                name: "result",
+                VIcon: J.Z,
+                VLayout: Oe.Z,
+                VSpacer: X.Z,
+                VToolbarItems: He.lj
+            }), Ze.options.__file = "frontend/Local.vue";
+            const $e = Ze.exports, Ye = {
+                name: "ResultLocal",
                 mixins: [ U ],
                 components: {
-                    ResultView: qe,
-                    Local: Ge
+                    ResultView: Ve,
+                    Local: $e
                 },
                 data: function() {
                     return {
@@ -2070,13 +2137,13 @@
                 }
             };
             t(2556), t(8973);
-            var Ze = (0, F.Z)(Qe, m, [], !1, null, "54679682", null);
-            Y()(Ze, {
-                VTab: Ee.Z,
-                VTabs: Ne.Z
-            }), Ze.options.__file = "frontend/ResultLocal.vue";
-            const He = Ze.exports;
-            var Ye = function() {
+            var We = (0, V.Z)(Ye, m, [], !1, null, "54679682", null);
+            $()(We, {
+                VTab: qe.Z,
+                VTabs: Pe.Z
+            }), We.options.__file = "frontend/ResultLocal.vue";
+            const Ke = We.exports;
+            var Je = function() {
                 var e = this, n = e.$createElement, t = e._self._c || n;
                 return t("Local", {
                     attrs: {
@@ -2103,8 +2170,8 @@
                     } ])
                 });
             };
-            Ye._withStripped = !0;
-            var We = function() {
+            Je._withStripped = !0;
+            var Xe = function() {
                 var e = this, n = e.$createElement, t = e._self._c || n;
                 return t("div", [ t("v-container", {
                     staticStyle: {
@@ -2129,11 +2196,11 @@
                     attrs: {
                         id: "settings"
                     }
-                }, [ t("tbody", [ e.statistics.hasOwnProperty("db") ? t("tr", [ t("td", [ e._v("Database") ]), e._v(" "), t("td", {
+                }, [ t("tbody", [ e.$LOCAL && e.statistics.hasOwnProperty("db") ? t("tr", [ t("td", [ e._v("Database") ]), e._v(" "), t("td", {
                     attrs: {
                         id: "msa-database"
                     }
-                }, [ e._v(e._s(e.statistics.db)) ]) ]) : e._e(), e._v(" "), e.statistics.hasOwnProperty("msaFile") ? t("tr", [ t("td", [ e._v("MSA file") ]), e._v(" "), t("td", {
+                }, [ e._v(e._s(e.statistics.db)) ]) ]) : e._e(), e._v(" "), e.$LOCAL && e.statistics.hasOwnProperty("msaFile") ? t("tr", [ t("td", [ e._v("MSA file") ]), e._v(" "), t("td", {
                     attrs: {
                         id: "msa-file"
                     }
@@ -2167,10 +2234,14 @@
                         order: e.entries.map((function(e) {
                             return e.name;
                         })),
-                        selection: e.structureViewerEntries.map((function(e) {
-                            return e.name;
+                        selection: e.structureViewerSelection.map((function(n) {
+                            return e.entries[n].name;
                         })),
                         reference: e.structureViewerReference
+                    },
+                    on: {
+                        newStructureSelection: e.handleNewStructureViewerSelection,
+                        newStructureReference: e.handleNewStructureViewerReference
                     }
                 }) ], 1) ], 1) : e._e(), e._v(" "), t("v-col", {
                     staticClass: "flex-col"
@@ -2196,7 +2267,8 @@
                     }
                 }, [ t("StructureViewerMSA", {
                     attrs: {
-                        entries: e.structureViewerEntries,
+                        entries: e.entries,
+                        selection: e.structureViewerSelection,
                         reference: e.structureViewerReference
                     },
                     on: {
@@ -2355,14 +2427,7 @@
                         click: e.toggleSettingsPanel
                     }
                 }, [ t("v-icon", [ e._v(e._s(e.settingsBtnIcon)) ]) ], 1) ], 1) ]) ]), e._v(" "), t("v-col", {
-                    staticStyle: {
-                        display: "flex",
-                        "flex-direction": "row",
-                        height: "100%",
-                        width: "100%",
-                        padding: "0",
-                        margin: "0"
-                    }
+                    staticClass: "minimap-col"
                 }, e._l(e.cssGradients, (function(n, r) {
                     return t("div", {
                         key: "col-" + r,
@@ -2408,8 +2473,8 @@
                     }
                 }) ], 1) ], 1) ], 1);
             };
-            We._withStripped = !0;
-            var Ke = function() {
+            Xe._withStripped = !0;
+            var en = function() {
                 var e = this, n = e.$createElement, t = e._self._c || n;
                 return t("div", {
                     ref: "msaWrapper",
@@ -2418,31 +2483,32 @@
                     var i = n[0], a = n[1];
                     return t("div", {
                         staticClass: "msa-block"
-                    }, e._l(e.getEntryRanges(i, a), (function(n, r) {
+                    }, [ e._l(e.getEntryRanges(i, a), (function(n, r) {
                         var i = n.name, a = n.aa, s = n.ss, o = n.seqStart, l = n.css;
-                        return t("div", {
-                            staticClass: "msa-row"
-                        }, [ t("span", {
+                        return [ t("span", {
                             staticClass: "header",
                             style: e.headerStyle(r),
+                            attrs: {
+                                title: i
+                            },
                             on: {
                                 click: function(n) {
                                     return e.handleClickHeader(n, r);
                                 }
                             }
-                        }, [ e._v(e._s(i.padStart(e.headerLen, " "))) ]), e._v(" "), t("div", {
+                        }, [ e._v(e._s(i)) ]), e._v(" "), t("div", {
                             staticClass: "sequence-wrapper"
                         }, [ t("span", {
                             staticClass: "sequence",
                             style: l
                         }, [ e._v(e._s("aa" === e.alphabet ? a : s)) ]) ]), e._v(" "), t("span", {
                             staticClass: "count"
-                        }, [ e._v(e._s(e.countSequence(a, o).toString().padStart(e.countLen, " "))) ]) ]);
-                    })), 0);
+                        }, [ e._v(e._s(e.countSequence(a, o).toString())) ]) ];
+                    })) ], 2);
                 })), 0);
             };
-            Ke._withStripped = !0;
-            var Je = t(2167), Xe = function() {
+            en._withStripped = !0;
+            var nn = t(4942), tn = function() {
                 var e = this.$createElement, n = this._self._c || e;
                 return n("div", {
                     staticClass: "canvas-wrapper"
@@ -2450,16 +2516,16 @@
                     ref: "canvas"
                 }) ]);
             };
-            function $e(e, n) {
+            function rn(e, n) {
                 var t = "undefined" != typeof Symbol && e[Symbol.iterator] || e["@@iterator"];
                 if (!t) {
                     if (Array.isArray(e) || (t = function(e, n) {
                         if (!e) return;
-                        if ("string" == typeof e) return en(e, n);
+                        if ("string" == typeof e) return an(e, n);
                         var t = Object.prototype.toString.call(e).slice(8, -1);
                         "Object" === t && e.constructor && (t = e.constructor.name);
                         if ("Map" === t || "Set" === t) return Array.from(e);
-                        if ("Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t)) return en(e, n);
+                        if ("Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t)) return an(e, n);
                     }(e)) || n && e && "number" == typeof e.length) {
                         t && (e = t);
                         var r = 0, i = function() {};
@@ -2502,13 +2568,13 @@
                     }
                 };
             }
-            function en(e, n) {
+            function an(e, n) {
                 (null == n || n > e.length) && (n = e.length);
                 for (var t = 0, r = new Array(n); t < n; t++) r[t] = e[t];
                 return r;
             }
-            Xe._withStripped = !0;
-            const nn = {
+            tn._withStripped = !0;
+            const sn = {
                 props: {
                     sequences: {
                         type: Array,
@@ -2551,15 +2617,15 @@
                             }
                         }(e, this.alphabet), i = r.map((function(e) {
                             return e.reduce((function(e, n) {
-                                var t = (0, v.Z)(n, 2);
+                                var t = (0, b.Z)(n, 2);
                                 t[0];
                                 return e + t[1];
                             }), 0);
                         })), a = Math.max.apply(Math, (0, f.Z)(i)), s = 10, o = n.width / this.lineLen, l = 0; l < r.length; l++) {
-                            var c, u = n.height, d = $e(r[l]);
+                            var c, u = n.height, d = rn(r[l]);
                             try {
                                 for (d.s(); !(c = d.n()).done; ) {
-                                    var h = (0, v.Z)(c.value, 2), A = h[0], p = h[1] / a * n.height;
+                                    var h = (0, b.Z)(c.value, 2), A = h[0], p = h[1] / a * n.height;
                                     t.save(), t.translate(s, u), t.scale(1, p / 16), t.fillStyle = this.$vuetify.theme.dark ? "white" : "black", 
                                     t.fillText(A, 0, 0), t.restore(), u -= p;
                                 }
@@ -2579,19 +2645,19 @@
                 }
             };
             t(5877);
-            var tn = (0, F.Z)(nn, Xe, [], !1, null, null, null);
-            tn.options.__file = "frontend/SequenceLogo.vue";
-            const rn = tn.exports;
-            function an(e, n) {
+            var on = (0, V.Z)(sn, tn, [], !1, null, null, null);
+            on.options.__file = "frontend/SequenceLogo.vue";
+            const ln = on.exports;
+            function cn(e, n) {
                 var t = "undefined" != typeof Symbol && e[Symbol.iterator] || e["@@iterator"];
                 if (!t) {
                     if (Array.isArray(e) || (t = function(e, n) {
                         if (!e) return;
-                        if ("string" == typeof e) return sn(e, n);
+                        if ("string" == typeof e) return un(e, n);
                         var t = Object.prototype.toString.call(e).slice(8, -1);
                         "Object" === t && e.constructor && (t = e.constructor.name);
                         if ("Map" === t || "Set" === t) return Array.from(e);
-                        if ("Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t)) return sn(e, n);
+                        if ("Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t)) return un(e, n);
                     }(e)) || n && e && "number" == typeof e.length) {
                         t && (e = t);
                         var r = 0, i = function() {};
@@ -2634,12 +2700,12 @@
                     }
                 };
             }
-            function sn(e, n) {
+            function un(e, n) {
                 (null == n || n > e.length) && (n = e.length);
                 for (var t = 0, r = new Array(n); t < n; t++) r[t] = e[t];
                 return r;
             }
-            var on = {
+            var dn = {
                 A: "#df9a8c",
                 C: "#fb72c5",
                 D: "#b4a3d8",
@@ -2663,10 +2729,10 @@
                 X: "#c0c0c0",
                 "-": "#ffffff"
             };
-            const ln = {
-                components: (0, Je.Z)({
-                    SequenceLogo: rn
-                }, "SequenceLogo", rn),
+            const hn = {
+                components: (0, nn.Z)({
+                    SequenceLogo: ln
+                }, "SequenceLogo", ln),
                 data: function() {
                     return {
                         mask: [],
@@ -2692,6 +2758,10 @@
                     colorScheme: {
                         type: String,
                         default: "lddt"
+                    },
+                    maxHeaderWidth: {
+                        type: Number,
+                        default: 30
                     }
                 },
                 mounted: function() {
@@ -2714,7 +2784,7 @@
                 },
                 computed: {
                     firstSequenceWidth: function() {
-                        var e = document.querySelector(".msa-row");
+                        var e = document.querySelector(".msa-block");
                         return e ? e.querySelector(".sequence").scrollWidth : 0;
                     },
                     blockRanges: function() {
@@ -2737,23 +2807,23 @@
                 },
                 methods: {
                     handleClickHeader: function(e, n) {
-                        e.altKey ? this.$emit("newStructureReference", n) : this.$emit("newStructureSelection", n);
+                        0 === this.selectedStructures.length || e.altKey ? this.$emit("newStructureReference", n) : this.$emit("newStructureSelection", n);
                     },
                     getSequenceWidth: function() {
-                        return document.querySelector(".msa-row").querySelector(".sequence").scrollWidth;
+                        return document.querySelector(".msa-block").querySelector(".sequence").scrollWidth;
                     },
                     headerStyle: function(e) {
                         var n = this.selectedStructures.length > 0 && this.selectedStructures.includes(e);
                         return {
                             fontWeight: n ? "bold" : "normal",
-                            color: this.selectedStructures.length > 0 && this.selectedStructures[this.referenceStructure] === e ? "#1E88E5" : n ? "#e6ac00" : this.$vuetify.theme.dark ? "rgba(180, 180, 180, 1)" : "black"
+                            color: this.selectedStructures.length > 0 && this.referenceStructure === e ? "#1E88E5" : n ? "#e6ac00" : this.$vuetify.theme.dark ? "rgba(180, 180, 180, 1)" : "black"
                         };
                     },
                     handleUpdateEntries: function() {
                         var e = this;
                         this.headerLen = 0, this.countLen = 0, this.entries.forEach((function(n, t) {
-                            e.headerLen = Math.max(e.headerLen, n.name.length);
-                            var r, i = 0, a = an(n.aa);
+                            e.headerLen = Math.min(30, Math.max(e.headerLen, n.name.length));
+                            var r, i = 0, a = cn(n.aa);
                             try {
                                 for (a.s(); !(r = a.n()).done; ) {
                                     "-" !== r.value && i++;
@@ -2767,8 +2837,11 @@
                         }));
                     },
                     handleResize: function() {
-                        var e = document.querySelector(".msa-row"), n = e.querySelector(".header"), t = e.querySelector(".count"), r = e.querySelector(".sequence"), i = e.offsetWidth - n.scrollWidth - t.scrollWidth - 32, a = r.textContent, s = Math.abs(Math.ceil(a.length * (r.scrollWidth - i) / r.scrollWidth));
-                        r.scrollWidth > i ? this.lineLen -= s : r.scrollWidth < i && (this.lineLen += s);
+                        var e = document.querySelector(".msa-block");
+                        if (e) {
+                            var n = e.querySelector(".header"), t = e.querySelector(".count"), r = e.querySelector(".sequence"), i = e.offsetWidth - n.offsetWidth - t.offsetWidth - 32, a = r.textContent, s = Math.abs(Math.ceil(a.length * (r.scrollWidth - i) / r.scrollWidth));
+                            r.scrollWidth > i ? this.lineLen = Math.min(this.lineLen - s, this.entries[0].aa.length) : r.scrollWidth < i && (this.lineLen = Math.min(this.lineLen + s, this.entries[0].aa.length));
+                        }
                     },
                     emitGradients: function() {
                         var e = document.getElementsByClassName("sequence");
@@ -2804,11 +2877,11 @@
                         if (!this.scores) return null;
                         var i = [];
                         if ("3di" === this.colorScheme) {
-                            var a, s = an(t);
+                            var a, s = cn(t);
                             try {
                                 for (s.s(); !(a = s.n()).done; ) {
                                     var o = a.value;
-                                    i.push(on[o]);
+                                    i.push(dn[o]);
                                 }
                             } catch (e) {
                                 s.e(e);
@@ -2832,12 +2905,12 @@
                         };
                     }
                 }
-            }, cn = ln;
+            }, An = hn;
             t(1574);
-            var un = (0, F.Z)(cn, Ke, [], !1, null, null, null);
-            un.options.__file = "frontend/MSAView.vue";
-            const dn = un.exports;
-            var hn = function() {
+            var pn = (0, V.Z)(An, en, [], !1, null, null, null);
+            pn.options.__file = "frontend/MSAView.vue";
+            const gn = pn.exports;
+            var mn = function() {
                 var e = this, n = e.$createElement, t = e._self._c || n;
                 return e.alignments.length > 0 && "tCa" in e.alignments[0] ? t("div", {
                     staticClass: "structure-panel"
@@ -2864,7 +2937,9 @@
                         isSpinning: e.isSpinning,
                         showQuery: e.showQuery,
                         showTarget: e.showTarget,
-                        showArrows: e.showArrows
+                        showArrows: e.showArrows,
+                        disableQueryButton: !e.hasQuery,
+                        disableArrowButton: !e.hasQuery
                     },
                     on: {
                         makeImage: e.handleMakeImage,
@@ -2881,8 +2956,8 @@
                     staticClass: "structure-viewer"
                 }) ], 1) ], 1) : e._e();
             };
-            hn._withStripped = !0;
-            var An = t(531), pn = t(4687), gn = t.n(pn), mn = function() {
+            mn._withStripped = !0;
+            var fn = t(531), bn = t(4687), vn = t.n(bn), yn = function() {
                 var e = this, n = e.$createElement, t = e._self._c || n;
                 return t("v-tooltip", {
                     attrs: {
@@ -2960,8 +3035,8 @@
                     }
                 }) ]) ]), e._v(" "), t("dd", [ e._v("\n                Zoom\n            ") ]) ]) ]) ]);
             };
-            mn._withStripped = !0;
-            const fn = {
+            yn._withStripped = !0;
+            const Cn = {
                 props: {
                     attach: {
                         type: String,
@@ -2983,13 +3058,13 @@
                     }
                 }
             };
-            var vn = (0, F.Z)(fn, mn, [], !1, null, null, null);
-            Y()(vn, {
-                VIcon: X.Z,
-                VTooltip: De.Z
-            }), vn.options.__file = "frontend/StructureViewerTooltip.vue";
-            const bn = vn.exports;
-            var yn = function() {
+            var wn = (0, V.Z)(Cn, yn, [], !1, null, null, null);
+            $()(wn, {
+                VIcon: J.Z,
+                VTooltip: _e.Z
+            }), wn.options.__file = "frontend/StructureViewerTooltip.vue";
+            const xn = wn.exports;
+            var Sn = function() {
                 var e = this, n = e.$createElement, t = e._self._c || n;
                 return t("div", {
                     staticClass: "toolbar-panel"
@@ -3081,8 +3156,8 @@
                     }
                 }, "v-btn", e.toolbarButtonProps, !1), [ t("v-icon", e._b({}, "v-icon", e.toolbarIconProps, !1), [ e._v(e._s(e.$MDI.Fullscreen)) ]), e._v(" "), e.isFullscreen ? t("span", [ e._v(" Fullscreen") ]) : e._e() ], 1) ], 1) ], 1);
             };
-            yn._withStripped = !0;
-            const Cn = {
+            Sn._withStripped = !0;
+            const Mn = {
                 props: {
                     showQuery: {
                         type: Number,
@@ -3181,13 +3256,13 @@
                 }
             };
             t(7539);
-            var wn = t(7309), Sn = (0, F.Z)(Cn, yn, [], !1, null, null, null);
-            Y()(Sn, {
-                VBtn: W.Z,
-                VIcon: X.Z,
-                VItemGroup: wn.Z
-            }), Sn.options.__file = "frontend/StructureViewerToolbar.vue";
-            const xn = Sn.exports, Mn = {
+            var Tn = t(7309), In = (0, V.Z)(Mn, Sn, [], !1, null, null, null);
+            $()(In, {
+                VBtn: Y.Z,
+                VIcon: J.Z,
+                VItemGroup: Tn.Z
+            }), In.options.__file = "frontend/StructureViewerToolbar.vue";
+            const kn = In.exports, En = {
                 data: function() {
                     return {
                         stage: null,
@@ -3264,7 +3339,7 @@
                         var e = this;
                         window.addEventListener("resize", this.handleResize, {
                             passive: !0
-                        }), this.stage = new b.Hf(this.$refs.viewport, this.stageParameters), this.stage.signals.fullscreenChanged.add((function(n) {
+                        }), this.stage = new v.Hf(this.$refs.viewport, this.stageParameters), this.stage.signals.fullscreenChanged.add((function(n) {
                             n ? (e.stage.viewer.setBackground("#ffffff"), e.stage.viewer.setLight(void 0, void 0, void 0, .2), 
                             e.isFullscreen = !0) : (e.stage.viewer.setBackground(e.bgColor), e.stage.viewer.setLight(void 0, void 0, void 0, e.ambientIntensity), 
                             e.isFullscreen = !1);
@@ -3273,7 +3348,8 @@
                         }));
                     },
                     teardownStage: function() {
-                        window.removeEventListener("resize", this.handleResize), this.stage && this.stage.dispose();
+                        window.removeEventListener("resize", this.handleResize), this.stage && (this.stage.dispose(), 
+                        this.stage = null, this.$refs.viewport.innerHTML = "");
                     },
                     handleMakeImage: function() {
                         this.makeImage();
@@ -3283,11 +3359,11 @@
                     }
                 }
             };
-            var Tn = (0, F.Z)(Mn, undefined, undefined, !1, null, null, null);
-            Tn.options.__file = "frontend/StructureViewerMixin.vue";
-            const In = Tn.exports;
-            var On = t(7895), kn = t(1434);
-            function Ln(e, n) {
+            var Ln = (0, V.Z)(En, undefined, undefined, !1, null, null, null);
+            Ln.options.__file = "frontend/StructureViewerMixin.vue";
+            const On = Ln.exports;
+            var Rn = t(7895), Nn = t(1434);
+            function Bn(e, n) {
                 var t = Object.keys(e);
                 if (Object.getOwnPropertySymbols) {
                     var r = Object.getOwnPropertySymbols(e);
@@ -3297,27 +3373,27 @@
                 }
                 return t;
             }
-            function Rn(e) {
+            function Dn(e) {
                 for (var n = 1; n < arguments.length; n++) {
                     var t = null != arguments[n] ? arguments[n] : {};
-                    n % 2 ? Ln(Object(t), !0).forEach((function(n) {
-                        (0, Je.Z)(e, n, t[n]);
-                    })) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : Ln(Object(t)).forEach((function(n) {
+                    n % 2 ? Bn(Object(t), !0).forEach((function(n) {
+                        (0, nn.Z)(e, n, t[n]);
+                    })) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : Bn(Object(t)).forEach((function(n) {
                         Object.defineProperty(e, n, Object.getOwnPropertyDescriptor(t, n));
                     }));
                 }
                 return e;
             }
-            function En(e, n) {
+            function qn(e, n) {
                 var t = "undefined" != typeof Symbol && e[Symbol.iterator] || e["@@iterator"];
                 if (!t) {
                     if (Array.isArray(e) || (t = function(e, n) {
                         if (!e) return;
-                        if ("string" == typeof e) return Nn(e, n);
+                        if ("string" == typeof e) return Pn(e, n);
                         var t = Object.prototype.toString.call(e).slice(8, -1);
                         "Object" === t && e.constructor && (t = e.constructor.name);
                         if ("Map" === t || "Set" === t) return Array.from(e);
-                        if ("Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t)) return Nn(e, n);
+                        if ("Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t)) return Pn(e, n);
                     }(e)) || n && e && "number" == typeof e.length) {
                         t && (e = t);
                         var r = 0, i = function() {};
@@ -3360,44 +3436,60 @@
                     }
                 };
             }
-            function Nn(e, n) {
+            function Pn(e, n) {
                 (null == n || n > e.length) && (n = e.length);
                 for (var t = 0, r = new Array(n); t < n; t++) r[t] = e[t];
                 return r;
             }
-            var Dn = function(e) {
+            var _n = function(e) {
                 for (var n = [], t = [], r = e.qStartPos, i = e.dbStartPos, a = 0; a < e.qAln.length; a++) "-" === e.qAln[a] || "-" === e.dbAln[a] ? "-" === e.qAln[a] ? i++ : r++ : (n.push(r), 
                 t.push(i), r++, i++);
                 return [ n, t ];
-            }, Pn = function(e) {
+            }, Fn = function(e) {
+                if (/_v[0-9]+$/.test(e)) return "A";
                 var n = e.lastIndexOf("_");
-                return -1 != n ? e.substring(n + 1) : "A";
-            }, qn = function(e, n) {
-                var t = [];
+                if (-1 != n) {
+                    var t = e.substring(n + 1);
+                    return t.length >= 1 ? t[0] : "A";
+                }
+                return "A";
+            }, Vn = function(e) {
+                if (/_v[0-9]+$/.test(e)) return e;
+                var n = e.lastIndexOf("_");
+                return -1 != n ? e.substring(0, n) : e;
+            }, jn = function(e, n) {
+                var t = [], r = -1;
                 return e.eachAtom((function(e) {
-                    t.push([ e.x, e.y, e.z ]);
+                    e.resno !== r && (t.push([ e.x, e.y, e.z ]), r = e.resno);
                 }), n), t;
-            }, Bn = b.Ub.addScheme((function() {
+            }, Un = v.Ub.addScheme((function() {
                 var e = [ 10033561, 49087, 15308410, 40563, 15787074, 29362, 13983232, 13400487 ];
                 this.atomColor = function(n) {
                     return e[n.chainIndex % e.length];
                 };
-            }), "colorblindColors");
-            const _n = {
+            }), "colorblindColors"), zn = function(e) {
+                return new v.p8(e.structure, {
+                    renumberSerial: !1
+                }).getData().split("\n").filter((function(e) {
+                    return e.startsWith("ATOM");
+                })).join("\n");
+            };
+            const Gn = {
                 name: "StructureViewer",
                 components: {
                     Panel: te,
-                    StructureViewerTooltip: bn,
-                    StructureViewerToolbar: xn
+                    StructureViewerTooltip: xn,
+                    StructureViewerToolbar: kn
                 },
-                mixins: [ In ],
+                mixins: [ On ],
                 data: function() {
                     return {
                         selection: null,
                         showArrows: !1,
                         showQuery: 0,
                         showTarget: 0,
-                        tmAlignResults: null
+                        tmAlignResults: null,
+                        hasQuery: !0
                     };
                 },
                 props: {
@@ -3445,23 +3537,24 @@
                 methods: {
                     drawArrows: function(e, n) {
                         var t = this;
-                        return (0, An.Z)(gn().mark((function r() {
+                        return (0, fn.Z)(vn().mark((function r() {
                             var i, a;
-                            return gn().wrap((function(r) {
+                            return vn().wrap((function(r) {
                                 for (;;) switch (r.prev = r.next) {
                                   case 0:
-                                    return i = new b.bn("arrows"), r.next = 3, Promise.all(t.alignments.map(function() {
-                                        var t = (0, An.Z)(gn().mark((function t(r) {
+                                    return i = new v.bn("arrows"), r.next = 3, Promise.all(t.alignments.map(function() {
+                                        var t = (0, fn.Z)(vn().mark((function t(r) {
                                             var a, s, o, l, c, u, d, h, A;
-                                            return gn().wrap((function(t) {
+                                            return vn().wrap((function(t) {
                                                 for (;;) switch (t.prev = t.next) {
                                                   case 0:
-                                                    for (a = Pn(r.query), s = Pn(r.target), o = Dn(r).map((function(e) {
+                                                    for (a = Fn(r.query), s = Fn(r.target), o = _n(r).map((function(e) {
                                                         return e.join(" or ");
-                                                    })), l = (0, v.Z)(o, 2), c = l[0], u = l[1], d = qn(e, new b.Y1("(".concat(c, ") and :").concat(a, ".CA"))), 
-                                                    h = qn(n, new b.Y1("(".concat(u, ") and :").concat(s, ".CA"))), A = 0; A < d.length; A++) i.addArrow(d[A], h[A], [ 0, 1, 1 ], .4);
+                                                    })), l = (0, b.Z)(o, 2), c = l[0], u = l[1], d = jn(e, new v.Y1("(".concat(c, ") and :").concat(a, ".CA"))), 
+                                                    h = jn(n, new v.Y1("(".concat(u, ") and :").concat(s, ".CA"))), d.length != h.length && console.warn("Different number of CA atoms in query and target", d.length, h.length), 
+                                                    A = 0; A < Math.min(d.length, h.length); A++) i.addArrow(d[A], h[A], [ 0, 1, 1 ], .4);
 
-                                                  case 6:
+                                                  case 7:
                                                   case "end":
                                                     return t.stop();
                                                 }
@@ -3504,10 +3597,10 @@
                         if (this.alignments && this.stage) {
                             var n = this.stage.getRepresentationsByName("targetHighlight");
                             if (n.setSelection(), 0 !== e.length) {
-                                var t, r = [], i = En(e);
+                                var t, r = [], i = qn(e);
                                 try {
                                     for (i.s(); !(t = i.n()).done; ) {
-                                        var a = (0, v.Z)(t.value, 3), s = a[0], o = a[1], l = a[2], c = Pn(this.alignments[s].target), u = o + l;
+                                        var a = (0, b.Z)(t.value, 3), s = a[0], o = a[1], l = a[2], c = Fn(this.alignments[s].target), u = o + l;
                                         r.push("".concat(o, "-").concat(u, ":").concat(c));
                                     }
                                 } catch (e) {
@@ -3539,9 +3632,9 @@
                     },
                     handleMakeImage: function() {
                         var e = this;
-                        return (0, An.Z)(gn().mark((function n() {
+                        return (0, fn.Z)(vn().mark((function n() {
                             var t, r, i;
-                            return gn().wrap((function(n) {
+                            return vn().wrap((function(n) {
                                 for (;;) switch (n.prev = n.next) {
                                   case 0:
                                     if (e.stage) {
@@ -3551,9 +3644,9 @@
                                     return n.abrupt("return");
 
                                   case 2:
-                                    return t = e.stage.getRepresentationsByName("queryStructure").length > 0, r = e.alignments.map((function(e) {
-                                        return t ? "".concat(e.query, "-").concat(e.target) : e.target;
-                                    })).join("_"), e.stage.viewer.setLight(void 0, void 0, void 0, .2), n.next = 7, 
+                                    return t = e.isSpinning, e.isSpinning = !1, r = e.alignments.map((function(n) {
+                                        return e.hasQuery ? "".concat(n.query, "-").concat(n.target) : n.target;
+                                    })).join("_"), e.stage.viewer.setLight(void 0, void 0, void 0, .2), n.next = 8, 
                                     e.stage.makeImage({
                                         trim: !0,
                                         factor: e.isFullscreen ? 1 : 8,
@@ -3561,11 +3654,11 @@
                                         transparent: !0
                                     });
 
-                                  case 7:
+                                  case 8:
                                     i = n.sent, e.stage.viewer.setLight(void 0, void 0, void 0, e.$vuetify.theme.dark ? .4 : .2), 
-                                    (0, b.LR)(i, "".concat(r, ".pdb"));
+                                    (0, v.LR)(i, "".concat(r, ".png")), e.isSpinning = t;
 
-                                  case 10:
+                                  case 12:
                                   case "end":
                                     return n.stop();
                                 }
@@ -3574,21 +3667,15 @@
                     },
                     handleMakePDB: function() {
                         if (this.stage) {
-                            var e = function(e) {
-                                return new b.p8(e.structure, {
-                                    renumberSerial: !1
-                                }).getData().split("\n").filter((function(e) {
-                                    return e.startsWith("ATOM");
-                                })).join("\n");
-                            }, n = this.stage.getComponentsByName("queryStructure").list.map(e), t = this.stage.getComponentsByName("targetStructure").list.map(e);
-                            if (n || t) {
-                                var r = this.alignments.map((function(e) {
-                                    return n ? "".concat(e.query, "-").concat(e.target) : e.target;
-                                })), i = null;
-                                i = n && t ? "TITLE     ".concat(r.join(" "), "\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms might have been re-generated by PULCHRA,\nREMARK              if they are not present in the original PDB file.\nMODEL        1\n").concat(n.join("\n"), "\nENDMDL\nMODEL        2\n").concat(t.join("\n"), "\nENDMDL\nEND\n") : "TITLE     ".concat(r.join(" "), "\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms were re-generated by PULCHRA.\nMODEL        1\n").concat(t.join("\n"), "\nENDMDL\nEND\n"), 
-                                (0, b.LR)(new Blob([ i ], {
+                            var e = this.stage.getComponentsByName("queryStructure").list.map(zn), n = this.stage.getComponentsByName("targetStructure").list.map(zn);
+                            if (e || n) {
+                                var t = this.alignments.map((function(n) {
+                                    return e ? "".concat(n.query, "-").concat(n.target) : n.target;
+                                })), r = null;
+                                r = e && n ? "TITLE     ".concat(t.join(" "), "\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms might have been re-generated by PULCHRA,\nREMARK              if they are not present in the original PDB file.\nMODEL        1\n").concat(e.join("\n"), "\nENDMDL\nMODEL        2\n").concat(n.join("\n"), "\nENDMDL\nEND\n") : "TITLE     ".concat(t.join(" "), "\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms were re-generated by PULCHRA.\nMODEL        1\n").concat(n.join("\n"), "\nENDMDL\nEND\n"), 
+                                (0, v.LR)(new Blob([ r ], {
                                     type: "text/plain"
-                                }), r.join("_") + ".pdb");
+                                }), t.join("_") + ".pdb");
                             }
                         }
                     }
@@ -3610,7 +3697,7 @@
                             var n = [];
                             e.forEach((function(e, t) {
                                 if (e) {
-                                    var r = (0, v.Z)(e, 2), i = r[0], a = r[1];
+                                    var r = (0, b.Z)(e, 2), i = r[0], a = r[1];
                                     n.push([ t, i, a ]);
                                 }
                             })), this.setSelectionData(n);
@@ -3620,16 +3707,16 @@
                 computed: {
                     querySele: function() {
                         return 0 === this.alignments.length || 2 == this.showQuery ? "" : 0 === this.showQuery ? this.alignments.map((function(e) {
-                            return "".concat(e.qStartPos, "-").concat(e.qEndPos, ":").concat(Pn(e.query));
+                            return "".concat(e.qStartPos, "-").concat(e.qEndPos, ":").concat(Fn(e.query));
                         })).join(" or ") : 1 === this.showQuery ? this.alignments.map((function(e) {
-                            return ":".concat(Pn(e.query));
+                            return ":".concat(Fn(e.query));
                         })).join(" or ") : void 0;
                     },
                     targetSele: function() {
                         return 0 === this.alignments.length || 2 == this.showTarget ? "" : 0 === this.showTarget ? this.alignments.map((function(e) {
-                            return "".concat(e.dbStartPos, "-").concat(e.dbEndPos, ":").concat(Pn(e.target));
+                            return "".concat(e.dbStartPos, "-").concat(e.dbEndPos, ":").concat(Fn(e.target));
                         })).join(" or ") : 1 === this.showTarget ? this.alignments.map((function(e) {
-                            return ":".concat(Pn(e.target));
+                            return ":".concat(Fn(e.target));
                         })).join(" or ") : void 0;
                     },
                     tmPanelBindings: function() {
@@ -3640,9 +3727,9 @@
                 },
                 mounted: function() {
                     var e = this;
-                    return (0, An.Z)(gn().mark((function n() {
-                        var t, r, i, a, s, o, l, c, u, d, h, A, p, g, m, v, y, C, w, S, x, M, T, I, O, k, N, D, P, q, B, _, V, F, j, U, z, G, Q, Z;
-                        return gn().wrap((function(n) {
+                    return (0, fn.Z)(vn().mark((function n() {
+                        var t, r, i, a, s, o, l, c, u, d, h, A, p, g, m, b, y, C, w, x, S, M, T, I, k, E, N, B, D, q, P, _, F, V, j, U, z, G, Q, H, Z, $, Y;
+                        return vn().wrap((function(n) {
                             for (;;) switch (n.prev = n.next) {
                               case 0:
                                 if (void 0 !== e.alignments[0].tCa) {
@@ -3652,89 +3739,106 @@
                                 return n.abrupt("return");
 
                               case 2:
-                                if (t = "", r = !0, !e.$LOCAL) {
+                                if (t = "", e.hasQuery = !0, !e.$LOCAL) {
                                     n.next = 8;
                                     break;
                                 }
-                                t = e.hits.queries[0].hasOwnProperty("pdb") ? JSON.parse(e.hits.queries[0].pdb) : R(e.hits.queries[0].qCa, e.hits.queries[0].sequence, "A"), 
+                                t = e.hits.queries[0].hasOwnProperty("pdb") ? JSON.parse(e.hits.queries[0].pdb) : O(e.hits.queries[0].qCa, e.hits.queries[0].sequence, "A"), 
                                 n.next = 23;
                                 break;
 
                               case 8:
-                                if (!e.$route.params.ticket.startsWith("user")) {
+                                if (!e.$route.params.ticket.startsWith("user-")) {
                                     n.next = 12;
                                     break;
                                 }
-                                e.hits.queries[0].hasOwnProperty("pdb") ? t = JSON.parse(e.hits.queries[0].pdb) : (i = e.$root.userData[e.$route.params.entry], 
-                                t = R(i.queries[0].qCa, i.queries[0].sequence, "A")), n.next = 23;
+                                e.hits.queries[0].hasOwnProperty("pdb") ? t = JSON.parse(e.hits.queries[0].pdb) : (r = e.$root.userData[e.$route.params.entry], 
+                                t = O(r.queries[0].qCa, r.queries[0].sequence, "A")), n.next = 23;
                                 break;
 
                               case 12:
                                 return n.prev = 12, n.next = 15, e.$axios.get("api/result/" + e.$route.params.ticket + "/query");
 
                               case 15:
-                                a = n.sent, t = a.data, n.next = 23;
+                                i = n.sent, t = i.data, n.next = 23;
                                 break;
 
                               case 19:
-                                n.prev = 19, n.t0 = n.catch(12), t = "", r = !1;
+                                n.prev = 19, n.t0 = n.catch(12), t = "", e.hasQuery = !1;
 
                               case 23:
-                                s = [], o = [], l = 0, c = En(e.alignments), n.prev = 27, d = gn().mark((function n() {
-                                    var t, r, i, a, c, d;
-                                    return gn().wrap((function(n) {
+                                a = [], s = [], o = 0, l = null, c = null, u = 0, d = qn(e.alignments), n.prev = 30, 
+                                A = vn().mark((function n() {
+                                    var t, r, i, d, A, p, g, m, f, b, v;
+                                    return vn().wrap((function(n) {
                                         for (;;) switch (n.prev = n.next) {
                                           case 0:
-                                            return t = u.value, r = t.target.lastIndexOf("_"), i = -1 != r ? t.target.substring(r + 1) : "A", 
-                                            a = R(t.tCa, t.tSeq, i), n.next = 6, (0, On.n)(a);
+                                            if (t = h.value, r = Fn(t.target), i = t.tSeq, d = t.tCa, !Number.isInteger(t.tCa) || !Number.isInteger(t.tSeq)) {
+                                                n.next = 17;
+                                                break;
+                                            }
+                                            if (A = t.db, (p = t.tCa) == l) {
+                                                n.next = 14;
+                                                break;
+                                            }
+                                            return g = e.$route.params.ticket, n.next = 11, e.$axios.get("api/result/" + g + "/" + e.$route.params.entry + "?format=brief&index=" + p + "&database=" + A);
 
-                                          case 6:
-                                            return c = n.sent, n.next = 9, e.stage.loadFile(new Blob([ c ], {
+                                          case 11:
+                                            m = n.sent, c = m.data, l = p;
+
+                                          case 14:
+                                            i = c[u].tSeq, d = c[u].tCa, u++;
+
+                                          case 17:
+                                            return f = O(d, i, r), n.next = 20, (0, Rn.n)(f);
+
+                                          case 20:
+                                            return b = n.sent, n.next = 23, e.stage.loadFile(new Blob([ b ], {
                                                 type: "text/plain"
                                             }), {
                                                 ext: "pdb",
                                                 firstModelOnly: !0
                                             });
 
-                                          case 9:
-                                            (d = n.sent).structure.eachChain((function(e) {
-                                                e.chainname = i;
-                                            })), d.structure.eachAtom((function(e) {
-                                                e.serial = l++;
-                                            })), s.push(d), o.push("".concat(t.dbStartPos, "-").concat(t.dbEndPos, ":").concat(i));
+                                          case 23:
+                                            (v = n.sent).structure.eachChain((function(e) {
+                                                e.chainname = r;
+                                            })), v.structure.eachAtom((function(e) {
+                                                e.serial = o++;
+                                            })), a.push(v), s.push("".concat(t.dbStartPos, "-").concat(t.dbEndPos, ":").concat(r));
 
-                                          case 14:
+                                          case 28:
                                           case "end":
                                             return n.stop();
                                         }
                                     }), n);
-                                })), c.s();
+                                })), d.s();
 
-                              case 30:
-                                if ((u = c.n()).done) {
-                                    n.next = 34;
+                              case 33:
+                                if ((h = d.n()).done) {
+                                    n.next = 37;
                                     break;
                                 }
-                                return n.delegateYield(d(), "t1", 32);
+                                return n.delegateYield(A(), "t1", 35);
 
-                              case 32:
-                                n.next = 30;
+                              case 35:
+                                n.next = 33;
                                 break;
 
-                              case 34:
-                                n.next = 39;
+                              case 37:
+                                n.next = 42;
                                 break;
-
-                              case 36:
-                                n.prev = 36, n.t2 = n.catch(27), c.e(n.t2);
 
                               case 39:
-                                return n.prev = 39, c.f(), n.finish(39);
+                                n.prev = 39, n.t2 = n.catch(30), d.e(n.t2);
 
                               case 42:
-                                if (h = b.Z9.apply(void 0, [ e.alignments[0].target.split("_")[0] ].concat((0, f.Z)(s.map((function(e) {
+                                return n.prev = 42, d.f(), n.finish(42);
+
+                              case 45:
+                                if (p = v.Z9.apply(void 0, [ Vn(e.alignments[0].target) ].concat((0, f.Z)(a.map((function(e) {
                                     return e.structure;
-                                }))))), (A = e.stage.addComponentFromObject(h, {
+                                }))))), (g = e.stage.addComponentFromObject(p, {
                                     name: "targetStructure"
                                 })).addRepresentation("tube", {
                                     color: 1179630,
@@ -3743,176 +3847,179 @@
                                     radius: .8,
                                     visible: !1,
                                     name: "targetHighlight"
-                                }), b.Ub.hasScheme("_targetScheme") && b.Ub.removeScheme("_targetScheme"), e.targetSchemeId = b.Ub.addSelectionScheme([ [ e.targetAlignedColor, o.join(" or ") ], [ e.targetUnalignedColor, "*" ] ], "_targetScheme"), 
-                                !r) {
-                                    n.next = 118;
+                                }), v.Ub.hasScheme("_targetScheme") && v.Ub.removeScheme("_targetScheme"), e.targetSchemeId = v.Ub.addSelectionScheme([ [ e.targetAlignedColor, s.join(" or ") ], [ e.targetUnalignedColor, "*" ] ], "_targetScheme"), 
+                                !e.hasQuery) {
+                                    n.next = 122;
                                     break;
                                 }
-                                p = "", g = En(t.split("\n"));
-                                try {
-                                    for (g.s(); !(m = g.n()).done; ) v = m.value, y = Math.max(0, 80 - v.length), C = v + " ".repeat(y) + "\n", 
-                                    p += C;
-                                } catch (e) {
-                                    g.e(e);
-                                } finally {
-                                    g.f();
+                                if (m = "", b = "pdb", "#" == (t = t.trimStart())[0] || t.startsWith("data_")) b = "cif", 
+                                t = t.replaceAll("_chem_comp.", "_chem_comp_SKIP_HACK."); else {
+                                    y = qn(t.split("\n"));
+                                    try {
+                                        for (y.s(); !(C = y.n()).done; ) w = C.value, x = Math.max(0, 80 - w.length), S = w + " ".repeat(x) + "\n", 
+                                        m += S;
+                                    } catch (e) {
+                                        y.e(e);
+                                    } finally {
+                                        y.f();
+                                    }
+                                    t = m;
                                 }
-                                return t = p, n.next = 54, e.stage.loadFile(new Blob([ t ], {
+                                return n.next = 57, e.stage.loadFile(new Blob([ t ], {
                                     type: "text/plain"
                                 }), {
-                                    ext: "pdb",
+                                    ext: b,
                                     firstModelOnly: !0,
                                     name: "queryStructure"
                                 });
 
-                              case 54:
-                                if (!(w = n.sent) || !w.structure.getAtomProxy().isCg()) {
-                                    n.next = 63;
+                              case 57:
+                                if (!(M = n.sent) || !M.structure.getAtomProxy().isCg()) {
+                                    n.next = 67;
                                     break;
                                 }
-                                return n.next = 58, (0, On.n)(t);
-
-                              case 58:
-                                return t = n.sent, e.stage.removeComponent(w), n.next = 62, e.stage.loadFile(new Blob([ t ], {
-                                    type: "text/plain"
-                                }), {
-                                    ext: "pdb",
-                                    firstModelOnly: !0,
-                                    name: "queryStructure"
-                                });
+                                return "cif" == b && (t = zn(M)), n.next = 62, (0, Rn.n)(t);
 
                               case 62:
-                                w = n.sent;
+                                return t = n.sent, e.stage.removeComponent(M), n.next = 66, e.stage.loadFile(new Blob([ t ], {
+                                    type: "text/plain"
+                                }), {
+                                    ext: "pdb",
+                                    firstModelOnly: !0,
+                                    name: "queryStructure"
+                                });
 
-                              case 63:
-                                S = [], x = En(e.alignments), n.prev = 65, T = gn().mark((function e() {
-                                    var n, t, r, i;
-                                    return gn().wrap((function(e) {
+                              case 66:
+                                M = n.sent;
+
+                              case 67:
+                                T = [], I = qn(e.alignments), n.prev = 69, E = vn().mark((function e() {
+                                    var n, t, r;
+                                    return vn().wrap((function(e) {
                                         for (;;) switch (e.prev = e.next) {
                                           case 0:
-                                            n = M.value, t = n.query.lastIndexOf("_"), r = -1 != t ? n.query.substring(t + 1) : "A", 
-                                            S.push("".concat(n.qStartPos, "-").concat(n.qEndPos, " and :").concat(r)), i = 1, 
-                                            w.structure.eachResidue((function(e) {
-                                                e.resno = i++;
-                                            }), new b.Y1(":".concat(r)));
+                                            n = k.value, t = Fn(n.query), T.push("".concat(n.qStartPos, "-").concat(n.qEndPos, " and :").concat(t)), 
+                                            r = 1, M.structure.eachResidue((function(e) {
+                                                e.resno = r++;
+                                            }), new v.Y1(":".concat(t)));
 
-                                          case 6:
+                                          case 5:
                                           case "end":
                                             return e.stop();
                                         }
                                     }), e);
-                                })), x.s();
-
-                              case 68:
-                                if ((M = x.n()).done) {
-                                    n.next = 72;
-                                    break;
-                                }
-                                return n.delegateYield(T(), "t3", 70);
-
-                              case 70:
-                                n.next = 68;
-                                break;
+                                })), I.s();
 
                               case 72:
-                                n.next = 77;
-                                break;
-
-                              case 74:
-                                n.prev = 74, n.t4 = n.catch(65), x.e(n.t4);
-
-                              case 77:
-                                return n.prev = 77, x.f(), n.finish(77);
-
-                              case 80:
-                                if (b.Ub.hasScheme("_queryScheme") && b.Ub.removeScheme("_queryScheme"), e.querySchemeId = b.Ub.addSelectionScheme([ [ e.queryAlignedColor, S.join(" or ") ], [ e.queryUnalignedColor, "*" ] ], "_queryScheme"), 
-                                !e.alignments[0].hasOwnProperty("complexu") || !e.alignments[0].hasOwnProperty("complext")) {
-                                    n.next = 100;
+                                if ((k = I.n()).done) {
+                                    n.next = 76;
                                     break;
                                 }
-                                I = e.alignments[0].complext.split(",").map((function(e) {
+                                return n.delegateYield(E(), "t3", 74);
+
+                              case 74:
+                                n.next = 72;
+                                break;
+
+                              case 76:
+                                n.next = 81;
+                                break;
+
+                              case 78:
+                                n.prev = 78, n.t4 = n.catch(69), I.e(n.t4);
+
+                              case 81:
+                                return n.prev = 81, I.f(), n.finish(81);
+
+                              case 84:
+                                if (v.Ub.hasScheme("_queryScheme") && v.Ub.removeScheme("_queryScheme"), e.querySchemeId = v.Ub.addSelectionScheme([ [ e.queryAlignedColor, T.join(" or ") ], [ e.queryUnalignedColor, "*" ] ], "_queryScheme"), 
+                                !e.alignments[0].hasOwnProperty("complexu") || !e.alignments[0].hasOwnProperty("complext")) {
+                                    n.next = 104;
+                                    break;
+                                }
+                                N = e.alignments[0].complext.split(",").map((function(e) {
                                     return parseFloat(e);
-                                })), O = [ [ (O = e.alignments[0].complexu.split(",").map((function(e) {
+                                })), B = [ [ (B = e.alignments[0].complexu.split(",").map((function(e) {
                                     return parseFloat(e);
-                                })))[0], O[1], O[2] ], [ O[3], O[4], O[5] ], [ O[6], O[7], O[8] ] ], E(A.structure, I, O), 
-                                w.addRepresentation(e.qRepr, {
+                                })))[0], B[1], B[2] ], [ B[3], B[4], B[5] ], [ B[6], B[7], B[8] ] ], R(g.structure, N, B), 
+                                M.addRepresentation(e.qRepr, {
                                     color: e.querySchemeId,
                                     smoothSheet: !0,
                                     name: "queryStructure"
-                                }), A.addRepresentation(e.tRepr, {
+                                }), g.addRepresentation(e.tRepr, {
                                     color: e.targetSchemeId,
                                     smoothSheet: !0,
                                     name: "targetStructure"
-                                }), k = [], N = [], D = [], P = En(e.alignments);
+                                }), D = [], q = [], P = [], _ = qn(e.alignments);
                                 try {
-                                    for (P.s(); !(q = P.n()).done; ) B = q.value, _ = Pn(B.query), k.push("".concat(B.qStartPos, "-").concat(B.qEndPos, ":").concat(_)), 
-                                    N.push("(not ".concat(B.qStartPos, "-").concat(B.qEndPos, " and :").concat(_, ")")), 
-                                    D.push(":".concat(_));
+                                    for (_.s(); !(F = _.n()).done; ) V = F.value, j = Fn(V.query), D.push("".concat(V.qStartPos, "-").concat(V.qEndPos, ":").concat(j)), 
+                                    q.push("(not ".concat(V.qStartPos, "-").concat(V.qEndPos, " and :").concat(j, ")")), 
+                                    P.push(":".concat(j));
                                 } catch (e) {
-                                    P.e(e);
+                                    _.e(e);
                                 } finally {
-                                    P.f();
+                                    _.f();
                                 }
-                                V = {
-                                    color: Bn,
+                                U = {
+                                    color: Un,
                                     opacity: .1,
                                     opaqueBack: !1,
-                                    useWorker: !0
-                                }, w.addRepresentation("surface", Rn({
-                                    sele: k.join(" or "),
+                                    useWorker: !1
+                                }, M.addRepresentation("surface", Dn({
+                                    sele: D.join(" or "),
                                     name: "querySurface-0"
-                                }, V)), w.addRepresentation("surface", Rn({
-                                    sele: N.join(" or "),
+                                }, U)), M.addRepresentation("surface", Dn({
+                                    sele: q.join(" or "),
                                     name: "querySurface-1",
                                     visible: !1
-                                }, V)), w.addRepresentation("surface", Rn({
-                                    sele: "not (".concat(D.join(" or "), ")"),
+                                }, U)), M.addRepresentation("surface", Dn({
+                                    sele: "not (".concat(P.join(" or "), ")"),
                                     name: "querySurface-2",
                                     visible: !1
-                                }, V)), n.next = 111;
+                                }, U)), n.next = 115;
                                 break;
 
-                              case 100:
-                                return F = L(w.structure, e.querySele), j = L(A.structure, e.targetSele), U = ">target\n".concat(e.alignments[0].dbAln, "\n\n>query\n").concat(e.alignments[0].qAln), 
-                                n.next = 105, (0, kn.Mb)(j, F, U);
+                              case 104:
+                                return z = L(M.structure, e.querySele), G = L(g.structure, e.targetSele), Q = ">target\n".concat(e.alignments[0].dbAln, "\n\n>query\n").concat(e.alignments[0].qAln), 
+                                n.next = 109, (0, Nn.Mb)(G, z, Q);
 
-                              case 105:
-                                z = n.sent, e.tmAlignResults = (0, kn.Qc)(z.output), G = (0, kn.im)(z.matrix), Q = G.t, 
-                                Z = G.u, E(A.structure, Q, Z), w.addRepresentation(e.qRepr, {
+                              case 109:
+                                H = n.sent, e.tmAlignResults = (0, Nn.Qc)(H.output), Z = (0, Nn.im)(H.matrix), $ = Z.t, 
+                                Y = Z.u, R(g.structure, $, Y), M.addRepresentation(e.qRepr, {
                                     color: e.querySchemeId,
                                     name: "queryStructure"
-                                }), A.addRepresentation(e.tRepr, {
+                                }), g.addRepresentation(e.tRepr, {
                                     color: e.targetSchemeId,
                                     name: "targetStructure"
                                 });
 
-                              case 111:
-                                return n.next = 113, e.drawArrows(w.structure, A.structure);
+                              case 115:
+                                return n.next = 117, e.drawArrows(M.structure, g.structure);
 
-                              case 113:
-                                e.setQuerySelection(), e.setTargetSelection(), w.autoView(e.querySele, e.autoViewTime), 
-                                n.next = 122;
+                              case 117:
+                                e.setQuerySelection(), e.setTargetSelection(), M.autoView(e.querySele, e.autoViewTime), 
+                                n.next = 125;
                                 break;
 
-                              case 118:
-                                A.addRepresentation(e.tRepr, {
+                              case 122:
+                                g.addRepresentation(e.tRepr, {
                                     color: e.targetSchemeId,
                                     name: "targetStructure"
-                                }), e.setQuerySelection(), e.setTargetSelection(), e.stage.autoView(e.autoViewTime);
+                                }), e.setTargetSelection(), e.stage.autoView(e.autoViewTime);
 
-                              case 122:
+                              case 125:
                               case "end":
                                 return n.stop();
                             }
-                        }), n, null, [ [ 12, 19 ], [ 27, 36, 39, 42 ], [ 65, 74, 77, 80 ] ]);
+                        }), n, null, [ [ 12, 19 ], [ 30, 39, 42, 45 ], [ 69, 78, 81, 84 ] ]);
                     })))();
                 }
-            }, Vn = _n;
+            }, Qn = Gn;
             t(9121), t(6226);
-            var Fn = (0, F.Z)(Vn, hn, [], !1, null, "739834d6", null);
-            Fn.options.__file = "frontend/StructureViewer.vue";
-            const jn = Fn.exports;
-            var Un = function() {
+            var Hn = (0, V.Z)(Qn, mn, [], !1, null, "739834d6", null);
+            Hn.options.__file = "frontend/StructureViewer.vue";
+            const Zn = Hn.exports;
+            var $n = function() {
                 var e = this, n = e.$createElement, t = e._self._c || n;
                 return t("div", {
                     staticClass: "structure-panel"
@@ -3947,431 +4054,16 @@
                     staticClass: "structure-viewer"
                 }) ], 1) ], 1);
             };
-            function zn(e, n) {
-                var t = Object.keys(e);
-                if (Object.getOwnPropertySymbols) {
-                    var r = Object.getOwnPropertySymbols(e);
-                    n && (r = r.filter((function(n) {
-                        return Object.getOwnPropertyDescriptor(e, n).enumerable;
-                    }))), t.push.apply(t, r);
-                }
-                return t;
-            }
-            function Gn(e) {
-                for (var n = 1; n < arguments.length; n++) {
-                    var t = null != arguments[n] ? arguments[n] : {};
-                    n % 2 ? zn(Object(t), !0).forEach((function(n) {
-                        (0, Je.Z)(e, n, t[n]);
-                    })) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : zn(Object(t)).forEach((function(n) {
-                        Object.defineProperty(e, n, Object.getOwnPropertyDescriptor(t, n));
-                    }));
-                }
-                return e;
-            }
-            function Qn(e, n) {
-                for (var t = {
-                    backtrace: "",
-                    qAln: "",
-                    dbAln: ""
-                }, r = !1, i = 0, a = 0, s = 0, o = "", l = ""; i < e.length; ) {
-                    var c = e[i], u = n[i];
-                    "-" === c && "-" === u || ("-" === c ? (r && (t.backtrace += "D", o += c, l += u), 
-                    ++s) : "-" === u ? (r && (t.backtrace += "I", o += c, l += u), ++a) : (r ? (t.qAln += o, 
-                    t.dbAln += l, o = "", l = "") : (r = !0, t.qStartPos = a, t.dbStartPos = s), t.backtrace += "M", 
-                    o += c, l += u, t.qEndPos = a, t.dbEndPos = s, ++a, ++s)), ++i;
-                }
-                return t.qStartPos++, t.dbStartPos++, t.qSeq = e.replace(/-/g, ""), t.tSeq = n.replace(/-/g, ""), 
-                t;
-            }
-            function Zn(e, n, t) {
-                var r = [], i = [], a = [], s = {}, o = new Set(n);
-                return e.forEach((function(e, n) {
-                    if (n === t) return s.item = e, void (o.has(e) ? (s.status = "update", o.delete(e)) : s.status = "new");
-                    o.has(e) ? (r.push(e), o.delete(e)) : a.push(e);
-                })), i.push.apply(i, (0, f.Z)(o)), {
-                    update: r,
-                    remove: i,
-                    add: a,
-                    reference: s
-                };
-            }
-            Un._withStripped = !0;
-            const Hn = {
-                name: "StructureViewerMSA",
-                components: {
-                    StructureViewerToolbar: xn,
-                    StructureViewerTooltip: bn
-                },
-                mixins: [ In ],
-                data: function() {
-                    return {
-                        structures: [],
-                        curReferenceIndex: 0,
-                        oldReference: ""
-                    };
-                },
-                props: {
-                    entries: {
-                        type: Array
-                    },
-                    reference: {
-                        type: Number
-                    },
-                    bgColorLight: {
-                        type: String,
-                        default: "white"
-                    },
-                    bgColorDark: {
-                        type: String,
-                        default: "#1E1E1E"
-                    },
-                    representationStyle: {
-                        type: String,
-                        default: "cartoon"
-                    },
-                    referenceStyleParameters: {
-                        type: Object,
-                        default: function() {
-                            return {
-                                color: "#1E88E5",
-                                opacity: 1
-                            };
-                        }
-                    },
-                    regularStyleParameters: {
-                        type: Object,
-                        default: function() {
-                            return {
-                                color: "#FFC107",
-                                opacity: .5,
-                                side: "front"
-                            };
-                        }
-                    }
-                },
-                methods: {
-                    resetView: function() {
-                        this.stage && (this.structures.length > 0 ? this.structures[this.curReferenceIndex].structure.autoView(this.transitionDuration) : this.stage.autoView(this.transitionDuration));
-                    },
-                    makePDB: function() {
-                        if (this.stage) {
-                            var e, n = "TITLE     Superposed structures from Foldmason alignment\nREMARK    This file was generated by the FoldMason webserver:\nREMARK      https://mason.foldseek.com\nREMARK    Please cite:\nREMARK      <insert citation>\nREMARK    Warning: Non C-alpha atoms may have been re-generated by PULCHRA\nREMARK             if they are not present in the original PDB file.\n";
-                            this.structures.forEach((function(t, r) {
-                                e = (e = new b.p8(t.structure.structure, {
-                                    renumberSerial: !1
-                                }).getData()).split("\n").filter((function(e) {
-                                    return e.startsWith("ATOM");
-                                })).join("\n"), n += "MODEL     ".concat(r, "\nREMARK    Name: ").concat(t.name, "\n").concat(e, "\nENDMDL\n");
-                            })), n += "END", (0, b.LR)(new Blob([ n ], {
-                                type: "text/plain"
-                            }), "foldmason.pdb");
-                        }
-                    },
-                    makeImage: function() {
-                        var e = this;
-                        this.stage && (this.stage.viewer.setLight(void 0, void 0, void 0, .2), this.stage.makeImage({
-                            trim: !0,
-                            factor: this.isFullscreen ? 1 : 8,
-                            antialias: !0,
-                            transparent: !0
-                        }).then((function(n) {
-                            e.stage.viewer.setLight(void 0, void 0, void 0, e.$vuetify.theme.dark ? .4 : .2), 
-                            (0, b.LR)(n, "foldmason.png");
-                        })));
-                    },
-                    tmAlignToReference: function(e) {
-                        var n = this;
-                        return (0, An.Z)(gn().mark((function t() {
-                            var r, i, a, s, o, l, c, u, d, h, A, p, g, m, f;
-                            return gn().wrap((function(t) {
-                                for (;;) switch (t.prev = t.next) {
-                                  case 0:
-                                    if (e !== n.curReferenceIndex) {
-                                        t.next = 2;
-                                        break;
-                                    }
-                                    return t.abrupt("return");
-
-                                  case 2:
-                                    return r = n.structures[n.curReferenceIndex].structure, i = Qn(n.structures[n.curReferenceIndex].aa, n.structures[e].aa), 
-                                    a = ">target\n".concat(i.dbAln, "\n\n>query\n").concat(i.qAln), s = n.structures[e].structure, 
-                                    t.next = 8, Promise.all([ L(r.structure, i ? "".concat(i.qStartPos, "-").concat(i.qEndPos) : ""), L(s.structure, i ? "".concat(i.dbStartPos, "-").concat(i.dbEndPos) : "") ]);
-
-                                  case 8:
-                                    return o = t.sent, l = (0, v.Z)(o, 2), c = l[0], u = l[1], t.next = 14, (0, kn.Mb)(u, c, a);
-
-                                  case 14:
-                                    return d = t.sent, h = d.output, A = d.matrix, p = (0, kn.im)(A), g = p.t, m = p.u, 
-                                    f = (0, kn.Qc)(h), t.abrupt("return", Promise.resolve({
-                                        matrix: D(g, m),
-                                        tmResults: f,
-                                        alignment: i
-                                    }));
-
-                                  case 20:
-                                  case "end":
-                                    return t.stop();
-                                }
-                            }), t);
-                        })))();
-                    },
-                    addStructureToStage: function(e) {
-                        var n = this;
-                        return (0, An.Z)(gn().mark((function t() {
-                            var r, i, a, s, o, l;
-                            return gn().wrap((function(t) {
-                                for (;;) switch (t.prev = t.next) {
-                                  case 0:
-                                    return r = e.name, i = e.aa, a = e.ca, s = n.structures.push(Gn({}, e)) - 1, t.next = 4, 
-                                    (0, On.n)(R(a, i.replace(/-/g, ""), "A"));
-
-                                  case 4:
-                                    return o = t.sent, t.next = 7, n.stage.loadFile(new Blob([ o ], {
-                                        type: "text/plain"
-                                    }), {
-                                        ext: "pdb",
-                                        firstModelOnly: !0,
-                                        name: r
-                                    });
-
-                                  case 7:
-                                    return l = t.sent, n.structures[s].index = s, n.structures[s].structure = l, t.abrupt("return", s);
-
-                                  case 11:
-                                  case "end":
-                                    return t.stop();
-                                }
-                            }), t);
-                        })))();
-                    },
-                    shiftStructure: function(e, n, t) {
-                        var r = this;
-                        return (0, An.Z)(gn().mark((function i() {
-                            var a, s, o, l, c, u;
-                            return gn().wrap((function(i) {
-                                for (;;) switch (i.prev = i.next) {
-                                  case 0:
-                                    a = e.structure, s = a.position, o = s.x, l = s.y, c = s.z, u = n * t, a.setPosition({
-                                        x: o + u,
-                                        y: l + u,
-                                        z: c + u
-                                    }), r.stage.viewer.requestRender();
-
-                                  case 5:
-                                  case "end":
-                                    return i.stop();
-                                }
-                            }), i);
-                        })))();
-                    },
-                    explode: function(e) {
-                        var n = this;
-                        return (0, An.Z)(gn().mark((function t() {
-                            return gn().wrap((function(t) {
-                                for (;;) switch (t.prev = t.next) {
-                                  case 0:
-                                    if (n.stage) {
-                                        t.next = 2;
-                                        break;
-                                    }
-                                    return t.abrupt("return");
-
-                                  case 2:
-                                    n.structures.forEach((function(t, r) {
-                                        return n.shiftStructure(t, r, e);
-                                    })), n.stage.autoView();
-
-                                  case 4:
-                                  case "end":
-                                    return t.stop();
-                                }
-                            }), t);
-                        })))();
-                    },
-                    updateEntries: function(e, n) {
-                        var t = this;
-                        return (0, An.Z)(gn().mark((function r() {
-                            var i, a, s, o, l, c, u, d;
-                            return gn().wrap((function(r) {
-                                for (;;) switch (r.prev = r.next) {
-                                  case 0:
-                                    if (t.stage) {
-                                        r.next = 2;
-                                        break;
-                                    }
-                                    return r.abrupt("return");
-
-                                  case 2:
-                                    if (i = Zn(e, n, t.reference), a = i.update, s = i.remove, o = i.add, l = i.reference, 
-                                    c = 0 === Object.keys(l).length, u = c || [ "new", "update" ].includes(l.status), 
-                                    t.oldReference = c ? "" : l.item.name, c || !u) {
-                                        r.next = 19;
-                                        break;
-                                    }
-                                    if ("update" !== l.status) {
-                                        r.next = 13;
-                                        break;
-                                    }
-                                    d = t.structures.findIndex((function(e) {
-                                        return e.name === l.item.name;
-                                    })), t.structures[d].representation.setParameters(t.referenceStyleParameters), t.structures[d].structure.setTransform(new b.yG), 
-                                    r.next = 17;
-                                    break;
-
-                                  case 13:
-                                    return r.next = 15, t.addStructureToStage(l.item);
-
-                                  case 15:
-                                    d = r.sent, t.structures[d].representation = t.structures[d].structure.addRepresentation(t.representationStyle, t.referenceStyleParameters);
-
-                                  case 17:
-                                    t.structures[d].structure.autoView(), t.curReferenceIndex = d;
-
-                                  case 19:
-                                    return r.next = 21, Promise.all(a.map(function() {
-                                        var e = (0, An.Z)(gn().mark((function e(n) {
-                                            var r, i, a, s, o, l;
-                                            return gn().wrap((function(e) {
-                                                for (;;) switch (e.prev = e.next) {
-                                                  case 0:
-                                                    if (-1 !== (r = t.structures.findIndex((function(e) {
-                                                        return n.name === e.name;
-                                                    })))) {
-                                                        e.next = 3;
-                                                        break;
-                                                    }
-                                                    return e.abrupt("return");
-
-                                                  case 3:
-                                                    if (!u) {
-                                                        e.next = 17;
-                                                        break;
-                                                    }
-                                                    return (i = t.structures[r]).representation.setVisibility(!1), e.next = 8, t.tmAlignToReference(r);
-
-                                                  case 8:
-                                                    a = e.sent, s = a.matrix, o = a.tmResults, l = a.alignment, i.tmResults = o, i.alignment = l, 
-                                                    i.representation.setParameters(t.regularStyleParameters), i.structure.setTransform(s), 
-                                                    i.representation.setVisibility(!0);
-
-                                                  case 17:
-                                                  case "end":
-                                                    return e.stop();
-                                                }
-                                            }), e);
-                                        })));
-                                        return function(n) {
-                                            return e.apply(this, arguments);
-                                        };
-                                    }()));
-
-                                  case 21:
-                                    return r.next = 23, Promise.all(s.map(function() {
-                                        var e = (0, An.Z)(gn().mark((function e(n) {
-                                            var r;
-                                            return gn().wrap((function(e) {
-                                                for (;;) switch (e.prev = e.next) {
-                                                  case 0:
-                                                    t.stage.getComponentsByName(n.name).forEach((function(e) {
-                                                        return t.stage.removeComponent(e);
-                                                    })), r = t.structures.findIndex((function(e) {
-                                                        return n.name === e.name;
-                                                    })), t.structures.splice(r, 1);
-
-                                                  case 3:
-                                                  case "end":
-                                                    return e.stop();
-                                                }
-                                            }), e);
-                                        })));
-                                        return function(n) {
-                                            return e.apply(this, arguments);
-                                        };
-                                    }()));
-
-                                  case 23:
-                                    return r.next = 25, Promise.all(o.map(function() {
-                                        var e = (0, An.Z)(gn().mark((function e(n) {
-                                            var r, i, a, s, o, l;
-                                            return gn().wrap((function(e) {
-                                                for (;;) switch (e.prev = e.next) {
-                                                  case 0:
-                                                    return e.next = 2, t.addStructureToStage(n);
-
-                                                  case 2:
-                                                    return r = e.sent, e.next = 5, t.tmAlignToReference(r);
-
-                                                  case 5:
-                                                    i = e.sent, a = i.matrix, s = i.tmResults, o = i.alignment, (l = t.structures[r]).tmResults = s, 
-                                                    l.alignment = o, l.representation = l.structure.addRepresentation(t.representationStyle, t.regularStyleParameters), 
-                                                    l.structure.setTransform(a);
-
-                                                  case 14:
-                                                  case "end":
-                                                    return e.stop();
-                                                }
-                                            }), e);
-                                        })));
-                                        return function(n) {
-                                            return e.apply(this, arguments);
-                                        };
-                                    }()));
-
-                                  case 25:
-                                  case "end":
-                                    return r.stop();
-                                }
-                            }), r);
-                        })))();
-                    }
-                },
-                watch: {
-                    "$vuetify.theme.dark": function() {
-                        this.stage.viewer.setBackground(this.bgColor);
-                    },
-                    entries: function(e, n) {
-                        this.updateEntries(e, n);
-                    }
-                },
-                computed: {
-                    bgColor: function() {
-                        return this.$vuetify.theme.dark ? this.bgColorDark : this.bgColorLight;
-                    },
-                    ambientIntensity: function() {
-                        this.$vuetify.theme.dark;
-                    }
-                }
-            };
-            t(4678);
-            var Yn = (0, F.Z)(Hn, Un, [], !1, null, "06a02575", null);
-            Yn.options.__file = "frontend/StructureViewerMSA.vue";
-            const Wn = Yn.exports;
-            var Kn = function() {
-                var e = this.$createElement, n = this._self._c || e;
-                return n("div", {
-                    ref: "parentDiv",
-                    staticStyle: {
-                        padding: "10px",
-                        height: "inherit",
-                        width: "100%",
-                        "overflow-y": "auto"
-                    }
-                }, [ n("canvas", {
-                    attrs: {
-                        id: "tree"
-                    }
-                }) ]);
-            };
-            function Jn(e, n) {
+            function Yn(e, n) {
                 var t = "undefined" != typeof Symbol && e[Symbol.iterator] || e["@@iterator"];
                 if (!t) {
                     if (Array.isArray(e) || (t = function(e, n) {
                         if (!e) return;
-                        if ("string" == typeof e) return Xn(e, n);
+                        if ("string" == typeof e) return Wn(e, n);
                         var t = Object.prototype.toString.call(e).slice(8, -1);
                         "Object" === t && e.constructor && (t = e.constructor.name);
                         if ("Map" === t || "Set" === t) return Array.from(e);
-                        if ("Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t)) return Xn(e, n);
+                        if ("Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t)) return Wn(e, n);
                     }(e)) || n && e && "number" == typeof e.length) {
                         t && (e = t);
                         var r = 0, i = function() {};
@@ -4414,13 +4106,537 @@
                     }
                 };
             }
-            function Xn(e, n) {
+            function Wn(e, n) {
                 (null == n || n > e.length) && (n = e.length);
                 for (var t = 0, r = new Array(n); t < n; t++) r[t] = e[t];
                 return r;
             }
-            function $n(e, n) {
-                var t, r = [], i = {}, a = i, s = [], o = Jn(e.split(/\s*(;|\(|\)|,|:)\s*/));
+            function Kn(e, n) {
+                for (var t = {
+                    backtrace: "",
+                    qAln: "",
+                    dbAln: ""
+                }, r = !1, i = 0, a = 0, s = 0, o = "", l = ""; i < e.length; ) {
+                    var c = e[i], u = n[i];
+                    "-" === c && "-" === u || ("-" === c ? (r && (t.backtrace += "D", o += c, l += u), 
+                    ++s) : "-" === u ? (r && (t.backtrace += "I", o += c, l += u), ++a) : (r ? (t.qAln += o, 
+                    t.dbAln += l, o = "", l = "") : (r = !0, t.qStartPos = a, t.dbStartPos = s), t.backtrace += "M", 
+                    o += c, l += u, t.qEndPos = a, t.dbEndPos = s, ++a, ++s)), ++i;
+                }
+                return t.qStartPos++, t.dbStartPos++, t.qSeq = e.replace(/-/g, ""), t.tSeq = n.replace(/-/g, ""), 
+                t;
+            }
+            $n._withStripped = !0;
+            const Jn = {
+                name: "StructureViewerMSA",
+                components: {
+                    StructureViewerToolbar: kn,
+                    StructureViewerTooltip: xn
+                },
+                mixins: [ On ],
+                data: function() {
+                    return {
+                        structures: [],
+                        curReferenceIndex: -1
+                    };
+                },
+                props: {
+                    entries: {
+                        type: Array,
+                        required: !0
+                    },
+                    selection: {
+                        type: Array,
+                        required: !0
+                    },
+                    reference: {
+                        type: Number,
+                        required: !0
+                    },
+                    bgColorLight: {
+                        type: String,
+                        default: "white"
+                    },
+                    bgColorDark: {
+                        type: String,
+                        default: "#1E1E1E"
+                    },
+                    representationStyle: {
+                        type: String,
+                        default: "cartoon"
+                    },
+                    referenceStyleParameters: {
+                        type: Object,
+                        default: function() {
+                            return {
+                                color: "#1E88E5",
+                                opacity: 1
+                            };
+                        }
+                    },
+                    regularStyleParameters: {
+                        type: Object,
+                        default: function() {
+                            return {
+                                color: "#FFC107",
+                                opacity: .5,
+                                side: "front"
+                            };
+                        }
+                    }
+                },
+                methods: {
+                    resetView: function() {
+                        this.stage && (this.selection.length > 0 ? this.getComponentByIndex(this.reference).autoView(this.transitionDuration) : this.stage.autoView(this.transitionDuration));
+                    },
+                    makePDB: function() {
+                        var e = this;
+                        if (this.stage) {
+                            var n, t = "TITLE     Superposed structures from Foldmason alignment\nREMARK    This file was generated by the FoldMason webserver:\nREMARK      https://search.foldseek.com/foldmason\nREMARK    Please cite:\nREMARK      https://doi.org/10.1101/2024.08.01.606130\nREMARK    Warning: Non C-alpha atoms may have been re-generated by PULCHRA\nREMARK             if they are not present in the original PDB file.\n";
+                            this.stage.eachComponent((function(r) {
+                                var i = (0, v.Z9)("clone", r.structure), a = new v.yG;
+                                a.fromArray(r.transform.elements), i.eachAtom((function(e) {
+                                    var n = new v.P(e.x, e.y, e.z);
+                                    n.applyMatrix4(a), e.x = n.x, e.y = n.y, e.z = n.z;
+                                })), n = (n = new v.p8(i, {
+                                    renumberSerial: !1
+                                }).getData()).split("\n").filter((function(e) {
+                                    return e.startsWith("ATOM");
+                                })).join("\n");
+                                var s = parseInt(r.structure.name.replace("key-", "")), o = e.entries[s].name;
+                                t += "MODEL     ".concat(s, "\nREMARK    Name: ").concat(o, "\n").concat(n, "\nENDMDL\n");
+                            }), "structure"), t += "END", (0, v.LR)(new Blob([ t ], {
+                                type: "text/plain"
+                            }), "foldmason.pdb");
+                        }
+                    },
+                    makeImage: function() {
+                        var e = this;
+                        this.stage && (this.stage.viewer.setLight(void 0, void 0, void 0, .2), this.stage.makeImage({
+                            trim: !0,
+                            factor: this.isFullscreen ? 1 : 8,
+                            antialias: !0,
+                            transparent: !0
+                        }).then((function(n) {
+                            e.stage.viewer.setLight(void 0, void 0, void 0, e.$vuetify.theme.dark ? .4 : .2), 
+                            (0, v.LR)(n, "foldmason.png");
+                        })));
+                    },
+                    getComponentByIndex: function(e) {
+                        if (this.stage) {
+                            var n = this.stage.getComponentsByName("key-".concat(e));
+                            return 0 === n.list.length ? -1 : n.list[0];
+                        }
+                    },
+                    tmAlignToReference: function(e) {
+                        var n = this;
+                        return (0, fn.Z)(vn().mark((function t() {
+                            var r, i, a, s, o, l, c, u, d, h, A, p, g, m, f, v, y;
+                            return vn().wrap((function(t) {
+                                for (;;) switch (t.prev = t.next) {
+                                  case 0:
+                                    if (e !== n.reference) {
+                                        t.next = 2;
+                                        break;
+                                    }
+                                    return t.abrupt("return");
+
+                                  case 2:
+                                    return r = n.entries[n.reference], i = n.entries[e], a = n.getComponentByIndex(n.reference), 
+                                    s = n.getComponentByIndex(e), o = Kn(r.aa, i.aa), l = ">target\n".concat(o.dbAln, "\n\n>query\n").concat(o.qAln), 
+                                    t.next = 10, Promise.all([ L(a.structure, o ? "".concat(o.qStartPos, "-").concat(o.qEndPos) : ""), L(s.structure, o ? "".concat(o.dbStartPos, "-").concat(o.dbEndPos) : "") ]);
+
+                                  case 10:
+                                    c = t.sent, u = (0, b.Z)(c, 2), d = u[0], h = u[1], t.next = 17;
+                                    break;
+
+                                  case 17:
+                                    return t.next = 19, (0, Nn.Mb)(h, d, l);
+
+                                  case 19:
+                                    return A = t.sent, p = A.output, g = A.matrix, m = (0, Nn.im)(g), f = m.t, v = m.u, 
+                                    y = (0, Nn.Qc)(p), t.abrupt("return", Promise.resolve({
+                                        matrix: B(f, v),
+                                        tmResults: y,
+                                        alignment: o
+                                    }));
+
+                                  case 25:
+                                  case "end":
+                                    return t.stop();
+                                }
+                            }), t);
+                        })))();
+                    },
+                    addStructureToStage: function(e, n, t) {
+                        var r = this;
+                        return (0, fn.Z)(vn().mark((function i() {
+                            var a, s, o;
+                            return vn().wrap((function(i) {
+                                for (;;) switch (i.prev = i.next) {
+                                  case 0:
+                                    return a = O(t, n.replace(/-/g, ""), "A"), i.next = 3, (0, Rn.n)(a);
+
+                                  case 3:
+                                    return s = i.sent, o = new Blob([ s ], {
+                                        type: "text/plain"
+                                    }), i.abrupt("return", r.stage.loadFile(o, {
+                                        ext: "pdb",
+                                        firstModelOnly: !0,
+                                        name: "key-".concat(e)
+                                    }));
+
+                                  case 6:
+                                  case "end":
+                                    return i.stop();
+                                }
+                            }), i);
+                        })))();
+                    },
+                    shiftStructure: function(e, n, t) {
+                        var r = this;
+                        return (0, fn.Z)(vn().mark((function i() {
+                            var a, s, o, l, c, u;
+                            return vn().wrap((function(i) {
+                                for (;;) switch (i.prev = i.next) {
+                                  case 0:
+                                    a = e.structure, s = a.position, o = s.x, l = s.y, c = s.z, u = n * t, a.setPosition({
+                                        x: o + u,
+                                        y: l + u,
+                                        z: c + u
+                                    }), r.stage.viewer.requestRender();
+
+                                  case 5:
+                                  case "end":
+                                    return i.stop();
+                                }
+                            }), i);
+                        })))();
+                    },
+                    explode: function(e) {
+                        var n = this;
+                        return (0, fn.Z)(vn().mark((function t() {
+                            return vn().wrap((function(t) {
+                                for (;;) switch (t.prev = t.next) {
+                                  case 0:
+                                    if (n.stage) {
+                                        t.next = 2;
+                                        break;
+                                    }
+                                    return t.abrupt("return");
+
+                                  case 2:
+                                    n.structures.forEach((function(t, r) {
+                                        return n.shiftStructure(t, r, e);
+                                    })), n.stage.autoView();
+
+                                  case 4:
+                                  case "end":
+                                    return t.stop();
+                                }
+                            }), t);
+                        })))();
+                    },
+                    updateEntries: function(e, n) {
+                        var t = this;
+                        return (0, fn.Z)(vn().mark((function r() {
+                            var i, a, s, o, l, c, u, d, h, A, p, g, m, f, y, C;
+                            return vn().wrap((function(r) {
+                                for (;;) switch (r.prev = r.next) {
+                                  case 0:
+                                    if (t.stage) {
+                                        r.next = 2;
+                                        break;
+                                    }
+                                    return r.abrupt("return");
+
+                                  case 2:
+                                    if (i = new Set(e), a = new Set(n), 0 !== i.size) {
+                                        r.next = 7;
+                                        break;
+                                    }
+                                    return t.stage.removeAllComponents(), r.abrupt("return");
+
+                                  case 7:
+                                    s = [], o = [], l = [], c = Yn(a), r.prev = 11, c.s();
+
+                                  case 13:
+                                    if ((u = c.n()).done) {
+                                        r.next = 20;
+                                        break;
+                                    }
+                                    if ((d = u.value) !== t.reference) {
+                                        r.next = 17;
+                                        break;
+                                    }
+                                    return r.abrupt("continue", 18);
+
+                                  case 17:
+                                    i.has(d) ? s.push(d) : o.push(d);
+
+                                  case 18:
+                                    r.next = 13;
+                                    break;
+
+                                  case 20:
+                                    r.next = 25;
+                                    break;
+
+                                  case 22:
+                                    r.prev = 22, r.t0 = r.catch(11), c.e(r.t0);
+
+                                  case 25:
+                                    return r.prev = 25, c.f(), r.finish(25);
+
+                                  case 28:
+                                    h = Yn(i), r.prev = 29, h.s();
+
+                                  case 31:
+                                    if ((A = h.n()).done) {
+                                        r.next = 38;
+                                        break;
+                                    }
+                                    if ((p = A.value) !== t.reference && !a.has(p)) {
+                                        r.next = 35;
+                                        break;
+                                    }
+                                    return r.abrupt("continue", 36);
+
+                                  case 35:
+                                    l.push(p);
+
+                                  case 36:
+                                    r.next = 31;
+                                    break;
+
+                                  case 38:
+                                    r.next = 43;
+                                    break;
+
+                                  case 40:
+                                    r.prev = 40, r.t1 = r.catch(29), h.e(r.t1);
+
+                                  case 43:
+                                    return r.prev = 43, h.f(), r.finish(43);
+
+                                  case 46:
+                                    if (g = t.reference !== t.curReferenceIndex, m = !a.has(t.reference), f = g || m, 
+                                    t.curReferenceIndex = t.reference, !f) {
+                                        r.next = 65;
+                                        break;
+                                    }
+                                    if (y = t.entries[t.reference], !m) {
+                                        r.next = 59;
+                                        break;
+                                    }
+                                    return r.next = 55, t.addStructureToStage(t.reference, y.aa, y.ca);
+
+                                  case 55:
+                                    (C = r.sent).addRepresentation(t.representationStyle, t.referenceStyleParameters), 
+                                    r.next = 64;
+                                    break;
+
+                                  case 59:
+                                    (C = t.getComponentByIndex(t.reference)).reprList[0].setVisibility(!1), C.reprList[0].setParameters(t.referenceStyleParameters), 
+                                    C.setTransform(new v.yG), C.reprList[0].setVisibility(!0);
+
+                                  case 64:
+                                    C.autoView();
+
+                                  case 65:
+                                    return r.next = 67, Promise.all(l.map(function() {
+                                        var e = (0, fn.Z)(vn().mark((function e(n) {
+                                            var r, i, a, s;
+                                            return vn().wrap((function(e) {
+                                                for (;;) switch (e.prev = e.next) {
+                                                  case 0:
+                                                    return r = t.entries[n], e.next = 3, t.addStructureToStage(n, r.aa, r.ca);
+
+                                                  case 3:
+                                                    return i = e.sent, e.next = 6, t.tmAlignToReference(n);
+
+                                                  case 6:
+                                                    a = e.sent, s = a.matrix, i.setTransform(s), i.addRepresentation(t.representationStyle, t.regularStyleParameters);
+
+                                                  case 10:
+                                                  case "end":
+                                                    return e.stop();
+                                                }
+                                            }), e);
+                                        })));
+                                        return function(n) {
+                                            return e.apply(this, arguments);
+                                        };
+                                    }()));
+
+                                  case 67:
+                                    return r.next = 69, Promise.all(o.map(function() {
+                                        var e = (0, fn.Z)(vn().mark((function e(n) {
+                                            var r;
+                                            return vn().wrap((function(e) {
+                                                for (;;) switch (e.prev = e.next) {
+                                                  case 0:
+                                                    r = t.getComponentByIndex(n), t.stage.removeComponent(r);
+
+                                                  case 2:
+                                                  case "end":
+                                                    return e.stop();
+                                                }
+                                            }), e);
+                                        })));
+                                        return function(n) {
+                                            return e.apply(this, arguments);
+                                        };
+                                    }()));
+
+                                  case 69:
+                                    if (f) {
+                                        r.next = 71;
+                                        break;
+                                    }
+                                    return r.abrupt("return");
+
+                                  case 71:
+                                    return r.next = 73, Promise.all(s.map(function() {
+                                        var e = (0, fn.Z)(vn().mark((function e(n) {
+                                            var r, i, a, s, o;
+                                            return vn().wrap((function(e) {
+                                                for (;;) switch (e.prev = e.next) {
+                                                  case 0:
+                                                    if ((r = t.getComponentByIndex(n)) && 0 !== r.reprList.length) {
+                                                        e.next = 3;
+                                                        break;
+                                                    }
+                                                    return e.abrupt("return");
+
+                                                  case 3:
+                                                    return i = (0, b.Z)(r.reprList, 1), (a = i[0]).setVisibility(!1), e.next = 7, t.tmAlignToReference(n);
+
+                                                  case 7:
+                                                    s = e.sent, o = s.matrix, a.setParameters(t.regularStyleParameters), r.setTransform(o), 
+                                                    a.setVisibility(!0);
+
+                                                  case 12:
+                                                  case "end":
+                                                    return e.stop();
+                                                }
+                                            }), e);
+                                        })));
+                                        return function(n) {
+                                            return e.apply(this, arguments);
+                                        };
+                                    }()));
+
+                                  case 73:
+                                  case "end":
+                                    return r.stop();
+                                }
+                            }), r, null, [ [ 11, 22, 25, 28 ], [ 29, 40, 43, 46 ] ]);
+                        })))();
+                    }
+                },
+                watch: {
+                    "$vuetify.theme.dark": function() {
+                        this.stage.viewer.setBackground(this.bgColor);
+                    },
+                    selection: function(e, n) {
+                        this.updateEntries(e, n);
+                    }
+                },
+                computed: {
+                    bgColor: function() {
+                        return this.$vuetify.theme.dark ? this.bgColorDark : this.bgColorLight;
+                    },
+                    ambientIntensity: function() {
+                        this.$vuetify.theme.dark;
+                    }
+                }
+            };
+            t(4678);
+            var Xn = (0, V.Z)(Jn, $n, [], !1, null, "06a02575", null);
+            Xn.options.__file = "frontend/StructureViewerMSA.vue";
+            const et = Xn.exports;
+            var nt = function() {
+                var e = this, n = e.$createElement, t = e._self._c || n;
+                return t("div", {
+                    ref: "parentDiv",
+                    staticStyle: {
+                        padding: "10px",
+                        height: "inherit",
+                        width: "100%",
+                        "overflow-y": "auto"
+                    }
+                }, [ t("canvas", {
+                    class: e.canvasClass,
+                    attrs: {
+                        id: "tree"
+                    },
+                    on: {
+                        click: e.handleClick,
+                        mousemove: e.handleMouseOver,
+                        mouseleave: e.handleMouseLeave
+                    }
+                }) ]);
+            };
+            function tt(e, n) {
+                var t = "undefined" != typeof Symbol && e[Symbol.iterator] || e["@@iterator"];
+                if (!t) {
+                    if (Array.isArray(e) || (t = function(e, n) {
+                        if (!e) return;
+                        if ("string" == typeof e) return rt(e, n);
+                        var t = Object.prototype.toString.call(e).slice(8, -1);
+                        "Object" === t && e.constructor && (t = e.constructor.name);
+                        if ("Map" === t || "Set" === t) return Array.from(e);
+                        if ("Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t)) return rt(e, n);
+                    }(e)) || n && e && "number" == typeof e.length) {
+                        t && (e = t);
+                        var r = 0, i = function() {};
+                        return {
+                            s: i,
+                            n: function() {
+                                return r >= e.length ? {
+                                    done: !0
+                                } : {
+                                    done: !1,
+                                    value: e[r++]
+                                };
+                            },
+                            e: function(e) {
+                                throw e;
+                            },
+                            f: i
+                        };
+                    }
+                    throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+                }
+                var a, s = !0, o = !1;
+                return {
+                    s: function() {
+                        t = t.call(e);
+                    },
+                    n: function() {
+                        var e = t.next();
+                        return s = e.done, e;
+                    },
+                    e: function(e) {
+                        o = !0, a = e;
+                    },
+                    f: function() {
+                        try {
+                            s || null == t.return || t.return();
+                        } finally {
+                            if (o) throw a;
+                        }
+                    }
+                };
+            }
+            function rt(e, n) {
+                (null == n || n > e.length) && (n = e.length);
+                for (var t = 0, r = new Array(n); t < n; t++) r[t] = e[t];
+                return r;
+            }
+            function it(e, n) {
+                var t, r = [], i = {}, a = i, s = [], o = tt(e.split(/\s*(;|\(|\)|,|:)\s*/));
                 try {
                     for (o.s(); !(t = o.n()).done; ) {
                         var l = t.value;
@@ -4439,11 +4655,11 @@
                             break;
 
                           case ")":
-                            (a = r.pop()).branches && (a.height = et(a));
+                            (a = r.pop()).branches && (a.height = at(a));
                             break;
 
                           default:
-                            l.length > 0 && (a.name = x(l), s.push(a.name));
+                            l.length > 0 && (a.name = S(l), s.push(a.name));
                         }
                     }
                 } catch (e) {
@@ -4466,29 +4682,31 @@
                     headers: s
                 };
             }
-            function et(e) {
+            function at(e) {
                 if (!e.branches || 0 === e.branches.length) return 1;
                 var n = 0;
                 return e.branches.forEach((function(e) {
-                    n += et(e);
+                    n += at(e);
                 })), n;
             }
-            function nt(e) {
+            function st(e) {
                 var n = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 0;
                 if (!e) return n;
                 if (!e.branches || 0 === e.branches.length) return n;
                 var t = n;
                 return e.branches.forEach((function(e) {
-                    t = Math.max(t, nt(e, n + 1));
+                    t = Math.max(t, st(e, n + 1));
                 })), t;
             }
-            Kn._withStripped = !0;
-            const tt = {
+            nt._withStripped = !0;
+            const ot = {
                 data: function() {
                     return {
                         tree: {},
                         headers: [],
-                        resizeObserver: null
+                        resizeObserver: null,
+                        headerStartX: null,
+                        isHovering: !1
                     };
                 },
                 props: {
@@ -4503,10 +4721,6 @@
                     },
                     order: {
                         type: Array
-                    },
-                    leafSpacing: {
-                        type: Number,
-                        default: 20
                     },
                     fontNormal: {
                         type: String,
@@ -4523,11 +4737,18 @@
                     selectionColor: {
                         type: String,
                         default: "#E6AC00"
+                    },
+                    maxHeaderChars: {
+                        type: Number,
+                        default: 25
                     }
                 },
                 computed: {
                     strokeStyle: function() {
                         return this.$vuetify.theme.dark ? "white" : "black";
+                    },
+                    canvasClass: function() {
+                        return this.isHovering ? "hover" : "";
                     }
                 },
                 watch: {
@@ -4550,33 +4771,53 @@
                         return !!this.selection && this.selection.includes(e.name);
                     },
                     isReference: function(e) {
-                        return void 0 !== this.reference && this.selection[this.reference] === e.name;
+                        return void 0 !== this.reference && -1 !== this.reference && e.name === this.order[this.reference];
                     },
-                    drawTree: function(e, n, t, r, i) {
-                        var a = arguments.length > 5 && void 0 !== arguments[5] ? arguments[5] : 0, s = arguments.length > 6 && void 0 !== arguments[6] ? arguments[6] : 0, o = arguments.length > 7 && void 0 !== arguments[7] ? arguments[7] : 100, l = n.branches ? t + i : o, c = r + this.leafSpacing * (0 === s ? -(n.branches ? n.branches[1].height : .5) : +(n.branches ? n.branches[0].height : .5));
-                        if (this.drawElbowConnector(e, t, r, l, c), n.branches) for (var u = 0; u < n.branches.length; u++) this.drawTree(e, n.branches[u], l, c, i, a + 1, u, o); else this.selection && (e.font = this.isSelection(n) ? this.fontSelected : this.fontNormal, 
-                        e.fillStyle = this.isSelection(n) ? this.isReference(n) ? this.referenceColor : this.selectionColor : this.strokeStyle), 
-                        e.fillText(n.name, l + 5, c + 4);
+                    drawTree: function(e, n, t, r, i, a) {
+                        var s = arguments.length > 6 && void 0 !== arguments[6] ? arguments[6] : 0, o = arguments.length > 7 && void 0 !== arguments[7] ? arguments[7] : 0, l = arguments.length > 8 && void 0 !== arguments[8] ? arguments[8] : 100, c = n.branches ? t + i : l, u = r + a * (0 === o ? -(n.branches ? n.branches[1].height : .5) : +(n.branches ? n.branches[0].height : .5));
+                        if (this.drawElbowConnector(e, t, r, c, u), n.branches) for (var d = 0; d < n.branches.length; d++) this.drawTree(e, n.branches[d], c, u, i, a, s + 1, d, l); else {
+                            this.selection && (e.font = this.isSelection(n) ? this.fontSelected : this.fontNormal, 
+                            e.fillStyle = this.isSelection(n) ? this.isReference(n) ? this.referenceColor : this.selectionColor : this.strokeStyle);
+                            var h = n.name.length > this.maxHeaderChars ? "".concat(n.name.substring(0, this.maxHeaderChars), "…") : n.name;
+                            e.fillText(h, c + 5, u + 4);
+                        }
                     },
                     clearTree: function() {
                         var e = document.getElementById("tree");
                         e.getContext("2d").clearRect(0, 0, e.width, e.height);
                     },
                     visualiseTree: function() {
-                        var e = document.getElementById("tree"), n = e.getContext("2d");
-                        n.clearRect(0, 0, e.width, e.height), n.strokeStyle = this.strokeStyle, n.font = this.fontSelected;
-                        var t = 0;
-                        this.headers.forEach((function(e) {
-                            var r = n.measureText(e).width;
-                            t = Math.max(t, r);
-                        })), e.style.width = "100%", e.style.height = "".concat(this.tree.height * this.leafSpacing, "px");
-                        var r = nt(this.tree), i = e.offsetWidth - t - 10, a = i / (r + 1), s = window.devicePixelRatio;
-                        e.height = this.tree.height * this.leafSpacing * s, e.width = e.offsetWidth * s, 
-                        n.scale(s, s), n.font = this.fontNormal, this.drawTree(n, this.tree, -5, this.tree.height * this.leafSpacing, a, 0, 0, i);
+                        var e = this, n = document.getElementById("tree");
+                        if (n) {
+                            var t = n.getContext("2d");
+                            t.clearRect(0, 0, n.width, n.height), t.strokeStyle = this.strokeStyle, t.font = this.fontSelected;
+                            var r = 0, i = 0;
+                            this.headers.forEach((function(n) {
+                                var a = t.measureText(n.substring(0, e.maxHeaderChars + 3)), s = a.width, o = a.fontBoundingBoxAscent;
+                                r = Math.max(r, s), i = Math.max(i, o);
+                            })), i *= 2, n.style.width = "100%", n.style.height = "".concat(this.headers.length * i, "px");
+                            var a = st(this.tree), s = n.offsetWidth - r, o = s / (a + 1);
+                            this.headerStartX = s;
+                            var l = window.devicePixelRatio;
+                            n.height = this.headers.length * i * l, n.width = n.offsetWidth * l, t.scale(l, l), 
+                            t.font = this.fontNormal, this.drawTree(t, this.tree, -5, this.headers.length * i, o, i, 0, 0, s);
+                        }
+                    },
+                    handleClick: function(e) {
+                        if (e.layerX > this.headerStartX) {
+                            var n = e.target.height / this.headers.length, t = Math.floor(e.offsetY * window.devicePixelRatio / n), r = 0 === this.selection.length || e.altKey ? "newStructureReference" : "newStructureSelection";
+                            this.$emit(r, t);
+                        }
+                    },
+                    handleMouseOver: function(e) {
+                        this.isHovering = e.layerX > this.headerStartX;
+                    },
+                    handleMouseLeave: function() {
+                        this.isHovering = !1;
                     }
                 },
                 mounted: function() {
-                    var e = $n(this.newick, this.order), n = e.tree, t = e.headers;
+                    var e = it(this.newick, this.order), n = e.tree, t = e.headers;
                     this.tree = n, this.headers = t, this.resizeObserver = new ResizeObserver(N(this.visualiseTree, 200)).observe(this.$refs.parentDiv);
                 },
                 beforeDestroy: function() {
@@ -4584,14 +4825,71 @@
                 }
             };
             t(6406);
-            var rt = (0, F.Z)(tt, Kn, [], !1, null, null, null);
-            rt.options.__file = "frontend/Tree.vue";
-            const it = {
+            var lt = (0, V.Z)(ot, nt, [], !1, null, null, null);
+            lt.options.__file = "frontend/Tree.vue";
+            function ct(e, n) {
+                var t = "undefined" != typeof Symbol && e[Symbol.iterator] || e["@@iterator"];
+                if (!t) {
+                    if (Array.isArray(e) || (t = function(e, n) {
+                        if (!e) return;
+                        if ("string" == typeof e) return ut(e, n);
+                        var t = Object.prototype.toString.call(e).slice(8, -1);
+                        "Object" === t && e.constructor && (t = e.constructor.name);
+                        if ("Map" === t || "Set" === t) return Array.from(e);
+                        if ("Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t)) return ut(e, n);
+                    }(e)) || n && e && "number" == typeof e.length) {
+                        t && (e = t);
+                        var r = 0, i = function() {};
+                        return {
+                            s: i,
+                            n: function() {
+                                return r >= e.length ? {
+                                    done: !0
+                                } : {
+                                    done: !1,
+                                    value: e[r++]
+                                };
+                            },
+                            e: function(e) {
+                                throw e;
+                            },
+                            f: i
+                        };
+                    }
+                    throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+                }
+                var a, s = !0, o = !1;
+                return {
+                    s: function() {
+                        t = t.call(e);
+                    },
+                    n: function() {
+                        var e = t.next();
+                        return s = e.done, e;
+                    },
+                    e: function(e) {
+                        o = !0, a = e;
+                    },
+                    f: function() {
+                        try {
+                            s || null == t.return || t.return();
+                        } finally {
+                            if (o) throw a;
+                        }
+                    }
+                };
+            }
+            function ut(e, n) {
+                (null == n || n > e.length) && (n = e.length);
+                for (var t = 0, r = new Array(n); t < n; t++) r[t] = e[t];
+                return r;
+            }
+            const dt = {
                 components: {
-                    MSAView: dn,
-                    StructureViewer: jn,
-                    StructureViewerMSA: Wn,
-                    Tree: rt.exports
+                    MSAView: gn,
+                    StructureViewer: Zn,
+                    StructureViewerMSA: et,
+                    Tree: lt.exports
                 },
                 props: {
                     entries: [],
@@ -4624,6 +4922,17 @@
                 },
                 beforeMount: function() {
                     this.handleUpdateMatchRatio();
+                    var e, n = ct(this.entries);
+                    try {
+                        for (n.s(); !(e = n.n()).done; ) {
+                            var t = e.value;
+                            t.name = S(t.name);
+                        }
+                    } catch (e) {
+                        n.e(e);
+                    } finally {
+                        n.f();
+                    }
                 },
                 mounted: function() {
                     window.addEventListener("scroll", this.handleScroll), this.structureViewerSelection = [ 0, 1 ];
@@ -4686,15 +4995,15 @@
                         this.isLoadingStructure = e;
                     },
                     handleNewStructureViewerReference: function(e) {
-                        var n = this.structureViewerSelection.slice(), t = n.indexOf(e);
-                        if (t === this.structureViewerReference) return this.structureViewerSelection = [], 
-                        void (this.structureViewerReference = 0);
-                        -1 === t && n.push(e), this.structureViewerSelection = n, this.structureViewerReference = this.structureViewerSelection.indexOf(e);
+                        if (e === this.structureViewerReference) return this.structureViewerSelection = [], 
+                        void (this.structureViewerReference = -1);
+                        var n = this.structureViewerSelection.slice();
+                        -1 === n.indexOf(e) && n.push(e), this.structureViewerSelection = n, this.structureViewerReference = e;
                     },
                     handleNewStructureViewerSelection: function(e) {
+                        if (e === this.structureViewerReference) return this.structureViewerSelection = [], 
+                        void (this.structureViewerReference = -1);
                         var n = this.structureViewerSelection.slice(), t = n.indexOf(e);
-                        if (t === this.structureViewerReference) return this.structureViewerSelection = [], 
-                        void (this.structureViewerReference = 0);
                         -1 !== t ? n.splice(t, 1) : n.push(e), this.structureViewerSelection = n;
                     },
                     getEntry: function(e) {
@@ -4718,8 +5027,8 @@
                             }(t.aa, r.aa);
                             return i.query = t.name, i.target = r.name, i.qCa = t.ca, i.tCa = r.ca, i.qSeq = t.aa.replace(/-/g, ""), 
                             i.qAln = t.aa, i.tSeq = r.aa.replace(/-/g, ""), i.dbAln = r.aa, {
-                                queryMap: O(i.qStartPos, i.qAln),
-                                targetMap: O(i.dbStartPos, i.dbAln),
+                                queryMap: k(i.qStartPos, i.qAln),
+                                targetMap: k(i.dbStartPos, i.dbAln),
                                 alignment: i
                             };
                         }
@@ -4772,24 +5081,24 @@
                 }
             };
             t(7316);
-            var at = t(7024), st = t(7894), ot = t(4317), lt = t(2993), ct = (0, F.Z)(it, We, [], !1, null, null, null);
-            Y()(ct, {
-                VBtn: W.Z,
-                VBtnToggle: Oe.Z,
-                VCard: K.Z,
-                VCardText: J.ZB,
-                VCardTitle: J.EB,
-                VCol: at.Z,
-                VContainer: ke.Z,
-                VIcon: X.Z,
-                VRow: st.Z,
-                VSimpleTable: ot.Z,
-                VTextField: lt.Z
-            }), ct.options.__file = "frontend/MSA.vue";
-            const ut = {
+            var ht = t(7024), At = t(7894), pt = t(4317), gt = t(9866), mt = (0, V.Z)(dt, Xe, [], !1, null, null, null);
+            $()(mt, {
+                VBtn: Y.Z,
+                VBtnToggle: ke.Z,
+                VCard: W.Z,
+                VCardText: K.ZB,
+                VCardTitle: K.EB,
+                VCol: ht.Z,
+                VContainer: Ee.Z,
+                VIcon: J.Z,
+                VRow: At.Z,
+                VSimpleTable: pt.Z,
+                VTextField: gt.Z
+            }), mt.options.__file = "frontend/MSA.vue";
+            const ft = {
                 components: {
-                    MSA: ct.exports,
-                    Local: Ge
+                    MSA: mt.exports,
+                    Local: $e
                 },
                 data: function() {
                     return {
@@ -4818,7 +5127,7 @@
                     handleUploadData: function(e) {
                         this.clearData(), this.key = T(), this.entries = e.entries, this.scores = e.scores, 
                         this.statistics = e.statistics, this.tree = e.tree, this.entries.forEach((function(e) {
-                            e.name = x(e.name);
+                            e.name = S(e.name);
                         }));
                     },
                     handleDownloadData: function() {
@@ -4831,41 +5140,41 @@
                     }
                 }
             };
-            var dt = (0, F.Z)(ut, Ye, [], !1, null, null, null);
-            dt.options.__file = "frontend/MSALocal.vue";
-            const ht = {
+            var bt = (0, V.Z)(ft, Je, [], !1, null, null, null);
+            bt.options.__file = "frontend/MSALocal.vue";
+            const vt = {
                 components: {
-                    ResultLocal: He,
-                    MSALocal: dt.exports
+                    ResultLocal: Ke,
+                    MSALocal: bt.exports
                 }
             };
-            var At = t(1095), pt = t(5091), gt = (0, F.Z)(ht, g, [], !1, null, null, null);
-            Y()(gt, {
-                VApp: At.Z,
-                VMain: pt.Z
-            }), gt.options.__file = "frontend/AppLocal.vue";
-            const mt = gt.exports;
+            var yt = t(1095), Ct = t(5091), wt = (0, V.Z)(vt, g, [], !1, null, null, null);
+            $()(wt, {
+                VApp: yt.Z,
+                VMain: Ct.Z
+            }), wt.options.__file = "frontend/AppLocal.vue";
+            const xt = wt.exports;
             t(654);
             r.Z.use(i.Z), r.Z.use(h);
-            var ft = {
+            var St = {
                 mmseqs: t(8615).Z,
                 foldseek: t(5473).Z,
                 foldmason: t(5106).Z
             };
-            window.document.title = ft.foldmason.APP_NAME + " Search Server";
-            var vt = window.matchMedia("(prefers-color-scheme: dark)"), bt = new i.Z({
+            window.document.title = St.foldmason.APP_NAME + " Search Server";
+            var Mt = window.matchMedia("(prefers-color-scheme: dark)"), Tt = new i.Z({
                 icons: {
                     iconfont: "mdiSvg"
                 },
                 theme: {
-                    dark: vt.matches
+                    dark: Mt.matches
                 }
             });
-            vt.addEventListener("change", (function(e) {
-                bt.framework.theme.dark = e.matches;
+            Mt.addEventListener("change", (function(e) {
+                Tt.framework.theme.dark = e.matches;
             })), r.Z.use({
                 install: function(e, n) {
-                    e.prototype.$APP = "foldmason", e.prototype.$STRINGS = ft.foldmason, e.prototype.$ELECTRON = !1, 
+                    e.prototype.$APP = "foldmason", e.prototype.$STRINGS = St.foldmason, e.prototype.$ELECTRON = !1, 
                     e.prototype.$LOCAL = !0, e.prototype.$MDI = p, e.prototype.__OS__ = {
                         arch: "web",
                         platform: "web"
@@ -4874,9 +5183,9 @@
             });
             new r.Z({
                 el: "#app",
-                vuetify: bt,
+                vuetify: Tt,
                 render: function(e) {
-                    return e(mt);
+                    return e(xt);
                 }
             });
         },
@@ -4906,8 +5215,8 @@
                 version: 3,
                 sources: [ "webpack://./frontend/Alignment.vue" ],
                 names: [],
-                mappings: ";AAsFA;IACA,sOAAA;IACA,gBAAA;AACA;AACA;IACA,qBAAA;IACA,gBAAA;AACA;AACA;IACA,iBAAA;AACA;AACA;IACA,4BAAA;AACA;AACA;IACA,qBAAA;IACA,oBAAA;IACA,mBAAA;AACA",
-                sourcesContent: [ '<template>\n    <div :id="alnIndex" class="alignment-wrapper-inner">\n        <span class="monospace" v-for="i in Math.max(1, Math.ceil(alignment.alnLength / lineLen))" :key="i">\n            <span :id="i" class="line" ref="lines">\n                <span>Q&nbsp;{{padNumber(getQueryRowStartPos(i), (Math.max(alignment.qStartPos, alignment.dbStartPos) + alignment.alnLength+"").length, \'&nbsp;\')}}</span>&nbsp;\x3c!--\n                --\x3e<ResidueSpan sequenceType="query">\x3c!--\n                    --\x3e{{alignment.qAln.substring((i-1)*lineLen,  (i-1)*lineLen+lineLen)}}\x3c!--\n                --\x3e</ResidueSpan><br>\x3c!--\n                --\x3e<span>{{\'&nbsp;\'.repeat(3+(Math.max(alignment.qStartPos, alignment.dbStartPos) + alignment.alnLength+"").length)}}</span>\x3c!--\n                --\x3e<span class="residues diff">{{formatAlnDiff(alignment.qAln.substring((i-1)*lineLen,  (i-1)*lineLen+lineLen), alignment.dbAln.substring((i-1)*lineLen, (i-1)*lineLen+lineLen))}}</span><br>\x3c!--\n                --\x3e<span>T&nbsp;{{padNumber(getTargetRowStartPos(i), (Math.max(alignment.qStartPos, alignment.dbStartPos) + alignment.alnLength+"").length, \'&nbsp;\')}}</span>&nbsp;\x3c!--\n                --\x3e<ResidueSpan\n                    sequenceType="target"\n                    :selectionStart="getSelectionStart(i)"\n                    :selectionEnd="getSelectionEnd(i)"\n                    @selectstart="onSelectStart($event, alnIndex, i)"\n                    @pointerup="onPointerUp($event, alnIndex, i)"\n                >{{alignment.dbAln.substring((i-1)*lineLen, (i-1)*lineLen+lineLen)}}\x3c!--\n                --\x3e</ResidueSpan>\n            </span><br>\n        </span>\n    </div>\n</template>\n\n<script>\n    \nimport ResidueSpan from \'./ResidueSpan.vue\'\n\n// cat blosum62.out  | grep -v \'^#\' | awk \'NR == 1 { for (i = 1; i <= NF; i++) { r[i] = $i; } next; } { col = $1; for (i = 2; i <= NF; i++) { print col,r[i-1],$i; } }\' | awk \'$3 > 0 && $1 != $2 { printf "\\""$1""$2"\\",";}\'\nconst blosum62Sim = [\n    "AG", "AS", "DE", "DN",\n    "ED", "EK", "EQ", "FL",\n    "FM", "FW", "FY", "GA",\n    "HN", "HQ", "HY", "IL",\n    "IM", "IV", "KE", "KQ",\n    "KR", "LF", "LI", "LM",\n    "LV", "MF", "MI", "ML",\n    "MV", "ND", "NH", "NQ",\n    "NS", "QE", "QH", "QK",\n    "QN", "QR", "RK", "RQ",\n    "SA", "SN", "ST", "TS",\n    "VI", "VL", "VM", "WF",\n    "WY", "YF", "YH", "YW"\n]\n\nexport default {\n    props: [\'alignment\', \'lineLen\', \'queryMap\', \'targetMap\', \'showhelp\', \'alnIndex\', \'highlights\'],\n    components: { ResidueSpan },\n    methods: {\n        getSelectionStart(i) { return this.highlights[i-1][0] },\n        getSelectionEnd(i) { return this.highlights[i-1][1] },\n\n        // Get the index of a given residue in the alignment\n        getQueryIndex(index) { return this.queryMap[index] },\n        getTargetIndex(index) { return this.targetMap[index] },\n        getFirstResidueNumber(map, i) {\n            let start = this.lineLen * (i - 1)\n            while (map[start] === null) start--\n            return map[start]\n        },\n        getQueryRowStartPos(i) { return this.getFirstResidueNumber(this.queryMap, i) },\n        getTargetRowStartPos(i) { return this.getFirstResidueNumber(this.targetMap, i) },\n        formatAlnDiff(seq1, seq2) {\n            if (seq1.length != seq2.length) return \'\'\n            var res = \'\'\n            for (var i = 0; i < seq1.length; i++) {\n                if (seq1[i] == seq2[i]) res += seq1[i];\n                else if (blosum62Sim.indexOf(seq1[i] + seq2[i]) != -1) res += \'+\';\n                else res += \' \';\n            }\n            return res;\n        },\n        padNumber(nr, n, str){\n            return Array(n - String(nr).length + 1).join(str || \'0\') + nr\n        },\n        onSelectStart(event, alnIndex, lineNo) {\n            this.$emit(\'residueSelectStart\', event, alnIndex, lineNo);\n        },\n        onPointerUp(event, alnIndex, lineNo) {\n            this.$emit(\'residuePointerUp\', event, alnIndex, lineNo);\n        }\n    }, \n}\n<\/script>\n\n<style>\n.residues {\n    font-family: InconsolataClustal, Inconsolata, Consolas, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;\n    white-space: pre;\n}\n.alignment-wrapper-outer {\n    display: inline-block;\n    overflow-x: auto;\n}\n.inselection, .inselection * {\n    user-select: none;\n}\n.inselection span.target, span.target * {\n    user-select: text !important; \n}\n.alignment-wrapper-inner .line {\n    display: inline-block;\n    margin-bottom: 0.5em;\n    white-space: nowrap;\n}\n</style>\n' ],
+                mappings: ";AA0FA;IACA,sOAAA;IACA,gBAAA;AACA;AACA;IACA,qBAAA;IACA,gBAAA;AACA;AACA;IACA,iBAAA;AACA;AACA;IACA,4BAAA;AACA;AACA;IACA,qBAAA;IACA,oBAAA;IACA,mBAAA;AACA",
+                sourcesContent: [ '<template>\n    <div :id="alnIndex" class="alignment-wrapper-inner">\n        <span class="monospace" v-for="i in Math.max(1, Math.ceil(alignment.alnLength / lineLen))" :key="i">\n            <span :id="i" class="line" ref="lines">\n                <span>Q&nbsp;{{padNumber(getQueryRowStartPos(i), (Math.max(alignment.qStartPos, alignment.dbStartPos) + alignment.alnLength+"").length, \'&nbsp;\')}}</span>&nbsp;\x3c!--\n                --\x3e<ResidueSpan sequenceType="query">\x3c!--\n                    --\x3e{{alignment.qAln.substring((i-1)*lineLen,  (i-1)*lineLen+lineLen)}}\x3c!--\n                --\x3e</ResidueSpan><br>\x3c!--\n                --\x3e<span>{{\'&nbsp;\'.repeat(3+(Math.max(alignment.qStartPos, alignment.dbStartPos) + alignment.alnLength+"").length)}}</span>\x3c!--\n                --\x3e<span class="residues diff">{{formatAlnDiff(alignment.qAln.substring((i-1)*lineLen,  (i-1)*lineLen+lineLen), alignment.dbAln.substring((i-1)*lineLen, (i-1)*lineLen+lineLen))}}</span><br>\x3c!--\n                --\x3e<span>T&nbsp;{{padNumber(getTargetRowStartPos(i), (Math.max(alignment.qStartPos, alignment.dbStartPos) + alignment.alnLength+"").length, \'&nbsp;\')}}</span>&nbsp;\x3c!--\n                --\x3e<ResidueSpan\n                    sequenceType="target"\n                    :selectionStart="getSelectionStart(i)"\n                    :selectionEnd="getSelectionEnd(i)"\n                    @selectstart="onSelectStart($event, alnIndex, i)"\n                    @pointerup="onPointerUp($event, alnIndex, i)"\n                >{{alignment.dbAln.substring((i-1)*lineLen, (i-1)*lineLen+lineLen)}}\x3c!--\n                --\x3e</ResidueSpan>\n            </span><br>\n        </span>\n    </div>\n</template>\n\n<script>\n    \nimport ResidueSpan from \'./ResidueSpan.vue\'\n\n// cat blosum62.out  | grep -v \'^#\' | awk \'NR == 1 { for (i = 1; i <= NF; i++) { r[i] = $i; } next; } { col = $1; for (i = 2; i <= NF; i++) { print col,r[i-1],$i; } }\' | awk \'$3 > 0 && $1 != $2 { printf "\\""$1""$2"\\",";}\'\nconst blosum62Sim = [\n    "AG", "AS", "DE", "DN",\n    "ED", "EK", "EQ", "FL",\n    "FM", "FW", "FY", "GA",\n    "HN", "HQ", "HY", "IL",\n    "IM", "IV", "KE", "KQ",\n    "KR", "LF", "LI", "LM",\n    "LV", "MF", "MI", "ML",\n    "MV", "ND", "NH", "NQ",\n    "NS", "QE", "QH", "QK",\n    "QN", "QR", "RK", "RQ",\n    "SA", "SN", "ST", "TS",\n    "VI", "VL", "VM", "WF",\n    "WY", "YF", "YH", "YW"\n]\n\nexport default {\n    props: [\'alignment\', \'lineLen\', \'queryMap\', \'targetMap\', \'showhelp\', \'alnIndex\', \'highlights\'],\n    components: { ResidueSpan },\n    methods: {\n        getSelectionStart(i) {\n            return (i > 0 && i <= this.highlights.length) ? this.highlights[i-1][0] : 0;\n        },\n        getSelectionEnd(i) {\n            return (i > 0 && i <= this.highlights.length) ? this.highlights[i-1][1] : 0;\n        },\n\n        // Get the index of a given residue in the alignment\n        getQueryIndex(index) { return this.queryMap[index] },\n        getTargetIndex(index) { return this.targetMap[index] },\n        getFirstResidueNumber(map, i) {\n            let start = this.lineLen * (i - 1)\n            while (map[start] === null) start--\n            return map[start]\n        },\n        getQueryRowStartPos(i) { return this.getFirstResidueNumber(this.queryMap, i) },\n        getTargetRowStartPos(i) { return this.getFirstResidueNumber(this.targetMap, i) },\n        formatAlnDiff(seq1, seq2) {\n            if (seq1.length != seq2.length) return \'\'\n            var res = \'\'\n            for (var i = 0; i < seq1.length; i++) {\n                if (seq1[i] == seq2[i]) res += seq1[i];\n                else if (blosum62Sim.indexOf(seq1[i] + seq2[i]) != -1) res += \'+\';\n                else res += \' \';\n            }\n            return res;\n        },\n        padNumber(nr, n, str){\n            return Array(n - String(nr).length + 1).join(str || \'0\') + nr\n        },\n        onSelectStart(event, alnIndex, lineNo) {\n            this.$emit(\'residueSelectStart\', event, alnIndex, lineNo);\n        },\n        onPointerUp(event, alnIndex, lineNo) {\n            this.$emit(\'residuePointerUp\', event, alnIndex, lineNo);\n        }\n    }, \n}\n<\/script>\n\n<style>\n.residues {\n    font-family: InconsolataClustal, Inconsolata, Consolas, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;\n    white-space: pre;\n}\n.alignment-wrapper-outer {\n    display: inline-block;\n    overflow-x: auto;\n}\n.inselection, .inselection * {\n    user-select: none;\n}\n.inselection span.target, span.target * {\n    user-select: text !important; \n}\n.alignment-wrapper-inner .line {\n    display: inline-block;\n    margin-bottom: 0.5em;\n    white-space: nowrap;\n}\n</style>\n' ],
                 sourceRoot: ""
             } ]);
             const o = s;
@@ -4982,12 +5291,12 @@
                 default: () => o
             });
             var r = t(7537), i = t.n(r), a = t(3645), s = t.n(a)()(i());
-            s.push([ e.id, "\n.gradient-block-col {\n    position: relative;\n    display: inline-block;\n    border: 1px solid grey;\n}\n.gradient-block-col:not(:last-child) {\n    height: 80px;\n}\n.gradient-block {\n    display: flex;\n    flex-direction: column;\n    height: 100%;\n}\n.gradient-row {\n    flex: 1;\n}\n.minimap {\n    position: sticky;\n    top: 48px;\n    padding: 16px;\n    margin-top: 1em;\n    margin-bottom: 2px;\n    height: fit-content;\n    z-index: 1;\n}\n.gradient-block-col::before {\n    content: '';\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    background-color: var(--bg-color);\n    z-index: 2;\n}\n.gradient-block-col:hover:before {\n    background-color: var(--bg-color-hover);\n    cursor: pointer;\n}\n.input-label {\n    margin: 0 8px 0 0 !important;\n}\n.input-btn {\n    height: 25px;\n}\ndiv.input-div-wrapper {\n    display: flex;\n    flex-direction: column;\n    font-size: 13px;\n    height: 80px;\n    text-align: center;\n    align-items: center;\n    justify-content: space-between;\n    padding: 2px 0;\n}\ndiv.input-div {\n    display: flex;\n    flex-direction: row;\n    justify-content: space-between;\n    width: 100%;\n}\ndiv.input-div .v-text-field {\n    min-height: 0 !important;\n    max-height: 20px;\n    max-width: 80px;\n    padding: 0 !important;\n}\ndiv.input-div .v-input__control, div.input-div .v-input__control * {\n    padding: 0;\n    min-height: 0 !important;\n    max-height: 20px;\n}\ndiv.input-div .v-input__slot {\n    padding: 0 4px !important;\n}\n@media only screen and (min-width: 800px) {\n.flex-col {\n        flex: 1 1 0px;\n        height: 500px;\n}\n.flex-col:nth-child(1) {\n        flex: 3;\n        padding-right: 6px;\n}\n.flex-col:nth-child(2),\n    .flex-col:nth-child(3) {\n        flex: 4.5;\n}\n.flex-col:nth-child(3) {\n        padding-left: 6px;\n}\n}\n@media only screen and (max-width: 800px) {\n.flex-col {\n        height: 400px;\n        flex-basis: 100%;\n        padding-bottom: 6px;\n        padding-top: 6px;\n}\n.flex-col:nth-child(1) {\n        height: 300px;\n}\n}\n.expansion-panel {\n    /* transition: width 0.3s ease; */\n    overflow: hidden;\n    width: 100%;\n    position: relative;\n}\n.expansion-panel:not(.is-expanded) {\n    width: 0;\n}\n.toggle-button {\n    color: black;\n    z-index: 2;\n}\n", "", {
+            s.push([ e.id, "\n.gradient-block-col {\n    position: relative;\n    display: inline-block;\n    border: 1px solid grey; \n    height: 80px;\n}\n.gradient-block {\n    display: flex;\n    flex-direction: column;\n    height: 100%;\n}\n.gradient-row {\n    flex: 1;\n}\n.minimap {\n    position: sticky;\n    top: 48px;\n    padding: 16px;\n    margin-top: 1em;\n    margin-bottom: 2px;\n    height: fit-content;\n    z-index: 1;\n}\n.minimap-col {\n    display: flex;\n    flex-direction: row;\n    height: 100%;\n    width: 100%;\n    padding: 0;\n    margin: 0;\n}\n.gradient-block-col::before {\n    content: '';\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    background-color: var(--bg-color);\n    z-index: 2;\n}\n.gradient-block-col:hover:before {\n    background-color: var(--bg-color-hover);\n    cursor: pointer;\n}\n.input-label {\n    margin: 0 8px 0 0 !important;\n}\n.input-btn {\n    height: 25px;\n}\ndiv.input-div-wrapper {\n    display: flex;\n    flex-direction: column;\n    font-size: 13px;\n    height: 80px;\n    text-align: center;\n    align-items: center;\n    justify-content: space-between;\n    padding: 2px 0;\n}\ndiv.input-div {\n    display: flex;\n    flex-direction: row;\n    justify-content: space-between;\n    width: 100%;\n}\ndiv.input-div .v-text-field {\n    min-height: 0 !important;\n    max-height: 20px;\n    max-width: 80px;\n    padding: 0 !important;\n}\ndiv.input-div .v-input__control, div.input-div .v-input__control * {\n    padding: 0;\n    min-height: 0 !important;\n    max-height: 20px;\n}\ndiv.input-div .v-input__slot {\n    padding: 0 4px !important;\n}\n@media only screen and (min-width: 800px) {\n.flex-col {\n        flex: 1 1 0px;\n        height: 500px;\n}\n.flex-col:nth-child(1) {\n        flex: 3;\n        padding-right: 6px;\n}\n.flex-col:nth-child(2),\n    .flex-col:nth-child(3) {\n        flex: 4.5;\n}\n.flex-col:nth-child(3) {\n        padding-left: 6px;\n}\n}\n@media only screen and (max-width: 800px) {\n.flex-col {\n        height: 400px;\n        flex-basis: 100%;\n        padding-bottom: 6px;\n        padding-top: 6px;\n}\n.flex-col:nth-child(1) {\n        height: 300px;\n}\n}\n.expansion-panel {\n    /* transition: width 0.3s ease; */\n    overflow: hidden;\n    width: 100%;\n    position: relative;\n}\n.expansion-panel:not(.is-expanded) {\n    width: 0;\n}\n.toggle-button {\n    color: black;\n    z-index: 2;\n}\n", "", {
                 version: 3,
                 sources: [ "webpack://./frontend/MSA.vue" ],
                 names: [],
-                mappings: ";AA8bA;IACA,kBAAA;IACA,qBAAA;IACA,sBAAA;AACA;AACA;IACA,YAAA;AACA;AACA;IACA,aAAA;IACA,sBAAA;IACA,YAAA;AACA;AACA;IACA,OAAA;AACA;AACA;IACA,gBAAA;IACA,SAAA;IACA,aAAA;IACA,eAAA;IACA,kBAAA;IACA,mBAAA;IACA,UAAA;AACA;AACA;IACA,WAAA;IACA,kBAAA;IACA,MAAA;IACA,OAAA;IACA,WAAA;IACA,YAAA;IACA,iCAAA;IACA,UAAA;AACA;AACA;IACA,uCAAA;IACA,eAAA;AACA;AACA;IACA,4BAAA;AACA;AACA;IACA,YAAA;AACA;AACA;IACA,aAAA;IACA,sBAAA;IACA,eAAA;IACA,YAAA;IACA,kBAAA;IACA,mBAAA;IACA,8BAAA;IACA,cAAA;AACA;AACA;IACA,aAAA;IACA,mBAAA;IACA,8BAAA;IACA,WAAA;AACA;AACA;IACA,wBAAA;IACA,gBAAA;IACA,eAAA;IACA,qBAAA;AACA;AACA;IACA,UAAA;IACA,wBAAA;IACA,gBAAA;AACA;AACA;IACA,yBAAA;AACA;AACA;AACA;QACA,aAAA;QACA,aAAA;AACA;AACA;QACA,OAAA;QACA,kBAAA;AACA;AACA;;QAEA,SAAA;AACA;AACA;QACA,iBAAA;AACA;AACA;AACA;AACA;QACA,aAAA;QACA,gBAAA;QACA,mBAAA;QACA,gBAAA;AACA;AACA;QACA,aAAA;AACA;AACA;AACA;IACA,iCAAA;IACA,gBAAA;IACA,WAAA;IACA,kBAAA;AACA;AACA;IACA,QAAA;AACA;AACA;IACA,YAAA;IACA,UAAA;AACA",
-                sourcesContent: [ '<template>\n<div>\n    <v-container fluid pa-2 style="overflow: visible; height: 100%;">\n        <v-row>\n            <v-col class="flex-col">\n                <v-card style="height: 100%">\n                    <v-card-title>Summary</v-card-title>\n                    <v-card-text>\n                        <v-simple-table style="height: 100%;" id="settings" class="settings auto-height-table">\n                            <tbody>\n                                <tr v-if="statistics.hasOwnProperty(\'db\')">\n                                    <td>Database</td>\n                                    <td id="msa-database">{{ statistics.db }}</td>\n                                </tr>\n                                <tr v-if="statistics.hasOwnProperty(\'msaFile\')">\n                                    <td>MSA file</td>\n                                    <td id="msa-file">{{ statistics.msaFile }}</td>\n                                </tr>\n                                <tr v-if="statistics.hasOwnProperty(\'msaLDDT\')">\n                                    <td>MSA LDDT</td>\n                                    <td id="msa-lddt">{{ statistics.msaLDDT.toFixed(3) }}</td>\n                                </tr>\n                                <tr v-if="statistics.hasOwnProperty(\'cmdString\')">\n                                    <td>Command</td>\n                                    <td id="msa-cmd">{{ statistics.cmdString }}</td>\n                                </tr>\n                            </tbody>\n                        </v-simple-table>\n                    </v-card-text>\n                </v-card>\n            </v-col>\n            <v-col class="flex-col" v-if="tree">\n                <v-card class="fill-height" style="position: relative;">\n                    <v-card-title style="position: absolute; left: 0; top: 0; margin: 0; padding: 16px; z-index: 1;">Guide Tree</v-card-title>\n                    <Tree\n                        :newick="tree"\n                        :order="entries.map(e => e.name)"\n                        :selection="structureViewerEntries.map(e => e.name)"\n                        :reference="structureViewerReference"\n                    />\n                </v-card>\n            </v-col>\n            <v-col class="flex-col">\n                <v-card class="fill-height" style="position: relative;">\n                    <v-card-title style="position: absolute; left: 0; top: 0; margin: 0; padding: 16px; z-index: 1;">Structure</v-card-title>\n                    <div v-if="structureViewerSelection" style="padding: 10px; height: 100%; width: 100%;">\n                        <StructureViewerMSA\n                            :entries="structureViewerEntries"\n                            :reference="structureViewerReference"\n                            @loadingChange="handleStructureLoadingChange"\n                        />\n                    </div>\n                    <v-card-text v-else>\n                        No structures loaded.\n                    </v-card-text>\n                </v-card>\n            </v-col>\n        </v-row>\n        <v-card class="minimap fill-height">\n            <v-row dense v-if="cssGradients" style="align-items: center;">\n                <v-col align="center" no-gutters style="max-width: fit-content; margin-right: 4px; position: relative;">\n                    <div style="display: flex; flex-direction: row;">\n                        <div class="input-div-wrapper expansion-panel" :class="{ \'is-expanded\': settingsPanelOpen }">\n                            <div class="input-div">\n                                <label\n                                    title="Toggle between AA and 3Di alphabets"\n                                    class="input-label"\n                                >Alphabet</label>\n                                <v-btn-toggle dense mandatory color="primary" v-model="alphabet">\n                                    <v-btn x-small value="aa" style="width: 40px;">AA</v-btn>\n                                    <v-btn x-small value="ss" style="width: 40px;">3Di</v-btn>\n                                </v-btn-toggle>\n                            </div>\n                            <div class="input-div">\n                                <label\n                                    title="Hide columns with percentage of gaps above this cutoff"\n                                    class="input-label"\n                                >Gaps</label>\n                                <v-text-field\n                                    v-model="matchRatio"\n                                    label="0.0"\n                                    default="0.00"\n                                    type="number"\n                                    min="0"\n                                    max="1"\n                                    step="0.01"\n                                    single-line\n                                    hide-details\n                                    solo\n                                    flat\n                                    dense\n                                    style="max-width: 80px; max-height: 20px;"\n                                />                       \n                            </div>\n                            <div class="input-div">\n                                <label\n                                    title="Toggle between per-column LDDT and 3Di score matrix-based colorschemes"\n                                    class="input-label"\n                                >Colours</label>\n                                <v-btn-toggle dense mandatory color="primary" v-model="colorScheme">\n                                    <v-btn x-small value="lddt" style="width: 40px;">LDDT</v-btn>\n                                    <v-btn x-small value="3di"  style="width: 40px;">3Di</v-btn>\n                                </v-btn-toggle>\n                            </div>\n                        </div>\n                        <div style="position: relative; display: flex; justify-content: center; align-items: center; width: fit-content; height: 80px;">\n                            <v-btn class="toggle-button" @click="toggleSettingsPanel" small icon title="Toggle MSA viewing options">\n                                <v-icon>{{ settingsBtnIcon }}</v-icon>\n                            </v-btn>\n                        </div>\n                    </div>\n                </v-col>\n                <v-col style="display: flex; flex-direction: row; height: 100%; width: 100%; padding: 0; margin: 0;">\n                    <div\n                        v-for="(block, i) in cssGradients"\n                        :key="\'col-\' + i"\n                        class="gradient-block-col"\n                        :style="minimapBlock(i)"\n                        @click="handleMapBlockClick(i)"\n                    >\n                        <div class="gradient-block">\n                            <div\n                                v-for="(gradient, j) in block"\n                                :key="\'gradient-\' + j"\n                                class="gradient-row"\n                                :style="{ \'background-image\': gradient }"\n                            />\n                        </div>\n                    </div>\n                </v-col>\n            </v-row>\n        </v-card>\n        <v-card pa-2>\n            <MSAView\n                :entries="msaViewEntries"\n                :scores="msaViewScores"\n                :alnLen="alnLen"\n                :alphabet="alphabet"\n                :colorScheme="colorScheme"\n                :selectedStructures="structureViewerSelection"\n                :referenceStructure="structureViewerReference"\n                :matchRatio="parseFloat(matchRatio)"\n                @cssGradients="handleCSSGradient"\n                @lineLen="handleLineLen"\n                @newStructureSelection="handleNewStructureViewerSelection"\n                @newStructureReference="handleNewStructureViewerReference"\n                ref="msaView"\n            />\n        </v-card>\n    </v-container>\n</div>\n</template>\n\n<script>\nimport MSAView from \'./MSAView.vue\';\nimport StructureViewer from \'./StructureViewer.vue\';\nimport StructureViewerMSA from \'./StructureViewerMSA.vue\';\nimport Tree from \'./Tree.vue\';\nimport { debounce, makePositionMap } from \'./Utilities.js\'\nimport MDI from \'./MDI.js\';\n\nfunction makeMatchRatioMask(entries, ratio) {\n    const columnLength = entries[0].aa.length;\n    const mask = new Array(columnLength).fill(0);\n    for (let i = 0; i < columnLength; i++) {\n        let gap = 0;\n        let nonGap = 0;\n        for (let j = 0; j < entries.length; j++) {\n            if (entries[j].aa[i] === \'-\') {\n                gap++;\n            } else {\n                nonGap++;\n            }\n        }\n        let fraction = nonGap / (gap + nonGap);\n        if (fraction >= ratio) {\n            mask[i] = 1;\n        }\n    }\n    return mask;\n}\n\nfunction mockAlignment(one, two) {\n    let res = { backtrace: "" };\n    let started = false; // flag for first Match column in backtrace\n    let m = 0;           // index in msa\n    let qr = 0;          // index in seq\n    let tr = 0;\n    while (m < one.length) {\n        const qc = one[m];\n        const tc = two[m];\n        if (qc === \'-\' && tc === \'-\') {\n            // Skip gap columns\n        } else if (qc === \'-\') {\n            if (started) res.backtrace += \'D\';\n            ++tr;\n        } else if (tc === \'-\') {\n            if (started) res.backtrace += \'I\';\n            ++qr;\n        } else {\n            if (!started) {\n                started = true;\n                res.qStartPos = qr;\n                res.dbStartPos = tr;\n            }\n            res.backtrace += \'M\';\n            res.qEndPos = qr;\n            res.dbEndPos = tr;\n            ++qr;\n            ++tr;\n        }\n        ++m;\n    }\n    res.qStartPos++;\n    res.dbStartPos++;\n    return res;\n}\n\nexport default {\n    components: {\n        MSAView,\n        StructureViewer,\n        StructureViewerMSA,\n        Tree\n    },\n    props: {\n        entries: [],\n        scores: [],\n        statistics: {},\n        tree: ""\n    },\n    data() {\n        return {\n            mask: [],\n            structures: [],       \n            lineLen: 80,\n            cssGradients: null,\n            gradientRatio: null,\n            blockIndex: 0,\n            alphabet: \'aa\',\n            colorScheme: \'lddt\',\n            matchRatio: 0.0,\n            structureViewerSelection: [],\n            structureViewerReference: 0,\n            isLoadingStructure: false,\n            numMinimapGradients: 30,\n            settingsPanelOpen: true,\n        }\n    },    \n    watch: {\n        matchRatio: debounce(function() {\n            this.handleUpdateMatchRatio();\n        }, 400)\n    },\n    beforeMount() {\n        this.handleUpdateMatchRatio();\n    },\n    mounted() {\n        window.addEventListener("scroll", this.handleScroll);\n        this.structureViewerSelection = [0, 1];\n    },\n    beforeDestroy() {\n        window.removeEventListener("scroll", this.handleScroll);\n    },\n    computed: {\n        alnLen() {\n            if (this.entries.length > 0) {\n                return this.mask.reduce((count, value) => count + value, 0);\n                // return this.entries[0].aa.length;\n            }\n            return 0;\n        },\n        structureViewerProps() {\n            return { structures: this.entries };\n        },\n        structureViewerEntries() {\n            return this.structureViewerSelection.map(index => this.entries[index]);\n        },\n        msaViewEntries() {\n            const entries = this.entries.map(entry => {\n                const copy = {\n                    name: entry.name,\n                    aa: "",\n                    ss: ""\n                }\n                for (let i = 0; i < this.mask.length; i++) {\n                    if (this.mask[i] === 1) {\n                        copy.aa += entry.aa[i];\n                        copy.ss += entry.ss[i];\n                    }\n                }\n                return copy;\n            })\n            return entries\n        },\n        msaViewScores() {\n            return this.scores.filter((_, index) => this.mask[index] === 1);\n        },\n        settingsBtnIcon() {\n            return this.settingsPanelOpen ? MDI.ChevronLeft : MDI.ChevronRight;\n        }\n    },\n    methods: {\n        toggleSettingsPanel() {\n            this.settingsPanelOpen = !this.settingsPanelOpen;\n        },\n        handleUpdateMatchRatio: function() {\n            if (this.matchRatio === 0.0) {\n                this.mask = new Array(this.entries[0].aa.length).fill(1);\n            } else {\n                this.mask = makeMatchRatioMask(this.entries, this.matchRatio);\n            }\n        },\n        handleStructureLoadingChange(isLoading) {\n            this.isLoadingStructure = isLoading;\n        },\n        handleNewStructureViewerReference(entryIndex) {\n            // New reference emitted from MSAView.\n            // entryIndex is based on ALL entries, not just selection (taken from row of MSA block)\n            // Add new structure to selection if index not already in selection,\n            // otherwise just switch reference index.\n            const selection = this.structureViewerSelection.slice();\n            const index = selection.indexOf(entryIndex);\n            if (index === this.structureViewerReference) {\n                this.structureViewerSelection = [];\n                this.structureViewerReference = 0;\n                return;\n            }\n            if (index === -1) {\n                selection.push(entryIndex);\n            }\n            this.structureViewerSelection = selection;\n            this.structureViewerReference = this.structureViewerSelection.indexOf(entryIndex);\n        },\n        handleNewStructureViewerSelection(entryIndex) {\n            const selection = this.structureViewerSelection.slice();\n            const index = selection.indexOf(entryIndex);\n            if (index === this.structureViewerReference) {\n                this.structureViewerSelection = [];\n                this.structureViewerReference = 0;\n                return;\n            }\n            if (index !== -1) {\n                selection.splice(index, 1);\n            } else {\n                selection.push(entryIndex);\n            }\n            this.structureViewerSelection = selection;\n        },\n        getEntry(name) {\n            return this.entries.find(item => item.name === name);\n        },\n        makeMockAlignment(one, two) {\n            const entryOne = this.entries[one];\n            const entryTwo = this.entries[two];\n            if (!entryOne || !entryTwo) {\n                return;\n            }\n            const alignment  = mockAlignment(entryOne.aa, entryTwo.aa);\n            alignment.query  = entryOne.name;\n            alignment.target = entryTwo.name;\n            alignment.qCa    = entryOne.ca;\n            alignment.tCa    = entryTwo.ca;\n            alignment.qSeq   = entryOne.aa.replace(/-/g, \'\');\n            alignment.qAln   = entryOne.aa;\n            alignment.tSeq   = entryTwo.aa.replace(/-/g, \'\');\n            alignment.dbAln  = entryTwo.aa;\n            return {\n                queryMap: makePositionMap(alignment.qStartPos, alignment.qAln), \n                targetMap: makePositionMap(alignment.dbStartPos, alignment.dbAln), \n                alignment: alignment\n            };\n        },\n        handleMapBlockClick(index) {\n            const top = document.querySelector(\'.minimap\').offsetHeight + 60;  // app-bar + minimap\n            const box = this.$refs.msaView.$el.children[index].getBoundingClientRect();\n            window.scrollTo({ behavior: \'smooth\', top: box.top + window.scrollY - top });\n        },\n        handleAlphabetChange(event) {\n            this.alphabet = event.target.value;\n        },\n        gradientBlockCSS(gradient) {\n            return { width: \'100%\' };\n        },\n        handleLineLenChange: function(event) {\n            this.lineLen = parseInt(event.target.value);\n        },\n        minimapBlock: function(index) {\n            return {\n                \'--bg-color\': (this.blockIndex === index) ? \'rgba(255, 0, 0, 0.3)\' : null,\n                \'--bg-color-hover\': this.$vuetify.theme.dark ? \'rgba(255, 255, 255, 0.5)\' : \'rgba(100, 100, 100, 0.5)\',\n                \'flex-basis\': `${this.gradientRatio[index]}%`\n            }\n        },\n        handleScroll() {\n            const box = this.$refs.msaView.$el.getBoundingClientRect()\n            const numBlocks = Math.ceil(this.alnLen / this.lineLen);\n            const blockSize = box.height / numBlocks;\n            const top = window.scrollY + box.top;  // top of the msa relative to entire document\n            const bot = top + box.height;          // bottom\n            let scroll = window.scrollY + 180;     // current scroll pos + minimap height\n            if (scroll < top) {\n                this.blockIndex = 0;\n            } else if (scroll > bot) {\n                this.blockIndex = numBlocks;\n            } else {\n                this.blockIndex = Math.floor((scroll - top) / blockSize);\n            }\n        },\n        handleLineLen(lineLen) {\n            this.lineLen = lineLen;\n        },\n        handleCSSGradient(gradients) {\n            const numBlocks = Math.ceil(this.alnLen / this.lineLen);\n            const blockSize = gradients.length / numBlocks;\n\n            // Organise into blocks. Subsetted to numMinimapGradients for large MSAs\n            // Use a step to ensure coverage over entire MSA.\n            this.cssGradients = Array.from({ length: numBlocks }, () => []);\n            if (blockSize < this.numMinimapGradients) {\n                this.cssGradients.forEach((arr, i) => {\n                    let block = i * blockSize;\n                    let slice = gradients.slice(block, block + blockSize);\n                    arr.push(...slice);\n                });\n            } else {\n                const step = (blockSize - 1) / (this.numMinimapGradients - 1);\n                for (let i = 0; i < numBlocks; i++) {\n                    for (let j = 0; j < this.numMinimapGradients; j++) {\n                        this.cssGradients[i].push(gradients[Math.round(j * step) + i * blockSize]);\n                    }\n                }\n            }\n\n            // Calculate length of last block (all others will be lineLen)\n            // Get array of %s that sum to 100%\n            const lastBlockLen = this.cssGradients[numBlocks - 1][0].split(\'%,\').length / 2;\n            const total = (numBlocks - 1) * this.lineLen + lastBlockLen;\n            this.gradientRatio = new Array(numBlocks - 1).fill(this.lineLen / total * 100);\n            this.gradientRatio.push(lastBlockLen / total * 100);\n        },\n    },\n}\n<\/script>\n\n<style>\n.gradient-block-col {\n    position: relative;\n    display: inline-block;\n    border: 1px solid grey; \n}\n.gradient-block-col:not(:last-child) {\n    height: 80px;\n}\n.gradient-block {\n    display: flex;\n    flex-direction: column;\n    height: 100%;\n}\n.gradient-row {\n    flex: 1;\n}\n.minimap {\n    position: sticky;\n    top: 48px;\n    padding: 16px;\n    margin-top: 1em;\n    margin-bottom: 2px;\n    height: fit-content;\n    z-index: 1;\n}\n.gradient-block-col::before {\n    content: \'\';\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    background-color: var(--bg-color);\n    z-index: 2;\n}\n.gradient-block-col:hover:before {\n    background-color: var(--bg-color-hover);\n    cursor: pointer;\n}\n.input-label {\n    margin: 0 8px 0 0 !important;\n}\n.input-btn {\n    height: 25px;\n}\ndiv.input-div-wrapper {\n    display: flex;\n    flex-direction: column;\n    font-size: 13px;\n    height: 80px;\n    text-align: center;\n    align-items: center;\n    justify-content: space-between;\n    padding: 2px 0;\n}\ndiv.input-div {\n    display: flex;\n    flex-direction: row;\n    justify-content: space-between;\n    width: 100%;\n}\ndiv.input-div .v-text-field {\n    min-height: 0 !important;\n    max-height: 20px;\n    max-width: 80px;\n    padding: 0 !important;\n}\ndiv.input-div .v-input__control, div.input-div .v-input__control * {\n    padding: 0;\n    min-height: 0 !important;\n    max-height: 20px;\n}\ndiv.input-div .v-input__slot {\n    padding: 0 4px !important;\n}\n@media only screen and (min-width: 800px) {\n    .flex-col {\n        flex: 1 1 0px;\n        height: 500px;\n    }\n    .flex-col:nth-child(1) {\n        flex: 3;\n        padding-right: 6px;\n    }\n    .flex-col:nth-child(2),\n    .flex-col:nth-child(3) {\n        flex: 4.5;\n    }\n    .flex-col:nth-child(3) {\n        padding-left: 6px;\n    }\n}\n@media only screen and (max-width: 800px) {\n    .flex-col {\n        height: 400px;\n        flex-basis: 100%;\n        padding-bottom: 6px;\n        padding-top: 6px;\n    }\n    .flex-col:nth-child(1) {\n        height: 300px;\n    }\n}\n.expansion-panel {\n    /* transition: width 0.3s ease; */\n    overflow: hidden;\n    width: 100%;\n    position: relative;\n}\n.expansion-panel:not(.is-expanded) {\n    width: 0;\n}\n.toggle-button {\n    color: black;\n    z-index: 2;\n}\n</style>' ],
+                mappings: ";AAocA;IACA,kBAAA;IACA,qBAAA;IACA,sBAAA;IACA,YAAA;AACA;AACA;IACA,aAAA;IACA,sBAAA;IACA,YAAA;AACA;AACA;IACA,OAAA;AACA;AACA;IACA,gBAAA;IACA,SAAA;IACA,aAAA;IACA,eAAA;IACA,kBAAA;IACA,mBAAA;IACA,UAAA;AACA;AACA;IACA,aAAA;IACA,mBAAA;IACA,YAAA;IACA,WAAA;IACA,UAAA;IACA,SAAA;AACA;AACA;IACA,WAAA;IACA,kBAAA;IACA,MAAA;IACA,OAAA;IACA,WAAA;IACA,YAAA;IACA,iCAAA;IACA,UAAA;AACA;AACA;IACA,uCAAA;IACA,eAAA;AACA;AACA;IACA,4BAAA;AACA;AACA;IACA,YAAA;AACA;AACA;IACA,aAAA;IACA,sBAAA;IACA,eAAA;IACA,YAAA;IACA,kBAAA;IACA,mBAAA;IACA,8BAAA;IACA,cAAA;AACA;AACA;IACA,aAAA;IACA,mBAAA;IACA,8BAAA;IACA,WAAA;AACA;AACA;IACA,wBAAA;IACA,gBAAA;IACA,eAAA;IACA,qBAAA;AACA;AACA;IACA,UAAA;IACA,wBAAA;IACA,gBAAA;AACA;AACA;IACA,yBAAA;AACA;AACA;AACA;QACA,aAAA;QACA,aAAA;AACA;AACA;QACA,OAAA;QACA,kBAAA;AACA;AACA;;QAEA,SAAA;AACA;AACA;QACA,iBAAA;AACA;AACA;AACA;AACA;QACA,aAAA;QACA,gBAAA;QACA,mBAAA;QACA,gBAAA;AACA;AACA;QACA,aAAA;AACA;AACA;AACA;IACA,iCAAA;IACA,gBAAA;IACA,WAAA;IACA,kBAAA;AACA;AACA;IACA,QAAA;AACA;AACA;IACA,YAAA;IACA,UAAA;AACA",
+                sourcesContent: [ '<template>\n<div>\n    <v-container fluid pa-2 style="overflow: visible; height: 100%;">\n        <v-row>\n            <v-col class="flex-col">\n                <v-card style="height: 100%">\n                    <v-card-title>Summary</v-card-title>\n                    <v-card-text>\n                        <v-simple-table style="height: 100%;" id="settings" class="settings auto-height-table">\n                            <tbody>\n                                <tr v-if="$LOCAL && statistics.hasOwnProperty(\'db\')">\n                                    <td>Database</td>\n                                    <td id="msa-database">{{ statistics.db }}</td>\n                                </tr>\n                                <tr v-if="$LOCAL && statistics.hasOwnProperty(\'msaFile\')">\n                                    <td>MSA file</td>\n                                    <td id="msa-file">{{ statistics.msaFile }}</td>\n                                </tr>\n                                <tr v-if="statistics.hasOwnProperty(\'msaLDDT\')">\n                                    <td>MSA LDDT</td>\n                                    <td id="msa-lddt">{{ statistics.msaLDDT.toFixed(3) }}</td>\n                                </tr>\n                                <tr v-if="statistics.hasOwnProperty(\'cmdString\')">\n                                    <td>Command</td>\n                                    <td id="msa-cmd">{{ statistics.cmdString }}</td>\n                                </tr>\n                            </tbody>\n                        </v-simple-table>\n                    </v-card-text>\n                </v-card>\n            </v-col>\n            <v-col class="flex-col" v-if="tree">\n                <v-card class="fill-height" style="position: relative;">\n                    <v-card-title style="position: absolute; left: 0; top: 0; margin: 0; padding: 16px; z-index: 1;">Guide Tree</v-card-title>\n                    <Tree\n                        :newick="tree"\n                        :order="entries.map(e => e.name)"\n                        :selection="structureViewerSelection.map(i => entries[i].name)"\n                        :reference="structureViewerReference"\n                        @newStructureSelection="handleNewStructureViewerSelection"\n                        @newStructureReference="handleNewStructureViewerReference"\n                    />\n                </v-card>\n            </v-col>\n            <v-col class="flex-col">\n                <v-card class="fill-height" style="position: relative;">\n                    <v-card-title style="position: absolute; left: 0; top: 0; margin: 0; padding: 16px; z-index: 1;">Structure</v-card-title>\n                    <div v-if="structureViewerSelection" style="padding: 10px; height: 100%; width: 100%;">\n                        <StructureViewerMSA\n                            :entries="entries"\n                            :selection="structureViewerSelection"\n                            :reference="structureViewerReference"\n                            @loadingChange="handleStructureLoadingChange"\n                        />\n                    </div>\n                    <v-card-text v-else>\n                        No structures loaded.\n                    </v-card-text>\n                </v-card>\n            </v-col>\n        </v-row>\n        <v-card class="minimap fill-height">\n            <v-row dense v-if="cssGradients" style="align-items: center;">\n                <v-col align="center" no-gutters style="max-width: fit-content; margin-right: 4px; position: relative;">\n                    <div style="display: flex; flex-direction: row;">\n                        <div class="input-div-wrapper expansion-panel" :class="{ \'is-expanded\': settingsPanelOpen }">\n                            <div class="input-div">\n                                <label\n                                    title="Toggle between AA and 3Di alphabets"\n                                    class="input-label"\n                                >Alphabet</label>\n                                <v-btn-toggle dense mandatory color="primary" v-model="alphabet">\n                                    <v-btn x-small value="aa" style="width: 40px;">AA</v-btn>\n                                    <v-btn x-small value="ss" style="width: 40px;">3Di</v-btn>\n                                </v-btn-toggle>\n                            </div>\n                            <div class="input-div">\n                                <label\n                                    title="Hide columns with percentage of gaps above this cutoff"\n                                    class="input-label"\n                                >Gaps</label>\n                                <v-text-field\n                                    v-model="matchRatio"\n                                    label="0.0"\n                                    default="0.00"\n                                    type="number"\n                                    min="0"\n                                    max="1"\n                                    step="0.01"\n                                    single-line\n                                    hide-details\n                                    solo\n                                    flat\n                                    dense\n                                    style="max-width: 80px; max-height: 20px;"\n                                />                       \n                            </div>\n                            <div class="input-div">\n                                <label\n                                    title="Toggle between per-column LDDT and 3Di score matrix-based colorschemes"\n                                    class="input-label"\n                                >Colours</label>\n                                <v-btn-toggle dense mandatory color="primary" v-model="colorScheme">\n                                    <v-btn x-small value="lddt" style="width: 40px;">LDDT</v-btn>\n                                    <v-btn x-small value="3di"  style="width: 40px;">3Di</v-btn>\n                                </v-btn-toggle>\n                            </div>\n                        </div>\n                        <div style="position: relative; display: flex; justify-content: center; align-items: center; width: fit-content; height: 80px;">\n                            <v-btn class="toggle-button" @click="toggleSettingsPanel" small icon title="Toggle MSA viewing options">\n                                <v-icon>{{ settingsBtnIcon }}</v-icon>\n                            </v-btn>\n                        </div>\n                    </div>\n                </v-col>\n                <v-col class="minimap-col">\n                    <div\n                        v-for="(block, i) in cssGradients"\n                        :key="\'col-\' + i"\n                        class="gradient-block-col"\n                        :style="minimapBlock(i)"\n                        @click="handleMapBlockClick(i)"\n                    >\n                        <div class="gradient-block">\n                            <div\n                                v-for="(gradient, j) in block"\n                                :key="\'gradient-\' + j"\n                                class="gradient-row"\n                                :style="{ \'background-image\': gradient }"\n                            />\n                        </div>\n                    </div>\n                </v-col>\n            </v-row>\n        </v-card>\n        <v-card pa-2>\n            <MSAView\n                :entries="msaViewEntries"\n                :scores="msaViewScores"\n                :alnLen="alnLen"\n                :alphabet="alphabet"\n                :colorScheme="colorScheme"\n                :selectedStructures="structureViewerSelection"\n                :referenceStructure="structureViewerReference"\n                :matchRatio="parseFloat(matchRatio)"\n                @cssGradients="handleCSSGradient"\n                @lineLen="handleLineLen"\n                @newStructureSelection="handleNewStructureViewerSelection"\n                @newStructureReference="handleNewStructureViewerReference"\n                ref="msaView"\n            />\n        </v-card>\n    </v-container>\n</div>\n</template>\n\n<script>\nimport MSAView from \'./MSAView.vue\';\nimport StructureViewer from \'./StructureViewer.vue\';\nimport StructureViewerMSA from \'./StructureViewerMSA.vue\';\nimport Tree from \'./Tree.vue\';\nimport { debounce, makePositionMap, tryFixName } from \'./Utilities.js\'\nimport MDI from \'./MDI.js\';\n\nfunction makeMatchRatioMask(entries, ratio) {\n    const columnLength = entries[0].aa.length;\n    const mask = new Array(columnLength).fill(0);\n    for (let i = 0; i < columnLength; i++) {\n        let gap = 0;\n        let nonGap = 0;\n        for (let j = 0; j < entries.length; j++) {\n            if (entries[j].aa[i] === \'-\') {\n                gap++;\n            } else {\n                nonGap++;\n            }\n        }\n        let fraction = nonGap / (gap + nonGap);\n        if (fraction >= ratio) {\n            mask[i] = 1;\n        }\n    }\n    return mask;\n}\n\nfunction mockAlignment(one, two) {\n    let res = { backtrace: "" };\n    let started = false; // flag for first Match column in backtrace\n    let m = 0;           // index in msa\n    let qr = 0;          // index in seq\n    let tr = 0;\n    while (m < one.length) {\n        const qc = one[m];\n        const tc = two[m];\n        if (qc === \'-\' && tc === \'-\') {\n            // Skip gap columns\n        } else if (qc === \'-\') {\n            if (started) res.backtrace += \'D\';\n            ++tr;\n        } else if (tc === \'-\') {\n            if (started) res.backtrace += \'I\';\n            ++qr;\n        } else {\n            if (!started) {\n                started = true;\n                res.qStartPos = qr;\n                res.dbStartPos = tr;\n            }\n            res.backtrace += \'M\';\n            res.qEndPos = qr;\n            res.dbEndPos = tr;\n            ++qr;\n            ++tr;\n        }\n        ++m;\n    }\n    res.qStartPos++;\n    res.dbStartPos++;\n    return res;\n}\n\nexport default {\n    components: {\n        MSAView,\n        StructureViewer,\n        StructureViewerMSA,\n        Tree\n    },\n    props: {\n        entries: [],\n        scores: [],\n        statistics: {},\n        tree: ""\n    },\n    data() {\n        return {\n            mask: [],\n            structures: [],       \n            lineLen: 80,\n            cssGradients: null,\n            gradientRatio: null,\n            blockIndex: 0,\n            alphabet: \'aa\',\n            colorScheme: \'lddt\',\n            matchRatio: 0.0,\n            structureViewerSelection: [],\n            structureViewerReference: 0,\n            isLoadingStructure: false,\n            numMinimapGradients: 30,\n            settingsPanelOpen: true,\n        }\n    },    \n    watch: {\n        matchRatio: debounce(function() {\n            this.handleUpdateMatchRatio();\n        }, 400)\n    },\n    beforeMount() {\n        this.handleUpdateMatchRatio();\n        for (let entry of this.entries) {\n            entry.name = tryFixName(entry.name)\n        }\n    },\n    mounted() {\n        window.addEventListener("scroll", this.handleScroll);\n        this.structureViewerSelection = [0, 1];\n    },\n    beforeDestroy() {\n        window.removeEventListener("scroll", this.handleScroll);\n    },\n    computed: {\n        alnLen() {\n            if (this.entries.length > 0) {\n                return this.mask.reduce((count, value) => count + value, 0);\n                // return this.entries[0].aa.length;\n            }\n            return 0;\n        },\n        structureViewerProps() {\n            return { structures: this.entries };\n        },\n        structureViewerEntries() {\n            return this.structureViewerSelection.map(index => this.entries[index]);\n        },\n        msaViewEntries() {\n            const entries = this.entries.map(entry => {\n                const copy = {\n                    name: entry.name,\n                    aa: "",\n                    ss: ""\n                }\n                for (let i = 0; i < this.mask.length; i++) {\n                    if (this.mask[i] === 1) {\n                        copy.aa += entry.aa[i];\n                        copy.ss += entry.ss[i];\n                    }\n                }\n                return copy;\n            })\n            return entries\n        },\n        msaViewScores() {\n            return this.scores.filter((_, index) => this.mask[index] === 1);\n        },\n        settingsBtnIcon() {\n            return this.settingsPanelOpen ? MDI.ChevronLeft : MDI.ChevronRight;\n        }\n    },\n    methods: {\n        toggleSettingsPanel() {\n            this.settingsPanelOpen = !this.settingsPanelOpen;\n        },\n        handleUpdateMatchRatio: function() {\n            if (this.matchRatio === 0.0) {\n                this.mask = new Array(this.entries[0].aa.length).fill(1);\n            } else {\n                this.mask = makeMatchRatioMask(this.entries, this.matchRatio);\n            }\n        },\n        handleStructureLoadingChange(isLoading) {\n            this.isLoadingStructure = isLoading;\n        },\n        // New reference emitted from MSAView.\n        // entryIndex is based on ALL entries, not just selection (taken from row of MSA block)\n        // Add new structure to selection if index not already in selection,\n        // otherwise just switch reference index.\n        handleNewStructureViewerReference(entryIndex) {\n            if (entryIndex === this.structureViewerReference) {\n                this.structureViewerSelection = [];\n                this.structureViewerReference = -1;\n                return;\n            }\n            const selection = this.structureViewerSelection.slice();\n            const index = selection.indexOf(entryIndex);\n            if (index === -1) {\n                selection.push(entryIndex);\n            }\n            this.structureViewerSelection = selection;\n            this.structureViewerReference = entryIndex;\n        },\n        handleNewStructureViewerSelection(entryIndex) {\n            if (entryIndex === this.structureViewerReference) {\n                this.structureViewerSelection = [];\n                this.structureViewerReference = -1;\n                return;\n            }\n            const selection = this.structureViewerSelection.slice();\n            const index = selection.indexOf(entryIndex);\n            if (index !== -1) {\n                selection.splice(index, 1);\n            } else {\n                selection.push(entryIndex);\n            }\n            this.structureViewerSelection = selection;\n        },\n        getEntry(name) {\n            return this.entries.find(item => item.name === name);\n        },\n        makeMockAlignment(one, two) {\n            const entryOne = this.entries[one];\n            const entryTwo = this.entries[two];\n            if (!entryOne || !entryTwo) {\n                return;\n            }\n            const alignment  = mockAlignment(entryOne.aa, entryTwo.aa);\n            alignment.query  = entryOne.name;\n            alignment.target = entryTwo.name;\n            alignment.qCa    = entryOne.ca;\n            alignment.tCa    = entryTwo.ca;\n            alignment.qSeq   = entryOne.aa.replace(/-/g, \'\');\n            alignment.qAln   = entryOne.aa;\n            alignment.tSeq   = entryTwo.aa.replace(/-/g, \'\');\n            alignment.dbAln  = entryTwo.aa;\n            return {\n                queryMap: makePositionMap(alignment.qStartPos, alignment.qAln), \n                targetMap: makePositionMap(alignment.dbStartPos, alignment.dbAln), \n                alignment: alignment\n            };\n        },\n        handleMapBlockClick(index) {\n            const top = document.querySelector(\'.minimap\').offsetHeight + 60;  // app-bar + minimap\n            const box = this.$refs.msaView.$el.children[index].getBoundingClientRect();\n            window.scrollTo({ behavior: \'smooth\', top: box.top + window.scrollY - top });\n        },\n        handleAlphabetChange(event) {\n            this.alphabet = event.target.value;\n        },\n        gradientBlockCSS(gradient) {\n            return { width: \'100%\' };\n        },\n        handleLineLenChange: function(event) {\n            this.lineLen = parseInt(event.target.value);\n        },\n        minimapBlock: function(index) {\n            return {\n                \'--bg-color\': (this.blockIndex === index) ? \'rgba(255, 0, 0, 0.3)\' : null,\n                \'--bg-color-hover\': this.$vuetify.theme.dark ? \'rgba(255, 255, 255, 0.5)\' : \'rgba(100, 100, 100, 0.5)\',\n                \'flex-basis\': `${this.gradientRatio[index]}%`\n            }\n        },\n        handleScroll() {\n            const box = this.$refs.msaView.$el.getBoundingClientRect()\n            const numBlocks = Math.ceil(this.alnLen / this.lineLen);\n            const blockSize = box.height / numBlocks;\n            const top = window.scrollY + box.top;  // top of the msa relative to entire document\n            const bot = top + box.height;          // bottom\n            let scroll = window.scrollY + 180;     // current scroll pos + minimap height\n            if (scroll < top) {\n                this.blockIndex = 0;\n            } else if (scroll > bot) {\n                this.blockIndex = numBlocks;\n            } else {\n                this.blockIndex = Math.floor((scroll - top) / blockSize);\n            }\n        },\n        handleLineLen(lineLen) {\n            this.lineLen = lineLen;\n        },\n        handleCSSGradient(gradients) {\n            const numBlocks = Math.ceil(this.alnLen / this.lineLen);\n            const blockSize = gradients.length / numBlocks;\n\n            // Organise into blocks. Subsetted to numMinimapGradients for large MSAs\n            // Use a step to ensure coverage over entire MSA.\n            this.cssGradients = Array.from({ length: numBlocks }, () => []);\n            if (blockSize < this.numMinimapGradients) {\n                this.cssGradients.forEach((arr, i) => {\n                    let block = i * blockSize;\n                    let slice = gradients.slice(block, block + blockSize);\n                    arr.push(...slice);\n                });\n            } else {\n                const step = (blockSize - 1) / (this.numMinimapGradients - 1);\n                for (let i = 0; i < numBlocks; i++) {\n                    for (let j = 0; j < this.numMinimapGradients; j++) {\n                        this.cssGradients[i].push(gradients[Math.round(j * step) + i * blockSize]);\n                    }\n                }\n            }\n\n            // Calculate length of last block (all others will be lineLen)\n            // Get array of %s that sum to 100%\n            const lastBlockLen = this.cssGradients[numBlocks - 1][0].split(\'%,\').length / 2;\n            const total = (numBlocks - 1) * this.lineLen + lastBlockLen;\n            this.gradientRatio = new Array(numBlocks - 1).fill(this.lineLen / total * 100);\n            this.gradientRatio.push(lastBlockLen / total * 100);\n        },\n    },\n}\n<\/script>\n\n<style>\n.gradient-block-col {\n    position: relative;\n    display: inline-block;\n    border: 1px solid grey; \n    height: 80px;\n}\n.gradient-block {\n    display: flex;\n    flex-direction: column;\n    height: 100%;\n}\n.gradient-row {\n    flex: 1;\n}\n.minimap {\n    position: sticky;\n    top: 48px;\n    padding: 16px;\n    margin-top: 1em;\n    margin-bottom: 2px;\n    height: fit-content;\n    z-index: 1;\n}\n.minimap-col {\n    display: flex;\n    flex-direction: row;\n    height: 100%;\n    width: 100%;\n    padding: 0;\n    margin: 0;\n}\n.gradient-block-col::before {\n    content: \'\';\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    background-color: var(--bg-color);\n    z-index: 2;\n}\n.gradient-block-col:hover:before {\n    background-color: var(--bg-color-hover);\n    cursor: pointer;\n}\n.input-label {\n    margin: 0 8px 0 0 !important;\n}\n.input-btn {\n    height: 25px;\n}\ndiv.input-div-wrapper {\n    display: flex;\n    flex-direction: column;\n    font-size: 13px;\n    height: 80px;\n    text-align: center;\n    align-items: center;\n    justify-content: space-between;\n    padding: 2px 0;\n}\ndiv.input-div {\n    display: flex;\n    flex-direction: row;\n    justify-content: space-between;\n    width: 100%;\n}\ndiv.input-div .v-text-field {\n    min-height: 0 !important;\n    max-height: 20px;\n    max-width: 80px;\n    padding: 0 !important;\n}\ndiv.input-div .v-input__control, div.input-div .v-input__control * {\n    padding: 0;\n    min-height: 0 !important;\n    max-height: 20px;\n}\ndiv.input-div .v-input__slot {\n    padding: 0 4px !important;\n}\n@media only screen and (min-width: 800px) {\n    .flex-col {\n        flex: 1 1 0px;\n        height: 500px;\n    }\n    .flex-col:nth-child(1) {\n        flex: 3;\n        padding-right: 6px;\n    }\n    .flex-col:nth-child(2),\n    .flex-col:nth-child(3) {\n        flex: 4.5;\n    }\n    .flex-col:nth-child(3) {\n        padding-left: 6px;\n    }\n}\n@media only screen and (max-width: 800px) {\n    .flex-col {\n        height: 400px;\n        flex-basis: 100%;\n        padding-bottom: 6px;\n        padding-top: 6px;\n    }\n    .flex-col:nth-child(1) {\n        height: 300px;\n    }\n}\n.expansion-panel {\n    /* transition: width 0.3s ease; */\n    overflow: hidden;\n    width: 100%;\n    position: relative;\n}\n.expansion-panel:not(.is-expanded) {\n    width: 0;\n}\n.toggle-button {\n    color: black;\n    z-index: 2;\n}\n</style>' ],
                 sourceRoot: ""
             } ]);
             const o = s;
@@ -4998,12 +5307,12 @@
                 default: () => o
             });
             var r = t(7537), i = t.n(r), a = t(3645), s = t.n(a)()(i());
-            s.push([ e.id, "\n.msa-wrapper {\n    padding: 16px; /* equivalent to pa-4 */\n    display: flex;\n    flex-direction: column;\n    font-family: monospace;\n    white-space: nowrap;\n    /* line-height: 1.2em; */\n}\n.msa-block {\n    margin-bottom: 1.5em;\n}\n.msa-block:last-child {\n    margin-bottom: 0;\n}\n.msa-block .sequence, .msa-block .sequence-ss {\n    display: inline-block;\n    padding: 0px;\n    margin: 0px;\n    letter-spacing: 4px;\n    color: transparent;\n    z-index: 0;\n}\n.msa-block .sequence::selection {\n    background: rgba(100, 100, 255, 1);\n    color: white;\n}\n.msa-row {\n    padding: 0;\n    margin: 0;\n    display: flex;\n    justify-content: space-between;\n    gap: 16px;\n    line-height: 1em;\n}\n.header, .count {\n    flex-shrink: 0;\n    flex-grow: 0;\n    white-space: nowrap;\n}\n.sequence-wrapper {\n    overflow: hidden;\n    align-content: left;\n    align-items: center;\n    display: flex;\n    flex-grow: 1;\n    text-align: left;\n}\n.sequence {\n    margin-left: auto;\n    margin: 0;\n    padding: 0;\n}\n.msa-block .sequence-ss::selection {\n  background: rgba(100, 100, 255, 1);\n  color: white;\n}\n.header:hover {\n    cursor: pointer;\n}\n", "", {
+            s.push([ e.id, "\n.msa-wrapper {\n    padding: 16px; /* equivalent to pa-4 */\n    display: flex;\n    flex-direction: column;\n    font-family: monospace;\n    white-space: nowrap;\n    width: 100%;\n}\n.msa-block {\n    margin-bottom: 1.5em;\n    display: grid;\n    grid-template-columns: fit-content(20%) 5fr auto;\n    width: 100%;\n    justify-content: space-between;\n    gap: 0px 16px;\n    line-height: 1em;\n}\n.msa-block:last-child {\n    margin-bottom: 0;\n}\n.msa-block .sequence {\n    display: inline-block;\n    padding: 0px;\n    margin: 0px;\n    letter-spacing: 4px;\n    color: transparent;\n    z-index: 0;\n}\n.msa-block .sequence::selection {\n    background: rgba(100, 100, 255, 1);\n    color: white;\n}\n.msa-row {\n    display: contents;\n/*     padding: 0;\n    margin: 0;\n    display: grid;\n    grid-template-columns: fit-content(20%) 5fr auto;\n    width: 100%;\n    justify-content: space-between;\n    gap: 16px;\n    line-height: 1em; */\n}\n.sequence-wrapper {\n    overflow: hidden;\n    align-content: left;\n    align-items: center;\n    display: flex;\n    flex-grow: 1;\n    text-align: left;\n}\n.sequence {\n    margin-left: auto;\n    margin: 0;\n    padding: 0;\n    line-height: 1em;\n}\n.header {\n    overflow: hidden;\n    text-align: left;\n    text-overflow: ellipsis;\n}\n.header:hover {\n    cursor: pointer;\n}\n.count {\n    text-align: right;\n}\n", "", {
                 version: 3,
                 sources: [ "webpack://./frontend/MSAView.vue" ],
                 names: [],
-                mappings: ";AAkSA;IACA,aAAA,EAAA,uBAAA;IACA,aAAA;IACA,sBAAA;IACA,sBAAA;IACA,mBAAA;IACA,wBAAA;AACA;AACA;IACA,oBAAA;AACA;AACA;IACA,gBAAA;AACA;AACA;IACA,qBAAA;IACA,YAAA;IACA,WAAA;IACA,mBAAA;IACA,kBAAA;IACA,UAAA;AACA;AACA;IACA,kCAAA;IACA,YAAA;AACA;AACA;IACA,UAAA;IACA,SAAA;IACA,aAAA;IACA,8BAAA;IACA,SAAA;IACA,gBAAA;AACA;AACA;IACA,cAAA;IACA,YAAA;IACA,mBAAA;AACA;AACA;IACA,gBAAA;IACA,mBAAA;IACA,mBAAA;IACA,aAAA;IACA,YAAA;IACA,gBAAA;AACA;AACA;IACA,iBAAA;IACA,SAAA;IACA,UAAA;AACA;AACA;EACA,kCAAA;EACA,YAAA;AACA;AACA;IACA,eAAA;AACA",
-                sourcesContent: [ '<template>\n<div class="msa-wrapper" ref="msaWrapper">\n    <div class="msa-block" v-for="([start, end], i) in blockRanges">\n        \x3c!-- <SequenceLogo\n            :sequences="getEntryRanges(start, end, makeGradients=false)"\n            :alphabet="alphabet"\n            :lineLen="lineLen"\n        /> --\x3e\n        <div class="msa-row" v-for="({name, aa, ss, seqStart, css}, j) in getEntryRanges(start, end)">\n            <span\n                class="header"\n                :style="headerStyle(j)"\n                @click="handleClickHeader($event, j)"\n            >{{ name.padStart(headerLen, \'&nbsp\') }}</span>\n            <div class="sequence-wrapper">\n                <span class="sequence" :style="css">{{ alphabet === \'aa\' ? aa : ss }}</span>\n            </div>\n            <span class="count">{{ countSequence(aa, seqStart).toString().padStart(countLen, \'&nbsp\')  }}</span>\n        </div>\n    </div>\n</div>\n</template>\n\n<script>\nimport SequenceLogo from \'./SequenceLogo.vue\';\nimport { debounce } from \'./Utilities.js\';\n\nconst colorsAa = {\n    "A": "#80A0F0FF",\n    "R": "#F01505FF",\n    "N": "#00FF00FF",\n    "D": "#C048C0FF",\n    "C": "#F08080FF",\n    "Q": "#00FF00FF",\n    "E": "#C048C0FF",\n    "G": "#F09048FF",\n    "H": "#15A4A4FF",\n    "I": "#80A0F0FF",\n    "L": "#80A0F0FF",\n    "K": "#F01505FF",\n    "M": "#80A0F0FF",\n    "F": "#80A0F0FF",\n    "P": "#FFD700FF",\n    "S": "#00FF00FF",\n    "T": "#00FF00FF",\n    "W": "#80A0F0FF",\n    "Y": "#15A4A4FF",\n    "V": "#80A0F0FF",\n    "B": "#FFFFFFFF",\n    "X": "#FFFFFFFF",\n    "Z": "#FFFFFFFF",\n    "-": "#ffffff"\n}\n\nconst colors3di = {\n    "A": "#df9a8c",\n    "C": "#fb72c5",\n    "D": "#b4a3d8",\n    "E": "#ff5701",\n    "F": "#d99e81",\n    "G": "#7491c5",\n    "H": "#94abe1",\n    "I": "#609d7b",\n    "K": "#d7a304",\n    "L": "#fe4c8b",\n    "M": "#12a564",\n    "N": "#d570fd",\n    "P": "#cb99c4",\n    "Q": "#da8e99",\n    "R": "#9487d0",\n    "S": "#e842fe",\n    "T": "#42a299",\n    "V": "#fb7edd",\n    "W": "#d1a368",\n    "Y": "#17a8fd",\n    "X": "#c0c0c0",\n    "-": "#ffffff"\n}\n\nexport default {\n    components: { SequenceLogo, SequenceLogo },\n    data() {\n        return {\n            mask: [],\n            lineLen: 80,\n            headerLen: null,\n            countLen: null,\n            resizeObserver: null\n        }\n    },\n    props: {\n        matchRatio: Number,\n        entries: Array,\n        scores: Array,\n        alnLen: Number,\n        alphabet: String,\n        selectedStructures: { type: Array, required: false },\n        referenceStructure: { type: Number },\n        colorScheme: { type: String, default: \'lddt\' }\n    },\n    mounted() {\n        this.resizeObserver = new ResizeObserver(debounce(this.handleResize, 100)).observe(this.$refs.msaWrapper);\n        this.handleUpdateEntries();\n        this.handleResize();\n        this.emitGradients();\n    },\n    updated() {\n        this.handleResize();\n        this.emitGradients();\n    },\n    beforeDestroy() {\n        if (this.resizeObserver)\n            this.resizeObserver.disconnect();\n    },\n    watch: {\n        entries: function() {\n            this.handleUpdateEntries();\n        },\n        lineLen: function() {\n            this.$emit("lineLen", this.lineLen);\n        },\n    },\n    computed: {\n        firstSequenceWidth() {\n            const container = document.querySelector(".msa-row");\n            if (!container)\n                return 0\n            const sequence = container.querySelector(".sequence");\n            return sequence.scrollWidth;\n        },\n        blockRanges() {\n            const maxVal = Math.max(1, Math.ceil(this.alnLen / this.lineLen));\n            return Array.from({ length: maxVal }, (_, i) => {\n                let start = i * this.lineLen;\n                let end = Math.min(this.alnLen, i * this.lineLen + this.lineLen);\n                return [start, end];\n            });\n        },\n        backgroundClip() {\n            return this.$vuetify.theme.dark ? \'text\' : \'border-box\';\n        },\n        sequenceColor() {\n            return this.$vuetify.theme.dark ? \'transparent\' : \'black\';\n        },\n        fontWeight() {\n            return this.$vuetify.theme.dark ? \'bolder\' : \'normal\';\n        },\n    },\n    methods: {\n        handleClickHeader(event, index) {\n            if (event.altKey) {\n                this.$emit("newStructureReference", index);\n            } else {\n                this.$emit("newStructureSelection", index);\n            }\n        },\n        getSequenceWidth() {\n            const container = document.querySelector(".msa-row");\n            const sequence  = container.querySelector(".sequence");\n            return sequence.scrollWidth;\n        },\n        headerStyle(index) {\n            const isSelected  = this.selectedStructures.length > 0 && this.selectedStructures.includes(index);\n            const isReference = this.selectedStructures.length > 0 && this.selectedStructures[this.referenceStructure] === index;\n            return {\n                fontWeight: isSelected ? \'bold\' : \'normal\',                \n                color: isReference\n                    ? \'#1E88E5\'\n                    : (isSelected\n                        ? \'#e6ac00\'\n                        : this.$vuetify.theme.dark ? \'rgba(180, 180, 180, 1)\' : \'black\'),\n            }\n        },\n        handleUpdateEntries() {\n            this.headerLen = 0;\n            this.countLen = 0;\n            this.entries.forEach((e, i) => {\n                this.headerLen = Math.max(this.headerLen, e.name.length);\n                let count = 0;\n                for (const char of e.aa) {\n                    if (char !== \'-\') count++;\n                }\n                this.countLen = Math.max(this.countLen, count.toString().length);\n            })\n        },\n        handleResize() {\n            // Resize based on first row\n            const container = document.querySelector(".msa-row");\n            const header    = container.querySelector(".header");\n            const count     = container.querySelector(".count");\n            const sequence  = container.querySelector(".sequence");\n            const containerWidth = container.offsetWidth - header.scrollWidth - count.scrollWidth - 32;\n            \n            // calculate #chars difference\n            const content = sequence.textContent;\n            const charDiff = Math.abs(Math.ceil(content.length * (sequence.scrollWidth - containerWidth) / sequence.scrollWidth));\n\n            if (sequence.scrollWidth > containerWidth) {\n                this.lineLen -= charDiff;\n            } else if (sequence.scrollWidth < containerWidth) {\n                this.lineLen += charDiff;                \n            }\n        },\n        emitGradients() {\n            const elements = document.getElementsByClassName("sequence"); \n            this.$emit(\n                "cssGradients",\n                Array.prototype.map.call(elements, element => element.style[\'background-image\'])\n            );\n        },\n        percentageToColor(percentage, maxHue = 120, minHue = 0) {\n            if (percentage === -1) {\n                return this.$vuetify.theme.dark ? \'rgba(180, 180, 180, 1)\' : \'rgba(0, 0, 0, 0)\';\n            }\n            const hue = percentage * (maxHue - minHue) + minHue;\n            // const hue = (1 - percentage) * 120;\n            // const lightness = this.$vuetify.theme.dark ? 50 : 30;\n            return `hsl(${hue}, 100%, 50%)`;\n        },\n        getEntryRange(entry, start, end, makeGradients=true) {\n            let result = {\n                name: entry.name,\n                aa: entry.aa.slice(start, end),\n                ss: entry.ss.slice(start, end),\n                seqStart: 0\n            };\n            for (let i = 0; i < start; i++) {\n                if (entry.aa[i] === \'-\') continue;\n                result.seqStart++;\n            }\n            if (makeGradients) {\n                result.css = this.generateCSSGradient(start, end, result.ss);\n            }\n            return result;\n        },\n        getEntryRanges(start, end, makeGradients=true) {\n            return Array.from(this.entries, entry => this.getEntryRange(entry, start, end, makeGradients));\n        },\n        countSequence(sequence, start) {\n            let gaps = sequence.split(\'-\').length - 1;\n            return start + this.lineLen - gaps;\n        },\n        generateCSSGradient(start, end, sequence) {\n            if (!this.scores) {\n                return null;\n            }\n            let colors = [];\n            if (this.colorScheme === \'3di\') {\n                for (const residue of sequence) {\n                    colors.push(colors3di[residue]); \n                }\n            } else {\n                colors = this.scores\n                    .slice(start, end)\n                    .map(score => this.percentageToColor(parseFloat(score)));\n            }\n            for (let i = 0; i < sequence.length; i++) {\n                if (sequence[i] === \'-\') {\n                    colors[i] = this.$vuetify.theme.dark ? "rgba(100, 100, 100, 0.4)" : "rgba(0, 0, 0, 0)";\n                }\n            }\n            \n            const step = 100 / colors.length;\n            let gradient = \'linear-gradient(to right\';\n            \n            let preStep = 0;\n            let curStep = step;\n            for (let i = 0; i < colors.length; i++) {\n                curStep = (i === colors.length - 1) ? 100 : preStep + step;\n                gradient += `, ${colors[i]} ${preStep}%, ${colors[i]} ${curStep}%`;\n                preStep = curStep;\n            }\n            gradient += \')\';\n\n            return {\n                backgroundImage: gradient,\n                // decrease width to account for weird font glyph spacing\n                backgroundSize: `calc(100% - 2px) 100%`,\n                backgroundPosition: \'left top\',\n                backgroundAttachment: \'scroll\',\n                backgroundClip: this.backgroundClip,\n                color: this.sequenceColor,\n                fontWeight: this.fontWeight,\n            };\n        }\n    },\n}\n<\/script>\n\n<style>\n.msa-wrapper {\n    padding: 16px; /* equivalent to pa-4 */\n    display: flex;\n    flex-direction: column;\n    font-family: monospace;\n    white-space: nowrap;\n    /* line-height: 1.2em; */\n}\n.msa-block {\n    margin-bottom: 1.5em;\n}\n.msa-block:last-child {\n    margin-bottom: 0;\n}\n.msa-block .sequence, .msa-block .sequence-ss {\n    display: inline-block;\n    padding: 0px;\n    margin: 0px;\n    letter-spacing: 4px;\n    color: transparent;\n    z-index: 0;\n}\n.msa-block .sequence::selection {\n    background: rgba(100, 100, 255, 1);\n    color: white;\n}\n.msa-row {\n    padding: 0;\n    margin: 0;\n    display: flex;\n    justify-content: space-between;\n    gap: 16px;\n    line-height: 1em;\n}\n.header, .count {\n    flex-shrink: 0;\n    flex-grow: 0;\n    white-space: nowrap;\n}\n.sequence-wrapper {\n    overflow: hidden;\n    align-content: left;\n    align-items: center;\n    display: flex;\n    flex-grow: 1;\n    text-align: left;\n}\n.sequence {\n    margin-left: auto;\n    margin: 0;\n    padding: 0;\n}\n.msa-block .sequence-ss::selection {\n  background: rgba(100, 100, 255, 1);\n  color: white;\n}\n.header:hover {\n    cursor: pointer;\n}\n</style>' ],
+                mappings: ";AA2SA;IACA,aAAA,EAAA,uBAAA;IACA,aAAA;IACA,sBAAA;IACA,sBAAA;IACA,mBAAA;IACA,WAAA;AACA;AACA;IACA,oBAAA;IACA,aAAA;IACA,gDAAA;IACA,WAAA;IACA,8BAAA;IACA,aAAA;IACA,gBAAA;AACA;AACA;IACA,gBAAA;AACA;AACA;IACA,qBAAA;IACA,YAAA;IACA,WAAA;IACA,mBAAA;IACA,kBAAA;IACA,UAAA;AACA;AACA;IACA,kCAAA;IACA,YAAA;AACA;AACA;IACA,iBAAA;AACA;;;;;;;uBAOA;AACA;AACA;IACA,gBAAA;IACA,mBAAA;IACA,mBAAA;IACA,aAAA;IACA,YAAA;IACA,gBAAA;AACA;AACA;IACA,iBAAA;IACA,SAAA;IACA,UAAA;IACA,gBAAA;AACA;AACA;IACA,gBAAA;IACA,gBAAA;IACA,uBAAA;AACA;AACA;IACA,eAAA;AACA;AACA;IACA,iBAAA;AACA",
+                sourcesContent: [ '<template>\n<div class="msa-wrapper" ref="msaWrapper">\n    <div class="msa-block" v-for="([start, end], i) in blockRanges">\n        \x3c!-- <SequenceLogo\n            :sequences="getEntryRanges(start, end, makeGradients=false)"\n            :alphabet="alphabet"\n            :lineLen="lineLen"\n        /> --\x3e\n        \x3c!--\n            <div class="msa-row" v-for="({name, aa, ss, seqStart, css}, j) in getEntryRanges(start, end)">\n        --\x3e\n        <template v-for="({name, aa, ss, seqStart, css}, j) in getEntryRanges(start, end)">\n            <span\n                class="header"\n                :title="name"\n                :style="headerStyle(j)"\n                @click="handleClickHeader($event, j)"\n            >{{ name }}</span>\n            <div class="sequence-wrapper">\n                <span class="sequence" :style="css">{{ alphabet === \'aa\' ? aa : ss }}</span>\n            </div>\n            <span class="count">{{ countSequence(aa, seqStart).toString()  }}</span>\n        </template>\n        \x3c!-- </div> --\x3e\n    </div>\n</div>\n</template>\n\n<script>\nimport SequenceLogo from \'./SequenceLogo.vue\';\nimport { debounce } from \'./Utilities.js\';\n\nconst colorsAa = {\n    "A": "#80A0F0FF",\n    "R": "#F01505FF",\n    "N": "#00FF00FF",\n    "D": "#C048C0FF",\n    "C": "#F08080FF",\n    "Q": "#00FF00FF",\n    "E": "#C048C0FF",\n    "G": "#F09048FF",\n    "H": "#15A4A4FF",\n    "I": "#80A0F0FF",\n    "L": "#80A0F0FF",\n    "K": "#F01505FF",\n    "M": "#80A0F0FF",\n    "F": "#80A0F0FF",\n    "P": "#FFD700FF",\n    "S": "#00FF00FF",\n    "T": "#00FF00FF",\n    "W": "#80A0F0FF",\n    "Y": "#15A4A4FF",\n    "V": "#80A0F0FF",\n    "B": "#FFFFFFFF",\n    "X": "#FFFFFFFF",\n    "Z": "#FFFFFFFF",\n    "-": "#ffffff"\n}\n\nconst colors3di = {\n    "A": "#df9a8c",\n    "C": "#fb72c5",\n    "D": "#b4a3d8",\n    "E": "#ff5701",\n    "F": "#d99e81",\n    "G": "#7491c5",\n    "H": "#94abe1",\n    "I": "#609d7b",\n    "K": "#d7a304",\n    "L": "#fe4c8b",\n    "M": "#12a564",\n    "N": "#d570fd",\n    "P": "#cb99c4",\n    "Q": "#da8e99",\n    "R": "#9487d0",\n    "S": "#e842fe",\n    "T": "#42a299",\n    "V": "#fb7edd",\n    "W": "#d1a368",\n    "Y": "#17a8fd",\n    "X": "#c0c0c0",\n    "-": "#ffffff"\n}\n\nexport default {\n    components: { SequenceLogo, SequenceLogo },\n    data() {\n        return {\n            mask: [],\n            lineLen: 80,\n            headerLen: null,\n            countLen: null,\n            resizeObserver: null,\n        }\n    },\n    props: {\n        matchRatio: Number,\n        entries: Array,\n        scores: Array,\n        alnLen: Number,\n        alphabet: String,\n        selectedStructures: { type: Array, required: false },\n        referenceStructure: { type: Number },\n        colorScheme: { type: String, default: \'lddt\' },\n        maxHeaderWidth: { type: Number, default: 30 }\n    },\n    mounted() {\n        this.resizeObserver = new ResizeObserver(debounce(this.handleResize, 100)).observe(this.$refs.msaWrapper);\n        this.handleUpdateEntries();\n        this.handleResize();\n        this.emitGradients();\n    },\n    updated() {\n        this.handleResize();\n        this.emitGradients();\n    },\n    beforeDestroy() {\n        if (this.resizeObserver)\n            this.resizeObserver.disconnect();\n    },\n    watch: {\n        entries: function() {\n            this.handleUpdateEntries();\n        },\n        lineLen: function() {\n            this.$emit("lineLen", this.lineLen);\n        },\n    },\n    computed: {\n        firstSequenceWidth() {\n            const container = document.querySelector(".msa-block");\n            if (!container)\n                return 0\n            const sequence = container.querySelector(".sequence");\n            return sequence.scrollWidth;\n        },\n        blockRanges() {\n            const maxVal = Math.max(1, Math.ceil(this.alnLen / this.lineLen));\n            return Array.from({ length: maxVal }, (_, i) => {\n                let start = i * this.lineLen;\n                let end = Math.min(this.alnLen, i * this.lineLen + this.lineLen);\n                return [start, end];\n            });\n        },\n        backgroundClip() {\n            return this.$vuetify.theme.dark ? \'text\' : \'border-box\';\n        },\n        sequenceColor() {\n            return this.$vuetify.theme.dark ? \'transparent\' : \'black\';\n        },\n        fontWeight() {\n            return this.$vuetify.theme.dark ? \'bolder\' : \'normal\';\n        },\n    },\n    methods: {\n        handleClickHeader(event, index) {\n            if (this.selectedStructures.length === 0 || event.altKey) {\n                this.$emit("newStructureReference", index);\n            } else {\n                this.$emit("newStructureSelection", index);\n            }\n        },\n        getSequenceWidth() {\n            const container = document.querySelector(".msa-block");\n            const sequence  = container.querySelector(".sequence");\n            return sequence.scrollWidth;\n        },\n        headerStyle(index) {\n            const isSelected  = this.selectedStructures.length > 0 && this.selectedStructures.includes(index);\n            const isReference = this.selectedStructures.length > 0 && this.referenceStructure === index;\n            return {\n                fontWeight: isSelected ? \'bold\' : \'normal\',                \n                color: isReference\n                    ? \'#1E88E5\'\n                    : (isSelected\n                        ? \'#e6ac00\'\n                        : this.$vuetify.theme.dark ? \'rgba(180, 180, 180, 1)\' : \'black\'),\n            }\n        },\n        handleUpdateEntries() {\n            this.headerLen = 0;\n            this.countLen = 0;\n            this.entries.forEach((e, i) => {\n                this.headerLen = Math.min(30, Math.max(this.headerLen, e.name.length));\n                let count = 0;\n                for (const char of e.aa) {\n                    if (char !== \'-\') count++;\n                }\n                this.countLen = Math.max(this.countLen, count.toString().length);\n            })\n        },\n        handleResize() {\n            // Resize based on first row\n            const container = document.querySelector(".msa-block");\n            if (!container) {\n                return\n            }\n            const header    = container.querySelector(".header");\n            const count     = container.querySelector(".count");\n            const sequence  = container.querySelector(".sequence");\n            const containerWidth = container.offsetWidth - header.offsetWidth - count.offsetWidth - 32;\n            \n            // calculate #chars difference\n            const content = sequence.textContent;\n            const charDiff = Math.abs(Math.ceil(content.length * (sequence.scrollWidth - containerWidth) / sequence.scrollWidth));\n\n            if (sequence.scrollWidth > containerWidth) {\n                this.lineLen = Math.min(this.lineLen - charDiff, this.entries[0].aa.length);\n            } else if (sequence.scrollWidth < containerWidth) {\n                this.lineLen = Math.min(this.lineLen + charDiff, this.entries[0].aa.length);\n            }\n        },\n        emitGradients() {\n            const elements = document.getElementsByClassName("sequence"); \n            this.$emit(\n                "cssGradients",\n                Array.prototype.map.call(elements, element => element.style[\'background-image\'])\n            );\n        },\n        percentageToColor(percentage, maxHue = 120, minHue = 0) {\n            if (percentage === -1) {\n                return this.$vuetify.theme.dark ? \'rgba(180, 180, 180, 1)\' : \'rgba(0, 0, 0, 0)\';\n            }\n            const hue = percentage * (maxHue - minHue) + minHue;\n            // const hue = (1 - percentage) * 120;\n            // const lightness = this.$vuetify.theme.dark ? 50 : 30;\n            return `hsl(${hue}, 100%, 50%)`;\n        },\n        getEntryRange(entry, start, end, makeGradients=true) {\n            let result = {\n                name: entry.name,\n                aa: entry.aa.slice(start, end),\n                ss: entry.ss.slice(start, end),\n                seqStart: 0\n            };\n            for (let i = 0; i < start; i++) {\n                if (entry.aa[i] === \'-\') continue;\n                result.seqStart++;\n            }\n            if (makeGradients) {\n                result.css = this.generateCSSGradient(start, end, result.ss);\n            }\n            return result;\n        },\n        getEntryRanges(start, end, makeGradients=true) {\n            return Array.from(this.entries, entry => this.getEntryRange(entry, start, end, makeGradients));\n        },\n        countSequence(sequence, start) {\n            let gaps = sequence.split(\'-\').length - 1;\n            return start + this.lineLen - gaps;\n        },\n        generateCSSGradient(start, end, sequence) {\n            if (!this.scores) {\n                return null;\n            }\n            let colors = [];\n            if (this.colorScheme === \'3di\') {\n                for (const residue of sequence) {\n                    colors.push(colors3di[residue]); \n                }\n            } else {\n                colors = this.scores\n                    .slice(start, end)\n                    .map(score => this.percentageToColor(parseFloat(score)));\n            }\n            for (let i = 0; i < sequence.length; i++) {\n                if (sequence[i] === \'-\') {\n                    colors[i] = this.$vuetify.theme.dark ? "rgba(100, 100, 100, 0.4)" : "rgba(0, 0, 0, 0)";\n                }\n            }\n            \n            const step = 100 / colors.length;\n            let gradient = \'linear-gradient(to right\';\n            \n            let preStep = 0;\n            let curStep = step;\n            for (let i = 0; i < colors.length; i++) {\n                curStep = (i === colors.length - 1) ? 100 : preStep + step;\n                gradient += `, ${colors[i]} ${preStep}%, ${colors[i]} ${curStep}%`;\n                preStep = curStep;\n            }\n            gradient += \')\';\n\n            return {\n                backgroundImage: gradient,\n                // decrease width to account for weird font glyph spacing\n                backgroundSize: `calc(100% - 2px) 100%`,\n                backgroundPosition: \'left top\',\n                backgroundAttachment: \'scroll\',\n                backgroundClip: this.backgroundClip,\n                color: this.sequenceColor,\n                fontWeight: this.fontWeight,\n            };\n        }\n    },\n}\n<\/script>\n\n<style>\n.msa-wrapper {\n    padding: 16px; /* equivalent to pa-4 */\n    display: flex;\n    flex-direction: column;\n    font-family: monospace;\n    white-space: nowrap;\n    width: 100%;\n}\n.msa-block {\n    margin-bottom: 1.5em;\n    display: grid;\n    grid-template-columns: fit-content(20%) 5fr auto;\n    width: 100%;\n    justify-content: space-between;\n    gap: 0px 16px;\n    line-height: 1em;\n}\n.msa-block:last-child {\n    margin-bottom: 0;\n}\n.msa-block .sequence {\n    display: inline-block;\n    padding: 0px;\n    margin: 0px;\n    letter-spacing: 4px;\n    color: transparent;\n    z-index: 0;\n}\n.msa-block .sequence::selection {\n    background: rgba(100, 100, 255, 1);\n    color: white;\n}\n.msa-row {\n    display: contents;\n/*     padding: 0;\n    margin: 0;\n    display: grid;\n    grid-template-columns: fit-content(20%) 5fr auto;\n    width: 100%;\n    justify-content: space-between;\n    gap: 16px;\n    line-height: 1em; */\n}\n.sequence-wrapper {\n    overflow: hidden;\n    align-content: left;\n    align-items: center;\n    display: flex;\n    flex-grow: 1;\n    text-align: left;\n}\n.sequence {\n    margin-left: auto;\n    margin: 0;\n    padding: 0;\n    line-height: 1em;\n}\n.header {\n    overflow: hidden;\n    text-align: left;\n    text-overflow: ellipsis;\n}\n.header:hover {\n    cursor: pointer;\n}\n.count {\n    text-align: right;\n}\n</style>' ],
                 sourceRoot: ""
             } ]);
             const o = s;
@@ -5051,7 +5360,7 @@
                 sources: [ "webpack://./frontend/ResultLocal.vue" ],
                 names: [],
                 mappings: ";AAkGA;IACA,gCAAA;AACA",
-                sourcesContent: [ '<template>\n<Local \n    :title="appTitle"\n    @uploadData="handleUploadData"\n    @downloadData="handleDownloadData"\n>\n    <template v-slot:default>\n        <v-tabs v-if="hits" center-active grow style="margin-bottom: 1em" show-arrows>\n            <v-tab v-for="(entry, index) in hits" :key="entry.query.header" @click="changeResult(index)">\n                {{ entry.query.header }} ({{ entry.results[0].alignments ? entry.results[0].alignments.length : 0 }})\n            </v-tab>\n        </v-tabs>\n        <ResultView\n            :key="currentIndex"\n            :ticket="ticket"\n            :error="error"\n            :mode="mode"\n            :hits="currentResult"\n            :selectedDatabases="selectedDatabases"\n            :tableMode="tableMode"\n        />       \n    </template>\n</Local>\n</template>\n\n<script>\nimport { parseResultsList, download, dateTime } from \'./Utilities.js\';\nimport ResultMixin from \'./ResultMixin.vue\';\nimport ResultView from \'./ResultView.vue\';\nimport Local from \'./Local.vue\';\n\nexport default {\n    name: \'result\',\n    mixins: [ResultMixin],\n    components: { ResultView, Local },\n    data() {\n        return {\n            currentIndex: 0\n        };\n    },\n    mounted() {\n        document.onreadystatechange = () => {\n            if (document.readyState == "complete") {\n                let div = document.getElementById("data");\n                if (!div) {\n                    return null;\n                }\n                let data = JSON.parse(div.textContent);\n                this.fetchData(data);\n            }\n        }\n    },\n    computed: {\n        appTitle() {\n            return `${__STRINGS__.APP_NAME} Search`;\n        },\n        currentResult() {\n            if (this.hits === null)\n                return null;\n            return this.hits[this.currentIndex];\n        },\n        currentQuery() {\n            if (this.hits === null)\n                return "";\n            return this.hits[this.currentIndex].query.header;\n        }\n    },\n    methods: {\n        changeResult(newRes) {\n            this.currentIndex = newRes;\n            this.setColorScheme();\n        },\n        handleUploadData(data) {\n            this.fetchData(data);\n        },\n        handleDownloadData() {\n            if (!this.hits) {\n                return null;\n            }\n            download(this.hits, `${__APP__}-${dateTime()}.json`);\n        },\n        resetProperties() {\n            this.ticket = "";\n            this.error = "";\n            this.mode = "";\n            this.hits = null;\n            this.selectedDatabases = 0;\n            this.tableMode = 0;\n        },\n        fetchData(data) {\n            this.resetProperties();\n            this.hits = parseResultsList(data);\n        }\n    }\n};\n<\/script>\n\n<style scoped>\n::v-deep .v-app-bar-title__content {\n    text-overflow: revert !important;\n}\n</style>\n<style>\n.theme--light .panel-root .v-toolbar {\n    background-color: #454545 !important;\n}\n\n.theme--dark .panel-root .v-toolbar {\n    background-color: #1e1e1e !important;\n}\n</style>' ],
+                sourcesContent: [ '<template>\n<Local \n    :title="appTitle"\n    @uploadData="handleUploadData"\n    @downloadData="handleDownloadData"\n>\n    <template v-slot:default>\n        <v-tabs v-if="hits" center-active grow style="margin-bottom: 1em" show-arrows>\n            <v-tab v-for="(entry, index) in hits" :key="entry.query.header" @click="changeResult(index)">\n                {{ entry.query.header }} ({{ entry.results[0].alignments ? entry.results[0].alignments.length : 0 }})\n            </v-tab>\n        </v-tabs>\n        <ResultView\n            :key="currentIndex"\n            :ticket="ticket"\n            :error="error"\n            :mode="mode"\n            :hits="currentResult"\n            :selectedDatabases="selectedDatabases"\n            :tableMode="tableMode"\n        />       \n    </template>\n</Local>\n</template>\n\n<script>\nimport { parseResultsList, download, dateTime } from \'./Utilities.js\';\nimport ResultMixin from \'./ResultMixin.vue\';\nimport ResultView from \'./ResultView.vue\';\nimport Local from \'./Local.vue\';\n\nexport default {\n    name: \'ResultLocal\',\n    mixins: [ResultMixin],\n    components: { ResultView, Local },\n    data() {\n        return {\n            currentIndex: 0\n        };\n    },\n    mounted() {\n        document.onreadystatechange = () => {\n            if (document.readyState == "complete") {\n                let div = document.getElementById("data");\n                if (!div) {\n                    return null;\n                }\n                let data = JSON.parse(div.textContent);\n                this.fetchData(data);\n            }\n        }\n    },\n    computed: {\n        appTitle() {\n            return `${__STRINGS__.APP_NAME} Search`;\n        },\n        currentResult() {\n            if (this.hits === null)\n                return null;\n            return this.hits[this.currentIndex];\n        },\n        currentQuery() {\n            if (this.hits === null)\n                return "";\n            return this.hits[this.currentIndex].query.header;\n        }\n    },\n    methods: {\n        changeResult(newRes) {\n            this.currentIndex = newRes;\n            this.setColorScheme();\n        },\n        handleUploadData(data) {\n            this.fetchData(data);\n        },\n        handleDownloadData() {\n            if (!this.hits) {\n                return null;\n            }\n            download(this.hits, `${__APP__}-${dateTime()}.json`);\n        },\n        resetProperties() {\n            this.ticket = "";\n            this.error = "";\n            this.mode = "";\n            this.hits = null;\n            this.selectedDatabases = 0;\n            this.tableMode = 0;\n        },\n        fetchData(data) {\n            this.resetProperties();\n            this.hits = parseResultsList(data);\n        }\n    }\n};\n<\/script>\n\n<style scoped>\n::v-deep .v-app-bar-title__content {\n    text-overflow: revert !important;\n}\n</style>\n<style>\n.theme--light .panel-root .v-toolbar {\n    background-color: #454545 !important;\n}\n\n.theme--dark .panel-root .v-toolbar {\n    background-color: #1e1e1e !important;\n}\n</style>' ],
                 sourceRoot: ""
             } ]);
             const o = s;
@@ -5067,7 +5376,7 @@
                 sources: [ "webpack://./frontend/ResultLocal.vue" ],
                 names: [],
                 mappings: ";AAuGA;IACA,oCAAA;AACA;AAEA;IACA,oCAAA;AACA",
-                sourcesContent: [ '<template>\n<Local \n    :title="appTitle"\n    @uploadData="handleUploadData"\n    @downloadData="handleDownloadData"\n>\n    <template v-slot:default>\n        <v-tabs v-if="hits" center-active grow style="margin-bottom: 1em" show-arrows>\n            <v-tab v-for="(entry, index) in hits" :key="entry.query.header" @click="changeResult(index)">\n                {{ entry.query.header }} ({{ entry.results[0].alignments ? entry.results[0].alignments.length : 0 }})\n            </v-tab>\n        </v-tabs>\n        <ResultView\n            :key="currentIndex"\n            :ticket="ticket"\n            :error="error"\n            :mode="mode"\n            :hits="currentResult"\n            :selectedDatabases="selectedDatabases"\n            :tableMode="tableMode"\n        />       \n    </template>\n</Local>\n</template>\n\n<script>\nimport { parseResultsList, download, dateTime } from \'./Utilities.js\';\nimport ResultMixin from \'./ResultMixin.vue\';\nimport ResultView from \'./ResultView.vue\';\nimport Local from \'./Local.vue\';\n\nexport default {\n    name: \'result\',\n    mixins: [ResultMixin],\n    components: { ResultView, Local },\n    data() {\n        return {\n            currentIndex: 0\n        };\n    },\n    mounted() {\n        document.onreadystatechange = () => {\n            if (document.readyState == "complete") {\n                let div = document.getElementById("data");\n                if (!div) {\n                    return null;\n                }\n                let data = JSON.parse(div.textContent);\n                this.fetchData(data);\n            }\n        }\n    },\n    computed: {\n        appTitle() {\n            return `${__STRINGS__.APP_NAME} Search`;\n        },\n        currentResult() {\n            if (this.hits === null)\n                return null;\n            return this.hits[this.currentIndex];\n        },\n        currentQuery() {\n            if (this.hits === null)\n                return "";\n            return this.hits[this.currentIndex].query.header;\n        }\n    },\n    methods: {\n        changeResult(newRes) {\n            this.currentIndex = newRes;\n            this.setColorScheme();\n        },\n        handleUploadData(data) {\n            this.fetchData(data);\n        },\n        handleDownloadData() {\n            if (!this.hits) {\n                return null;\n            }\n            download(this.hits, `${__APP__}-${dateTime()}.json`);\n        },\n        resetProperties() {\n            this.ticket = "";\n            this.error = "";\n            this.mode = "";\n            this.hits = null;\n            this.selectedDatabases = 0;\n            this.tableMode = 0;\n        },\n        fetchData(data) {\n            this.resetProperties();\n            this.hits = parseResultsList(data);\n        }\n    }\n};\n<\/script>\n\n<style scoped>\n::v-deep .v-app-bar-title__content {\n    text-overflow: revert !important;\n}\n</style>\n<style>\n.theme--light .panel-root .v-toolbar {\n    background-color: #454545 !important;\n}\n\n.theme--dark .panel-root .v-toolbar {\n    background-color: #1e1e1e !important;\n}\n</style>' ],
+                sourcesContent: [ '<template>\n<Local \n    :title="appTitle"\n    @uploadData="handleUploadData"\n    @downloadData="handleDownloadData"\n>\n    <template v-slot:default>\n        <v-tabs v-if="hits" center-active grow style="margin-bottom: 1em" show-arrows>\n            <v-tab v-for="(entry, index) in hits" :key="entry.query.header" @click="changeResult(index)">\n                {{ entry.query.header }} ({{ entry.results[0].alignments ? entry.results[0].alignments.length : 0 }})\n            </v-tab>\n        </v-tabs>\n        <ResultView\n            :key="currentIndex"\n            :ticket="ticket"\n            :error="error"\n            :mode="mode"\n            :hits="currentResult"\n            :selectedDatabases="selectedDatabases"\n            :tableMode="tableMode"\n        />       \n    </template>\n</Local>\n</template>\n\n<script>\nimport { parseResultsList, download, dateTime } from \'./Utilities.js\';\nimport ResultMixin from \'./ResultMixin.vue\';\nimport ResultView from \'./ResultView.vue\';\nimport Local from \'./Local.vue\';\n\nexport default {\n    name: \'ResultLocal\',\n    mixins: [ResultMixin],\n    components: { ResultView, Local },\n    data() {\n        return {\n            currentIndex: 0\n        };\n    },\n    mounted() {\n        document.onreadystatechange = () => {\n            if (document.readyState == "complete") {\n                let div = document.getElementById("data");\n                if (!div) {\n                    return null;\n                }\n                let data = JSON.parse(div.textContent);\n                this.fetchData(data);\n            }\n        }\n    },\n    computed: {\n        appTitle() {\n            return `${__STRINGS__.APP_NAME} Search`;\n        },\n        currentResult() {\n            if (this.hits === null)\n                return null;\n            return this.hits[this.currentIndex];\n        },\n        currentQuery() {\n            if (this.hits === null)\n                return "";\n            return this.hits[this.currentIndex].query.header;\n        }\n    },\n    methods: {\n        changeResult(newRes) {\n            this.currentIndex = newRes;\n            this.setColorScheme();\n        },\n        handleUploadData(data) {\n            this.fetchData(data);\n        },\n        handleDownloadData() {\n            if (!this.hits) {\n                return null;\n            }\n            download(this.hits, `${__APP__}-${dateTime()}.json`);\n        },\n        resetProperties() {\n            this.ticket = "";\n            this.error = "";\n            this.mode = "";\n            this.hits = null;\n            this.selectedDatabases = 0;\n            this.tableMode = 0;\n        },\n        fetchData(data) {\n            this.resetProperties();\n            this.hits = parseResultsList(data);\n        }\n    }\n};\n<\/script>\n\n<style scoped>\n::v-deep .v-app-bar-title__content {\n    text-overflow: revert !important;\n}\n</style>\n<style>\n.theme--light .panel-root .v-toolbar {\n    background-color: #454545 !important;\n}\n\n.theme--dark .panel-root .v-toolbar {\n    background-color: #1e1e1e !important;\n}\n</style>' ],
                 sourceRoot: ""
             } ]);
             const o = s;
@@ -5098,8 +5407,8 @@
                 version: 3,
                 sources: [ "webpack://./frontend/StructureViewer.vue" ],
                 names: [],
-                mappings: ";AAofA;IACA,YAAA;IACA,aAAA;IACA,cAAA;AACA",
-                sourcesContent: [ '<template>\n<div class="structure-panel" v-if="alignments.length > 0 && \'tCa\' in alignments[0]">\n    <StructureViewerTooltip attach=".structure-panel" />\n    <div class="structure-wrapper" ref="structurepanel">\n        <table v-if="tmAlignResults" class="tmscore-panel" v-bind="tmPanelBindings">\n            <tr>\n                <td class="left-cell">TM-Score:</td>\n                <td class="right-cell">{{ tmAlignResults.tmScore }}</td>\n            </tr>\n            <tr>\n                <td class="left-cell">RMSD:</td>\n                <td class="right-cell">{{ tmAlignResults.rmsd  }}</td>\n            </tr>\n        </table>\n        <StructureViewerToolbar\n            :isFullscreen="isFullscreen"\n            :isSpinning="isSpinning"\n            :showQuery="showQuery"\n            :showTarget="showTarget"\n            :showArrows="showArrows"\n            @makeImage="handleMakeImage"\n            @makePDB="handleMakePDB"\n            @resetView="handleResetView"\n            @toggleFullscreen="handleToggleFullscreen"\n            @toggleTarget="handleToggleTarget"\n            @toggleQuery="handleToggleQuery"\n            @toggleArrows="handleToggleArrows"\n            @toggleSpin="handleToggleSpin"\n        />\n        <div class="structure-viewer" ref="viewport"></div>\n    </div>\n</div>\n</template>\n\n<script>\nimport StructureViewerTooltip from \'./StructureViewerTooltip.vue\';\nimport StructureViewerToolbar from \'./StructureViewerToolbar.vue\';\nimport StructureViewerMixin from \'./StructureViewerMixin.vue\';\nimport { mockPDB, makeSubPDB, transformStructure, makeMatrix4  } from \'./Utilities.js\';\nimport { pulchra } from \'pulchra-wasm\';\nimport { tmalign, parse as parseTMOutput, parseMatrix as parseTMMatrix } from \'tmalign-wasm\';\n\nimport Panel from \'./Panel.vue\';\nimport { Shape, Selection, download, ColormakerRegistry, PdbWriter, Color, concatStructures, StructureComponent } from \'ngl\';\n\n// Create NGL arrows from array of ([X, Y, Z], [X, Y, Z]) pairs\n// Get XYZ coordinates of CA of a given residue\nconst xyz = (structure, resIndex) => {\n    var rp = structure.getResidueProxy();\n    var ap = structure.getAtomProxy();\n    rp.index = resIndex;\n    ap.index = rp.getAtomIndexByName(\'CA\');\n    return [ap.x, ap.y, ap.z];\n}\n\n// Save indices of matching columns in an alignment\nconst getMatchingColumns = (alignment) => {\n    let cols_q = [];\n    let cols_t = [];\n    let id_q = alignment.qStartPos;\n    let id_t = alignment.dbStartPos;\n    for (let i = 0; i < alignment.qAln.length; i++) {\n        if (alignment.qAln[i] === \'-\' || alignment.dbAln[i] === \'-\') {\n            if (alignment.qAln[i] === \'-\') id_t++;\n            else id_q++;\n        } else {\n            cols_q.push(id_q);\n            cols_t.push(id_t);\n            id_q++;\n            id_t++;\n        }\n    }\n    return [cols_q, cols_t]\n}\n\n// Get chain from structure name like Structure_A\nconst getChainName = (name) => {\n    let pos = name.lastIndexOf(\'_\');\n    return pos != -1 ? name.substring(pos + 1) : \'A\';\n}\n\n// Get coordinates of all atoms found in given selection\nconst getAtomXYZ = (structure, sele) => {\n    const xyz = [];\n    structure.eachAtom(ap => { xyz.push([ap.x, ap.y, ap.z]) }, sele); \n    return xyz;\n}\n\nconst colorblindColors = ColormakerRegistry.addScheme(function() {\n    let colors = [0x991999, 0x00BFBF, 0xE9967A, 0x009E73, 0xF0E442, 0x0072B2, 0xD55E00, 0xCC79A7];\n    this.atomColor = function(atom) {\n        return colors[atom.chainIndex % colors.length];\n    }\n}, "colorblindColors")\n \n\nexport default {\n    name: "StructureViewer",\n    components: {\n        Panel,\n        StructureViewerTooltip,\n        StructureViewerToolbar,\n    },\n    mixins: [\n        StructureViewerMixin,\n    ],\n    data() {\n        return {\n            selection: null,\n            showArrows: false,\n            showQuery: 0,\n            showTarget: 0,\n            tmAlignResults: null\n        }\n    },\n    props: {\n        alignments: { type: Array },\n        highlights: { type: Array },\n        queryFile: { type: String },\n        queryAlignedColor: { type: String, default: "#1E88E5" },\n        queryUnalignedColor: { type: String, default: "#A5CFF5" },\n        targetAlignedColor: { type: String, default: "#FFC107" },\n        targetUnalignedColor: { type: String, default: "#FFE699" },\n        qRepr: { type: String, default: "cartoon" },\n        tRepr: { type: String, default: "cartoon" },\n        hits: { type: Object },\n        autoViewTime: { type: Number, default: 100 }\n    },\n    methods: {\n        // Create arrows connecting CA coordinates for query/target in match columns\n        async drawArrows(str1, str2) {\n            const shape = new Shape(\'arrows\');\n            await Promise.all(this.alignments.map(async (alignment) => {\n                const chain_q = getChainName(alignment.query);\n                const chain_t = getChainName(alignment.target);\n                const [sele_q, sele_t] = getMatchingColumns(alignment).map(arr => arr.join(" or "));\n                const str1_xyz = getAtomXYZ(str1, new Selection(`(${sele_q}) and :${chain_q}.CA`));\n                const str2_xyz = getAtomXYZ(str2, new Selection(`(${sele_t}) and :${chain_t}.CA`));\n                for (let i = 0; i < str1_xyz.length; i++) {\n                    shape.addArrow(str1_xyz[i], str2_xyz[i], [0, 1, 1], 0.4);\n                }\n            }));\n            let component = this.stage.addComponentFromObject(shape);\n            component.addRepresentation(\'buffer\');\n            component.setVisibility(this.showArrows);\n        },\n        handleToggleArrows() {\n            if (!this.stage) return;\n            this.showArrows = !this.showArrows;\n        },\n        handleToggleQuery() {\n            if (!this.stage) return;\n            if (__LOCAL__) {\n                this.showQuery = (this.showQuery === 0) ? 1 : 0;\n            } else {\n                this.showQuery = (this.showQuery === 2) ? 0 : this.showQuery + 1;\n            }\n        },\n        handleResetView() {\n            if (!this.stage) return;\n            this.setQuerySelection();\n        },\n        handleToggleTarget() {\n            if (!this.stage) return;\n            if (__LOCAL__) {\n                this.showTarget = (this.showTarget === 0) ? 1 : 0;\n            } else {\n                this.showTarget = (this.showTarget === 2) ? 0 : this.showTarget + 1; \n            }\n        },\n        clearSelection() {\n            if (!this.alignments || !this.stage) return;\n            let repr = this.stage.getRepresentationsByName("targetHighlight");\n            repr.setSelection()\n            repr.setVisibility(false)\n        },\n        setSelectionData(selection) {\n            // FIXME tube/cartoon representation cannot visualise <3 residues\n            //       https://github.com/nglviewer/ngl/issues/759\n            //       use licorice representation for this case? or just +1 to make 3\n            if (!this.alignments || !this.stage) return;\n            let repr = this.stage.getRepresentationsByName("targetHighlight");\n            repr.setSelection()\n            if (selection.length === 0) {\n                repr.setVisibility(false);\n                return;\n            }\n            let seles = [];\n            for (let [i, start, length] of selection) {\n                let chain = getChainName(this.alignments[i].target);\n                let end = start + length;\n                seles.push(`${start}-${end}:${chain}`);\n            } \n            let sele = seles.join(" or ");\n            repr.setSelection(sele);\n            repr.setVisibility(true);\n        },\n        setQuerySelection() {\n            let repr = this.stage.getRepresentationsByName("queryStructure");\n            if (!repr) return;\n            let sele = this.querySele;\n            repr.setSelection(sele);\n            repr.list[0].parent.autoView(sele, this.autoViewTime);\n            if (this.showQuery === 0) {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(false);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(false);\n            } else if (this.showQuery === 1) {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(true);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(false);\n            } else {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(true);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(true);\n            }\n        },\n        setTargetSelection() {\n            let repr = this.stage.getRepresentationsByName("targetStructure");\n            if (!repr) return;\n            let sele = this.targetSele;\n            repr.setSelection(sele);\n        },\n        async handleMakeImage() {\n            if (!this.stage)\n                return;\n            let hasQuery = this.stage.getRepresentationsByName("queryStructure").length > 0;\n            let title = this.alignments.map(aln => hasQuery ? `${aln.query}-${aln.target}` : aln.target).join("_");\n            this.stage.viewer.setLight(undefined, undefined, undefined, 0.2)\n            const blob = await this.stage.makeImage({\n                trim: true,\n                factor: (this.isFullscreen) ? 1 : 8,\n                antialias: true,\n                transparent: true,\n            });\n            this.stage.viewer.setLight(undefined, undefined, undefined, this.$vuetify.theme.dark ? 0.4 : 0.2)\n            download(blob, `${title}.pdb`)\n        },\n        handleMakePDB() {\n            if (!this.stage)\n                return;\n            const getPdbText = comp => {\n                let pw = new PdbWriter(comp.structure, { renumberSerial: false });\n                return pw.getData().split(\'\\n\').filter(line => line.startsWith(\'ATOM\')).join(\'\\n\');\n            }\n            let qPDB = this.stage.getComponentsByName("queryStructure").list.map(getPdbText); \n            let tPDB = this.stage.getComponentsByName("targetStructure").list.map(getPdbText);\n            if (!qPDB && !tPDB) \n                return;\n            let title = this.alignments.map(aln => qPDB ? `${aln.query}-${aln.target}` : aln.target);\n            let result = null;\n            if (qPDB && tPDB) {\n                result =\n`TITLE     ${title.join(" ")}\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms might have been re-generated by PULCHRA,\nREMARK              if they are not present in the original PDB file.\nMODEL        1\n${qPDB.join(\'\\n\')}\nENDMDL\nMODEL        2\n${tPDB.join(\'\\n\')}\nENDMDL\nEND\n`\n            } else {\n                result =\n`TITLE     ${title.join(" ")}\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms were re-generated by PULCHRA.\nMODEL        1\n${tPDB.join(\'\\n\')}\nENDMDL\nEND\n`\n            }\n            download(new Blob([result], { type: \'text/plain\' }), (title.join("_") + ".pdb"));\n        }\n    },\n    watch: {\n        \'showArrows\': function(val, _) {\n            if (!this.stage) return\n            this.stage.getComponentsByName("arrows").forEach(comp => { comp.setVisibility(val) });\n        },\n        \'showQuery\': function() {\n            if (!this.stage) return;\n            this.setQuerySelection();\n        },\n        \'showTarget\': function(val, _) {\n            if (!this.stage) return;\n            this.setTargetSelection();\n        },\n        \'highlights\': function(values) {\n            if (!this.stage || !values) return;\n            let selections = []\n            values.forEach((value, i) => {\n                if (!value) return;\n                let [start, length] = value;\n                selections.push([i, start, length]);\n            })\n            this.setSelectionData(selections)\n        }\n    },\n    computed: {\n        querySele: function() {\n            if (this.alignments.length === 0 || this.showQuery == 2)\n                return \'\';\n            if (this.showQuery === 0)\n                return this.alignments.map(a => `${a.qStartPos}-${a.qEndPos}:${getChainName(a.query)}`).join(" or ");\n            if (this.showQuery === 1)\n                return this.alignments.map(a => `:${getChainName(a.query)}`).join(" or ");\n        },\n        targetSele: function() {\n            if (this.alignments.length === 0 || this.showTarget == 2)\n                return \'\';\n            if (this.showTarget === 0)\n                return this.alignments.map(a => `${a.dbStartPos}-${a.dbEndPos}:${getChainName(a.target)}`).join(" or ");\n            if (this.showTarget === 1)\n                return this.alignments.map(a => `:${getChainName(a.target)}`).join(" or ");\n        },\n        tmPanelBindings: function() {\n            return (this.isFullscreen) ? { \'style\': \'margin-top: 10px; font-size: 2em; line-height: 2em\' } : {  }\n        },\n    },\n    async mounted() {\n        if (typeof(this.alignments[0].tCa) == "undefined")\n            return;\n\n        // Download from server --\x3e full input PDB from /result/query endpoint, saved with JSON.stringify\n        //                local --\x3e qCa string\n        // Tickets prefixed with \'user-\' only occur on user uploaded files\n        let queryPdb = "";\n        let hasQuery = true;\n        if (this.$LOCAL) {\n            if (this.hits.queries[0].hasOwnProperty(\'pdb\')) {\n                queryPdb = JSON.parse(this.hits.queries[0].pdb);\n            } else {\n                queryPdb = mockPDB(this.hits.queries[0].qCa, this.hits.queries[0].sequence, \'A\');\n            }\n        } else if (this.$route.params.ticket.startsWith(\'user\')) {\n            // Check for special \'user\' ticket for when users have uploaded JSON\n            if (this.hits.queries[0].hasOwnProperty(\'pdb\')) {\n                queryPdb = JSON.parse(this.hits.queries[0].pdb);\n            } else {\n                const localData = this.$root.userData[this.$route.params.entry];\n                queryPdb = mockPDB(localData.queries[0].qCa, localData.queries[0].sequence, \'A\');\n            }\n        } else {\n            try {\n                const request = await this.$axios.get("api/result/" + this.$route.params.ticket + \'/query\');\n                queryPdb = request.data;\n            } catch (e) {\n                queryPdb = "";\n                hasQuery = false;\n            }\n        }\n\n        // Run PULCHRA per chain then concatenate Structure objects in first StructureComponent\n        const targets = [];\n        const selections_t = [];\n        let renumber = 0;\n        for (let alignment of this.alignments) {\n            const chainPos = alignment.target.lastIndexOf(\'_\');\n            const chain = chainPos != -1 ? alignment.target.substring(chainPos + 1) : \'A\';\n            const mock = mockPDB(alignment.tCa, alignment.tSeq, chain);\n            const pdb = await pulchra(mock);\n            const component = await this.stage.loadFile(new Blob([pdb], { type: \'text/plain\' }), {ext: \'pdb\', firstModelOnly: true});\n            component.structure.eachChain(c => { c.chainname = chain; });\n            component.structure.eachAtom(a => { a.serial = renumber++; });\n            targets.push(component);\n            selections_t.push(`${alignment.dbStartPos}-${alignment.dbEndPos}:${chain}`);\n        }\n        const structure = concatStructures(this.alignments[0].target.split(\'_\')[0], ...targets.map(t => t.structure));\n        const target = this.stage.addComponentFromObject(structure, { name: "targetStructure" });\n        \n        target.addRepresentation(\'tube\', {\n            color: 0x11FFEE,\n            side: \'front\',\n            opacity: 0.5,\n            radius: 0.8,\n            visible: false,\n            name: \'targetHighlight\'\n        });\n\n        if (ColormakerRegistry.hasScheme("_targetScheme")) {\n            ColormakerRegistry.removeScheme("_targetScheme")\n        }\n        this.targetSchemeId = ColormakerRegistry.addSelectionScheme([\n            [this.targetAlignedColor, selections_t.join(" or ")],\n            [this.targetUnalignedColor, "*"]\n        ], "_targetScheme")\n\n        if (hasQuery) {\n            let data = \'\';\n            for (let line of queryPdb.split(\'\\n\')) {\n                let numCols = Math.max(0, 80 - line.length);\n                let newLine = line + \' \'.repeat(numCols) + \'\\n\';\n                data += newLine\n            }\n            queryPdb = data;\n\n            let query = await this.stage.loadFile(new Blob([queryPdb], { type: \'text/plain\' }), { ext: \'pdb\', firstModelOnly: true, name: \'queryStructure\'});\n            if (query && query.structure.getAtomProxy().isCg()) {\n                queryPdb = await pulchra(queryPdb);\n                this.stage.removeComponent(query);\n                query = await this.stage.loadFile(new Blob([queryPdb], { type: \'text/plain\' }), {ext: \'pdb\', firstModelOnly: true, name: \'queryStructure\'}); \n            }\n\n            // Map 1-based indices to residue index/resno; only need for query structure\n            // Use queryChainSele to make all selections based on actual query chain\n            const selections_q = [];\n            for (let alignment of this.alignments) {\n                const chainPos = alignment.query.lastIndexOf(\'_\');\n                const chain = chainPos != -1 ? alignment.query.substring(chainPos + 1) : \'A\';\n\n                selections_q.push(`${alignment.qStartPos}-${alignment.qEndPos} and :${chain}`);\n\n                // Renumber to avoid residue gaps\n                let renumber = 1;\n                query.structure.eachResidue(function(rp) {\n                    rp.resno = renumber++;\n                }, new Selection(`:${chain}`))\n            }\n            if (ColormakerRegistry.hasScheme("_queryScheme")) {\n                ColormakerRegistry.removeScheme("_queryScheme")\n            }\n            this.querySchemeId = ColormakerRegistry.addSelectionScheme([\n                [this.queryAlignedColor, selections_q.join(" or ")],\n                [this.queryUnalignedColor, "*"],\n            ], "_queryScheme")\n\n            // Re-align target to query using TM-align for better superposition\n            // Target 1st since TM-align generates superposition matrix for 1st structure\n            if (this.alignments[0].hasOwnProperty("complexu") && this.alignments[0].hasOwnProperty("complext")) {\n                const t = this.alignments[0].complext.split(\',\').map(x => parseFloat(x));\n                let u = this.alignments[0].complexu.split(\',\').map(x => parseFloat(x));\n                u = [\n                    [u[0], u[1], u[2]],\n                    [u[3], u[4], u[5]],\n                    [u[6], u[7], u[8]],\n                ];\n                // Can\'t use setTransform since we need the actual transformed coordinates for arrows\n                transformStructure(target.structure, t, u);\n                query.addRepresentation(this.qRepr, { color: this.querySchemeId, smoothSheet: true, name: "queryStructure"});\n                target.addRepresentation(this.tRepr, { color: this.targetSchemeId, smoothSheet: true, name: "targetStructure" });\n\n                // Make three separate surface representations based on query toggle state:\n                //   0: Aligned regions of aligned chains\n                //   1: Unaligned regions of aligned chains (shown with 0)\n                //   2: Full structure (all chains; shown with 0 and 1)\n                // Then toggle visibility when showQuery is changed by the user.\n                const surfaceSele0 = [];\n                const surfaceSele1 = [];\n                const surfaceSele2 = [];\n                for (let alignment of this.alignments) {\n                    let chain = getChainName(alignment.query);\n                    surfaceSele0.push(`${alignment.qStartPos}-${alignment.qEndPos}:${chain}`);\n                    surfaceSele1.push(`(not ${alignment.qStartPos}-${alignment.qEndPos} and :${chain})`);\n                    surfaceSele2.push(`:${chain}`);\n                }\n                const surfaceParams = {\n                    color: colorblindColors,\n                    opacity: 0.1,\n                    opaqueBack: false,\n                    useWorker: true\n                }\n                query.addRepresentation("surface", { sele: surfaceSele0.join(" or "), name: "querySurface-0", ...surfaceParams });\n                query.addRepresentation("surface", { sele: surfaceSele1.join(" or "), name: "querySurface-1", visible: false, ...surfaceParams });\n                query.addRepresentation("surface", { sele: `not (${surfaceSele2.join(" or ")})`, name: "querySurface-2", visible: false, ...surfaceParams });\n            } else {\n                // Generate subsetted PDBs for TM-align\n                let qSubPdb = makeSubPDB(query.structure, this.querySele);\n                let tSubPdb = makeSubPDB(target.structure, this.targetSele);\n                let alnFasta = `>target\\n${this.alignments[0].dbAln}\\n\\n>query\\n${this.alignments[0].qAln}`\n                const tm = await tmalign(tSubPdb, qSubPdb, alnFasta);\n                this.tmAlignResults = parseTMOutput(tm.output)\n                let { t, u } = parseTMMatrix(tm.matrix)\n                transformStructure(target.structure, t, u)\n                query.addRepresentation(this.qRepr, {color: this.querySchemeId, name: "queryStructure"});\n                target.addRepresentation(this.tRepr, {color: this.targetSchemeId, name: "targetStructure"});\n            }\n            await this.drawArrows(query.structure, target.structure)\n            this.setQuerySelection();\n            this.setTargetSelection();\n            query.autoView(this.querySele, this.autoViewTime)\n        } else {\n            target.addRepresentation(this.tRepr, {color: this.targetSchemeId, name: "targetStructure"})\n            this.setQuerySelection()\n            this.setTargetSelection();\n            this.stage.autoView(this.autoViewTime)\n        }\n        \n    },\n}\n<\/script>\n\n<style scoped>\n.structure-wrapper {\n    width: 500px;\n    height: 400px;\n    margin: 0 auto;\n}\n</style>\n\n<style>\n.theme--dark .structure-wrapper .v-tooltip__content {\n    background: rgba(97, 97, 97, 0.3);\n}\n/* @media only screen and (max-width: 600px) {\n    .structure-wrapper {\n        width: 300px;\n    }\n} */\n.structure-viewer {\n    width: 100%;\n    height: 100%;\n}\n.structure-viewer canvas {\n    border-radius: 2px;\n}\n.structure-panel {\n    position: relative;\n}\n.toolbar-panel {\n    display: inline-flex;\n    flex-direction: row;\n    position: absolute;\n    justify-content: center;\n    width: 100%;\n    bottom: 0;\n    z-index: 1;\n    left: 0;\n}\n.tmscore-panel {\n    position: absolute;\n    width: 100%;\n    top: 0;\n    left: 0;\n    z-index: 1;\n    font-family: monospace;\n    color: rgb(31, 119, 180);\n}\n.left-cell {\n    text-align: right;\n    width: 50%;\n}\n.right-cell {\n    text-align: left;\n    width: 50%;\n    padding-left: 0.3em;\n}\n</style>' ],
+                mappings: ";AAqjBA;IACA,YAAA;IACA,aAAA;IACA,cAAA;AACA",
+                sourcesContent: [ '<template>\n<div class="structure-panel" v-if="alignments.length > 0 && \'tCa\' in alignments[0]">\n    <StructureViewerTooltip attach=".structure-panel" />\n    <div class="structure-wrapper" ref="structurepanel">\n        <table v-if="tmAlignResults" class="tmscore-panel" v-bind="tmPanelBindings">\n            <tr>\n                <td class="left-cell">TM-Score:</td>\n                <td class="right-cell">{{ tmAlignResults.tmScore }}</td>\n            </tr>\n            <tr>\n                <td class="left-cell">RMSD:</td>\n                <td class="right-cell">{{ tmAlignResults.rmsd  }}</td>\n            </tr>\n        </table>\n        <StructureViewerToolbar\n            :isFullscreen="isFullscreen"\n            :isSpinning="isSpinning"\n            :showQuery="showQuery"\n            :showTarget="showTarget"\n            :showArrows="showArrows"\n            :disableQueryButton="!hasQuery"\n            :disableArrowButton="!hasQuery"\n            @makeImage="handleMakeImage"\n            @makePDB="handleMakePDB"\n            @resetView="handleResetView"\n            @toggleFullscreen="handleToggleFullscreen"\n            @toggleTarget="handleToggleTarget"\n            @toggleQuery="handleToggleQuery"\n            @toggleArrows="handleToggleArrows"\n            @toggleSpin="handleToggleSpin"\n        />\n        <div class="structure-viewer" ref="viewport"></div>\n    </div>\n</div>\n</template>\n\n<script>\nimport StructureViewerTooltip from \'./StructureViewerTooltip.vue\';\nimport StructureViewerToolbar from \'./StructureViewerToolbar.vue\';\nimport StructureViewerMixin from \'./StructureViewerMixin.vue\';\nimport { mockPDB, makeSubPDB, transformStructure, makeMatrix4  } from \'./Utilities.js\';\nimport { pulchra } from \'pulchra-wasm\';\nimport { tmalign, parse as parseTMOutput, parseMatrix as parseTMMatrix } from \'tmalign-wasm\';\n\nimport Panel from \'./Panel.vue\';\nimport { Shape, Selection, download, ColormakerRegistry, PdbWriter, Color, concatStructures, StructureComponent } from \'ngl\';\n\n// Create NGL arrows from array of ([X, Y, Z], [X, Y, Z]) pairs\n// Get XYZ coordinates of CA of a given residue\nconst xyz = (structure, resIndex) => {\n    var rp = structure.getResidueProxy();\n    var ap = structure.getAtomProxy();\n    rp.index = resIndex;\n    ap.index = rp.getAtomIndexByName(\'CA\');\n    return [ap.x, ap.y, ap.z];\n}\n\n// Save indices of matching columns in an alignment\nconst getMatchingColumns = (alignment) => {\n    let cols_q = [];\n    let cols_t = [];\n    let id_q = alignment.qStartPos;\n    let id_t = alignment.dbStartPos;\n    for (let i = 0; i < alignment.qAln.length; i++) {\n        if (alignment.qAln[i] === \'-\' || alignment.dbAln[i] === \'-\') {\n            if (alignment.qAln[i] === \'-\') id_t++;\n            else id_q++;\n        } else {\n            cols_q.push(id_q);\n            cols_t.push(id_t);\n            id_q++;\n            id_t++;\n        }\n    }\n    return [cols_q, cols_t]\n}\n\n// Get chain from structure name like Structure_A\nconst getChainName = (name) => {\n    // HACK FIXME fix AF chain names\n    if (/_v[0-9]+$/.test(name)) {\n        return \'A\';\n    }\n    let pos = name.lastIndexOf(\'_\');\n    if (pos != -1) {\n        let match = name.substring(pos + 1);\n        return match.length >= 1 ? match[0] : \'A\';\n    }\n    // fallback\n    return \'A\';\n}\n\nconst getAccession = (name) => {\n    // HACK FIXME fix AF chain names\n    if (/_v[0-9]+$/.test(name)) {\n        return name;\n    }\n    let pos = name.lastIndexOf(\'_\');\n    return pos != -1 ? name.substring(0, pos) : name;\n}\n\n// Get coordinates of all atoms found in given selection\n// skip consecutive res indices as they are most likely alternative locations\n// foldseek always chooses the first alt locations, so we mimic this behavior\nconst getAtomXYZ = (structure, sele) => {\n    const xyz = [];\n    let lastResidueIndex = -1;\n\n    structure.eachAtom(ap => {\n        if (ap.resno !== lastResidueIndex) {\n            xyz.push([ap.x, ap.y, ap.z]);\n            lastResidueIndex = ap.resno;\n        }\n    }, sele); \n\n    return xyz;\n}\n\nconst colorblindColors = ColormakerRegistry.addScheme(function() {\n    let colors = [0x991999, 0x00BFBF, 0xE9967A, 0x009E73, 0xF0E442, 0x0072B2, 0xD55E00, 0xCC79A7];\n    this.atomColor = function(atom) {\n        return colors[atom.chainIndex % colors.length];\n    }\n}, "colorblindColors")\n\nconst getPdbText = comp => {\n    let pw = new PdbWriter(comp.structure, { renumberSerial: false });\n    return pw.getData().split(\'\\n\').filter(line => line.startsWith(\'ATOM\')).join(\'\\n\');\n}\n\nexport default {\n    name: "StructureViewer",\n    components: {\n        Panel,\n        StructureViewerTooltip,\n        StructureViewerToolbar,\n    },\n    mixins: [\n        StructureViewerMixin,\n    ],\n    data() {\n        return {\n            selection: null,\n            showArrows: false,\n            showQuery: 0,\n            showTarget: 0,\n            tmAlignResults: null,\n            hasQuery: true,\n        }\n    },\n    props: {\n        alignments: { type: Array },\n        highlights: { type: Array },\n        queryFile: { type: String },\n        queryAlignedColor: { type: String, default: "#1E88E5" },\n        queryUnalignedColor: { type: String, default: "#A5CFF5" },\n        targetAlignedColor: { type: String, default: "#FFC107" },\n        targetUnalignedColor: { type: String, default: "#FFE699" },\n        qRepr: { type: String, default: "cartoon" },\n        tRepr: { type: String, default: "cartoon" },\n        hits: { type: Object },\n        autoViewTime: { type: Number, default: 100 }\n    },\n    methods: {\n        // Create arrows connecting CA coordinates for query/target in match columns\n        async drawArrows(str1, str2) {\n            const shape = new Shape(\'arrows\');\n            await Promise.all(this.alignments.map(async (alignment) => {\n                const chain_q = getChainName(alignment.query);\n                const chain_t = getChainName(alignment.target);\n                const [sele_q, sele_t] = getMatchingColumns(alignment).map(arr => arr.join(" or "));\n\n                const str1_xyz = getAtomXYZ(str1, new Selection(`(${sele_q}) and :${chain_q}.CA`));\n                const str2_xyz = getAtomXYZ(str2, new Selection(`(${sele_t}) and :${chain_t}.CA`));\n\n                if (str1_xyz.length != str2_xyz.length) {\n                    console.warn("Different number of CA atoms in query and target", str1_xyz.length, str2_xyz.length);\n                }\n                for (let i = 0; i < Math.min(str1_xyz.length, str2_xyz.length); i++) {\n                    shape.addArrow(str1_xyz[i], str2_xyz[i], [0, 1, 1], 0.4);\n                }\n            }));\n            let component = this.stage.addComponentFromObject(shape);\n            component.addRepresentation(\'buffer\');\n            component.setVisibility(this.showArrows);\n        },\n        handleToggleArrows() {\n            if (!this.stage) return;\n            this.showArrows = !this.showArrows;\n        },\n        handleToggleQuery() {\n            if (!this.stage) return;\n            if (__LOCAL__) {\n                this.showQuery = (this.showQuery === 0) ? 1 : 0;\n            } else {\n                this.showQuery = (this.showQuery === 2) ? 0 : this.showQuery + 1;\n            }\n        },\n        handleResetView() {\n            if (!this.stage) return;\n            this.setQuerySelection();\n        },\n        handleToggleTarget() {\n            if (!this.stage) return;\n            if (__LOCAL__) {\n                this.showTarget = (this.showTarget === 0) ? 1 : 0;\n            } else {\n                this.showTarget = (this.showTarget === 2) ? 0 : this.showTarget + 1; \n            }\n        },\n        clearSelection() {\n            if (!this.alignments || !this.stage) return;\n            let repr = this.stage.getRepresentationsByName("targetHighlight");\n            repr.setSelection()\n            repr.setVisibility(false)\n        },\n        setSelectionData(selection) {\n            // FIXME tube/cartoon representation cannot visualise <3 residues\n            //       https://github.com/nglviewer/ngl/issues/759\n            //       use licorice representation for this case? or just +1 to make 3\n            if (!this.alignments || !this.stage) return;\n            let repr = this.stage.getRepresentationsByName("targetHighlight");\n            repr.setSelection()\n            if (selection.length === 0) {\n                repr.setVisibility(false);\n                return;\n            }\n            let seles = [];\n            for (let [i, start, length] of selection) {\n                let chain = getChainName(this.alignments[i].target);\n                let end = start + length;\n                seles.push(`${start}-${end}:${chain}`);\n            } \n            let sele = seles.join(" or ");\n            repr.setSelection(sele);\n            repr.setVisibility(true);\n        },\n        setQuerySelection() {\n            let repr = this.stage.getRepresentationsByName("queryStructure");\n            if (!repr) return;\n            let sele = this.querySele;\n            repr.setSelection(sele);\n            repr.list[0].parent.autoView(sele, this.autoViewTime);\n            if (this.showQuery === 0) {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(false);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(false);\n            } else if (this.showQuery === 1) {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(true);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(false);\n            } else {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(true);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(true);\n            }\n        },\n        setTargetSelection() {\n            let repr = this.stage.getRepresentationsByName("targetStructure");\n            if (!repr) return;\n            let sele = this.targetSele;\n            repr.setSelection(sele);\n        },\n        async handleMakeImage() {\n            if (!this.stage)\n                return;\n            let wasSpinning = this.isSpinning;\n            this.isSpinning = false;\n            let title = this.alignments.map(aln => this.hasQuery ? `${aln.query}-${aln.target}` : aln.target).join("_");\n            this.stage.viewer.setLight(undefined, undefined, undefined, 0.2)\n            const blob = await this.stage.makeImage({\n                trim: true,\n                factor: (this.isFullscreen) ? 1 : 8,\n                antialias: true,\n                transparent: true,\n            });\n            this.stage.viewer.setLight(undefined, undefined, undefined, this.$vuetify.theme.dark ? 0.4 : 0.2)\n            download(blob, `${title}.png`)\n            this.isSpinning = wasSpinning;\n        },\n        handleMakePDB() {\n            if (!this.stage)\n                return;\n            let qPDB = this.stage.getComponentsByName("queryStructure").list.map(getPdbText); \n            let tPDB = this.stage.getComponentsByName("targetStructure").list.map(getPdbText);\n            if (!qPDB && !tPDB) \n                return;\n            let title = this.alignments.map(aln => qPDB ? `${aln.query}-${aln.target}` : aln.target);\n            let result = null;\n            if (qPDB && tPDB) {\n                result =\n`TITLE     ${title.join(" ")}\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms might have been re-generated by PULCHRA,\nREMARK              if they are not present in the original PDB file.\nMODEL        1\n${qPDB.join(\'\\n\')}\nENDMDL\nMODEL        2\n${tPDB.join(\'\\n\')}\nENDMDL\nEND\n`\n            } else {\n                result =\n`TITLE     ${title.join(" ")}\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms were re-generated by PULCHRA.\nMODEL        1\n${tPDB.join(\'\\n\')}\nENDMDL\nEND\n`\n            }\n            download(new Blob([result], { type: \'text/plain\' }), (title.join("_") + ".pdb"));\n        }\n    },\n    watch: {\n        \'showArrows\': function(val, _) {\n            if (!this.stage) return\n            this.stage.getComponentsByName("arrows").forEach(comp => { comp.setVisibility(val) });\n        },\n        \'showQuery\': function() {\n            if (!this.stage) return;\n            this.setQuerySelection();\n        },\n        \'showTarget\': function(val, _) {\n            if (!this.stage) return;\n            this.setTargetSelection();\n        },\n        \'highlights\': function(values) {\n            if (!this.stage || !values) return;\n            let selections = []\n            values.forEach((value, i) => {\n                if (!value) return;\n                let [start, length] = value;\n                selections.push([i, start, length]);\n            })\n            this.setSelectionData(selections)\n        }\n    },\n    computed: {\n        querySele: function() {\n            if (this.alignments.length === 0 || this.showQuery == 2)\n                return \'\';\n            if (this.showQuery === 0)\n                return this.alignments.map(a => `${a.qStartPos}-${a.qEndPos}:${getChainName(a.query)}`).join(" or ");\n            if (this.showQuery === 1)\n                return this.alignments.map(a => `:${getChainName(a.query)}`).join(" or ");\n        },\n        targetSele: function() {\n            if (this.alignments.length === 0 || this.showTarget == 2)\n                return \'\';\n            if (this.showTarget === 0)\n                return this.alignments.map(a => `${a.dbStartPos}-${a.dbEndPos}:${getChainName(a.target)}`).join(" or ");\n            if (this.showTarget === 1)\n                return this.alignments.map(a => `:${getChainName(a.target)}`).join(" or ");\n        },\n        tmPanelBindings: function() {\n            return (this.isFullscreen) ? { \'style\': \'margin-top: 10px; font-size: 2em; line-height: 2em\' } : {  }\n        },\n    },\n    async mounted() {\n        if (typeof(this.alignments[0].tCa) == "undefined")\n            return;\n\n        // Download from server --\x3e full input PDB from /result/query endpoint, saved with JSON.stringify\n        //                local --\x3e qCa string\n        // Tickets prefixed with \'user-\' only occur on user uploaded files\n        let queryPdb = "";\n        this.hasQuery = true;\n        if (this.$LOCAL) {\n            if (this.hits.queries[0].hasOwnProperty(\'pdb\')) {\n                queryPdb = JSON.parse(this.hits.queries[0].pdb);\n            } else {\n                queryPdb = mockPDB(this.hits.queries[0].qCa, this.hits.queries[0].sequence, \'A\');\n            }\n        } else if (this.$route.params.ticket.startsWith(\'user-\')) {\n            // Check for special \'user\' ticket for when users have uploaded JSON\n            if (this.hits.queries[0].hasOwnProperty(\'pdb\')) {\n                queryPdb = JSON.parse(this.hits.queries[0].pdb);\n            } else {\n                const localData = this.$root.userData[this.$route.params.entry];\n                queryPdb = mockPDB(localData.queries[0].qCa, localData.queries[0].sequence, \'A\');\n            }\n        } else {\n            try {\n                const request = await this.$axios.get("api/result/" + this.$route.params.ticket + \'/query\');\n                queryPdb = request.data;\n            } catch (e) {\n                queryPdb = "";\n                this.hasQuery = false;\n            }\n        }\n\n        // Run PULCHRA per chain then concatenate Structure objects in first StructureComponent\n        const targets = [];\n        const selections_t = [];\n        let renumber = 0;\n        let lastIdx = null;\n        let remoteData = null;\n        let i = 0;\n        for (let alignment of this.alignments) {\n            const chain = getChainName(alignment.target);\n            let tSeq = alignment.tSeq;\n            let tCa = alignment.tCa;\n            if (Number.isInteger(alignment.tCa) && Number.isInteger(alignment.tSeq)) {\n                const db = alignment.db;\n                const idx = alignment.tCa;\n                if (idx != lastIdx) {\n                    const ticket =  this.$route.params.ticket;\n                    const response = await this.$axios.get("api/result/" + ticket + \'/\' + this.$route.params.entry + \'?format=brief&index=\' + idx + \'&database=\' + db);\n                    remoteData = response.data;\n                    lastIdx = idx;\n                }\n                tSeq = remoteData[i].tSeq;\n                tCa = remoteData[i].tCa;\n                i++;\n            }\n            const mock = mockPDB(tCa, tSeq, chain);\n            const pdb = await pulchra(mock);\n            const component = await this.stage.loadFile(new Blob([pdb], { type: \'text/plain\' }), {ext: \'pdb\', firstModelOnly: true});\n            component.structure.eachChain(c => { c.chainname = chain; });\n            component.structure.eachAtom(a => { a.serial = renumber++; });\n            targets.push(component);\n            selections_t.push(`${alignment.dbStartPos}-${alignment.dbEndPos}:${chain}`);\n        }\n        const structure = concatStructures(getAccession(this.alignments[0].target), ...targets.map(t => t.structure));\n        const target = this.stage.addComponentFromObject(structure, { name: "targetStructure" });\n        \n        target.addRepresentation(\'tube\', {\n            color: 0x11FFEE,\n            side: \'front\',\n            opacity: 0.5,\n            radius: 0.8,\n            visible: false,\n            name: \'targetHighlight\'\n        });\n\n        if (ColormakerRegistry.hasScheme("_targetScheme")) {\n            ColormakerRegistry.removeScheme("_targetScheme")\n        }\n        this.targetSchemeId = ColormakerRegistry.addSelectionScheme([\n            [this.targetAlignedColor, selections_t.join(" or ")],\n            [this.targetUnalignedColor, "*"]\n        ], "_targetScheme")\n\n        if (this.hasQuery) {\n            let data = \'\';\n            let ext = \'pdb\';\n            queryPdb = queryPdb.trimStart();\n            if (queryPdb[0] == "#" || queryPdb.startsWith("data_")) {\n                ext = \'cif\';\n                // NGL doesn\'t like AF3\'s _chem_comp entries\n                queryPdb = queryPdb.replaceAll("_chem_comp.", "_chem_comp_SKIP_HACK.");\n            } else {\n                for (let line of queryPdb.split(\'\\n\')) {\n                    let numCols = Math.max(0, 80 - line.length);\n                    let newLine = line + \' \'.repeat(numCols) + \'\\n\';\n                    data += newLine\n                }\n                queryPdb = data;\n            }\n\n            let query = await this.stage.loadFile(new Blob([queryPdb], { type: \'text/plain\' }), { ext: ext, firstModelOnly: true, name: \'queryStructure\'});\n            if (query && query.structure.getAtomProxy().isCg()) {\n                if (ext == "cif") {\n                    // FIXME: pulchra probably should learn mmCIF\n                    queryPdb = getPdbText(query);\n                }\n                queryPdb = await pulchra(queryPdb);\n                this.stage.removeComponent(query);\n                query = await this.stage.loadFile(new Blob([queryPdb], { type: \'text/plain\' }), {ext: \'pdb\', firstModelOnly: true, name: \'queryStructure\'}); \n            }\n\n            // Map 1-based indices to residue index/resno; only need for query structure\n            // Use queryChainSele to make all selections based on actual query chain\n            const selections_q = [];\n            for (let alignment of this.alignments) {\n                const chain = getChainName(alignment.query);\n\n                selections_q.push(`${alignment.qStartPos}-${alignment.qEndPos} and :${chain}`);\n\n                // Renumber to avoid residue gaps\n                let renumber = 1;\n                query.structure.eachResidue(function(rp) {\n                    rp.resno = renumber++;\n                }, new Selection(`:${chain}`))\n            }\n            if (ColormakerRegistry.hasScheme("_queryScheme")) {\n                ColormakerRegistry.removeScheme("_queryScheme")\n            }\n            this.querySchemeId = ColormakerRegistry.addSelectionScheme([\n                [this.queryAlignedColor, selections_q.join(" or ")],\n                [this.queryUnalignedColor, "*"],\n            ], "_queryScheme")\n\n            // Re-align target to query using TM-align for better superposition\n            // Target 1st since TM-align generates superposition matrix for 1st structure\n            if (this.alignments[0].hasOwnProperty("complexu") && this.alignments[0].hasOwnProperty("complext")) {\n                const t = this.alignments[0].complext.split(\',\').map(x => parseFloat(x));\n                let u = this.alignments[0].complexu.split(\',\').map(x => parseFloat(x));\n                u = [\n                    [u[0], u[1], u[2]],\n                    [u[3], u[4], u[5]],\n                    [u[6], u[7], u[8]],\n                ];\n                // Can\'t use setTransform since we need the actual transformed coordinates for arrows\n                transformStructure(target.structure, t, u);\n                query.addRepresentation(this.qRepr, { color: this.querySchemeId, smoothSheet: true, name: "queryStructure"});\n                target.addRepresentation(this.tRepr, { color: this.targetSchemeId, smoothSheet: true, name: "targetStructure" });\n\n                // Make three separate surface representations based on query toggle state:\n                //   0: Aligned regions of aligned chains\n                //   1: Unaligned regions of aligned chains (shown with 0)\n                //   2: Full structure (all chains; shown with 0 and 1)\n                // Then toggle visibility when showQuery is changed by the user.\n                const surfaceSele0 = [];\n                const surfaceSele1 = [];\n                const surfaceSele2 = [];\n                for (let alignment of this.alignments) {\n                    let chain = getChainName(alignment.query);\n                    surfaceSele0.push(`${alignment.qStartPos}-${alignment.qEndPos}:${chain}`);\n                    surfaceSele1.push(`(not ${alignment.qStartPos}-${alignment.qEndPos} and :${chain})`);\n                    surfaceSele2.push(`:${chain}`);\n                }\n                const surfaceParams = {\n                    color: colorblindColors,\n                    opacity: 0.1,\n                    opaqueBack: false,\n                    useWorker: false\n                }\n                query.addRepresentation("surface", { sele: surfaceSele0.join(" or "), name: "querySurface-0", ...surfaceParams });\n                query.addRepresentation("surface", { sele: surfaceSele1.join(" or "), name: "querySurface-1", visible: false, ...surfaceParams });\n                query.addRepresentation("surface", { sele: `not (${surfaceSele2.join(" or ")})`, name: "querySurface-2", visible: false, ...surfaceParams });\n            } else {\n                // Generate subsetted PDBs for TM-align\n                let qSubPdb = makeSubPDB(query.structure, this.querySele);\n                let tSubPdb = makeSubPDB(target.structure, this.targetSele);\n                let alnFasta = `>target\\n${this.alignments[0].dbAln}\\n\\n>query\\n${this.alignments[0].qAln}`\n                const tm = await tmalign(tSubPdb, qSubPdb, alnFasta);\n                this.tmAlignResults = parseTMOutput(tm.output)\n                let { t, u } = parseTMMatrix(tm.matrix)\n                transformStructure(target.structure, t, u)\n                query.addRepresentation(this.qRepr, {color: this.querySchemeId, name: "queryStructure"});\n                target.addRepresentation(this.tRepr, {color: this.targetSchemeId, name: "targetStructure"});\n            }\n            await this.drawArrows(query.structure, target.structure)\n            this.setQuerySelection();\n            this.setTargetSelection();\n            query.autoView(this.querySele, this.autoViewTime)\n        } else {\n            target.addRepresentation(this.tRepr, {color: this.targetSchemeId, name: "targetStructure"})\n            this.setTargetSelection();\n            this.stage.autoView(this.autoViewTime)\n        }\n        \n    },\n}\n<\/script>\n\n<style scoped>\n.structure-wrapper {\n    width: 500px;\n    height: 400px;\n    margin: 0 auto;\n}\n</style>\n\n<style>\n.theme--dark .structure-wrapper .v-tooltip__content {\n    background: rgba(97, 97, 97, 0.3);\n}\n/* @media only screen and (max-width: 600px) {\n    .structure-wrapper {\n        width: 300px;\n    }\n} */\n.structure-viewer {\n    width: 100%;\n    height: 100%;\n}\n.structure-viewer canvas {\n    border-radius: 2px;\n}\n.structure-panel {\n    position: relative;\n}\n.toolbar-panel {\n    display: inline-flex;\n    flex-direction: row;\n    position: absolute;\n    justify-content: center;\n    width: 100%;\n    bottom: 0;\n    z-index: 1;\n    left: 0;\n}\n.tmscore-panel {\n    position: absolute;\n    width: 100%;\n    top: 0;\n    left: 0;\n    z-index: 1;\n    font-family: monospace;\n    color: rgb(31, 119, 180);\n}\n.left-cell {\n    text-align: right;\n    width: 50%;\n}\n.right-cell {\n    text-align: left;\n    width: 50%;\n    padding-left: 0.3em;\n}\n</style>' ],
                 sourceRoot: ""
             } ]);
             const o = s;
@@ -5114,8 +5423,8 @@
                 version: 3,
                 sources: [ "webpack://./frontend/StructureViewer.vue" ],
                 names: [],
-                mappings: ";AA4fA;IACA,iCAAA;AACA;AACA;;;;GAIA;AACA;IACA,WAAA;IACA,YAAA;AACA;AACA;IACA,kBAAA;AACA;AACA;IACA,kBAAA;AACA;AACA;IACA,oBAAA;IACA,mBAAA;IACA,kBAAA;IACA,uBAAA;IACA,WAAA;IACA,SAAA;IACA,UAAA;IACA,OAAA;AACA;AACA;IACA,kBAAA;IACA,WAAA;IACA,MAAA;IACA,OAAA;IACA,UAAA;IACA,sBAAA;IACA,wBAAA;AACA;AACA;IACA,iBAAA;IACA,UAAA;AACA;AACA;IACA,gBAAA;IACA,UAAA;IACA,mBAAA;AACA",
-                sourcesContent: [ '<template>\n<div class="structure-panel" v-if="alignments.length > 0 && \'tCa\' in alignments[0]">\n    <StructureViewerTooltip attach=".structure-panel" />\n    <div class="structure-wrapper" ref="structurepanel">\n        <table v-if="tmAlignResults" class="tmscore-panel" v-bind="tmPanelBindings">\n            <tr>\n                <td class="left-cell">TM-Score:</td>\n                <td class="right-cell">{{ tmAlignResults.tmScore }}</td>\n            </tr>\n            <tr>\n                <td class="left-cell">RMSD:</td>\n                <td class="right-cell">{{ tmAlignResults.rmsd  }}</td>\n            </tr>\n        </table>\n        <StructureViewerToolbar\n            :isFullscreen="isFullscreen"\n            :isSpinning="isSpinning"\n            :showQuery="showQuery"\n            :showTarget="showTarget"\n            :showArrows="showArrows"\n            @makeImage="handleMakeImage"\n            @makePDB="handleMakePDB"\n            @resetView="handleResetView"\n            @toggleFullscreen="handleToggleFullscreen"\n            @toggleTarget="handleToggleTarget"\n            @toggleQuery="handleToggleQuery"\n            @toggleArrows="handleToggleArrows"\n            @toggleSpin="handleToggleSpin"\n        />\n        <div class="structure-viewer" ref="viewport"></div>\n    </div>\n</div>\n</template>\n\n<script>\nimport StructureViewerTooltip from \'./StructureViewerTooltip.vue\';\nimport StructureViewerToolbar from \'./StructureViewerToolbar.vue\';\nimport StructureViewerMixin from \'./StructureViewerMixin.vue\';\nimport { mockPDB, makeSubPDB, transformStructure, makeMatrix4  } from \'./Utilities.js\';\nimport { pulchra } from \'pulchra-wasm\';\nimport { tmalign, parse as parseTMOutput, parseMatrix as parseTMMatrix } from \'tmalign-wasm\';\n\nimport Panel from \'./Panel.vue\';\nimport { Shape, Selection, download, ColormakerRegistry, PdbWriter, Color, concatStructures, StructureComponent } from \'ngl\';\n\n// Create NGL arrows from array of ([X, Y, Z], [X, Y, Z]) pairs\n// Get XYZ coordinates of CA of a given residue\nconst xyz = (structure, resIndex) => {\n    var rp = structure.getResidueProxy();\n    var ap = structure.getAtomProxy();\n    rp.index = resIndex;\n    ap.index = rp.getAtomIndexByName(\'CA\');\n    return [ap.x, ap.y, ap.z];\n}\n\n// Save indices of matching columns in an alignment\nconst getMatchingColumns = (alignment) => {\n    let cols_q = [];\n    let cols_t = [];\n    let id_q = alignment.qStartPos;\n    let id_t = alignment.dbStartPos;\n    for (let i = 0; i < alignment.qAln.length; i++) {\n        if (alignment.qAln[i] === \'-\' || alignment.dbAln[i] === \'-\') {\n            if (alignment.qAln[i] === \'-\') id_t++;\n            else id_q++;\n        } else {\n            cols_q.push(id_q);\n            cols_t.push(id_t);\n            id_q++;\n            id_t++;\n        }\n    }\n    return [cols_q, cols_t]\n}\n\n// Get chain from structure name like Structure_A\nconst getChainName = (name) => {\n    let pos = name.lastIndexOf(\'_\');\n    return pos != -1 ? name.substring(pos + 1) : \'A\';\n}\n\n// Get coordinates of all atoms found in given selection\nconst getAtomXYZ = (structure, sele) => {\n    const xyz = [];\n    structure.eachAtom(ap => { xyz.push([ap.x, ap.y, ap.z]) }, sele); \n    return xyz;\n}\n\nconst colorblindColors = ColormakerRegistry.addScheme(function() {\n    let colors = [0x991999, 0x00BFBF, 0xE9967A, 0x009E73, 0xF0E442, 0x0072B2, 0xD55E00, 0xCC79A7];\n    this.atomColor = function(atom) {\n        return colors[atom.chainIndex % colors.length];\n    }\n}, "colorblindColors")\n \n\nexport default {\n    name: "StructureViewer",\n    components: {\n        Panel,\n        StructureViewerTooltip,\n        StructureViewerToolbar,\n    },\n    mixins: [\n        StructureViewerMixin,\n    ],\n    data() {\n        return {\n            selection: null,\n            showArrows: false,\n            showQuery: 0,\n            showTarget: 0,\n            tmAlignResults: null\n        }\n    },\n    props: {\n        alignments: { type: Array },\n        highlights: { type: Array },\n        queryFile: { type: String },\n        queryAlignedColor: { type: String, default: "#1E88E5" },\n        queryUnalignedColor: { type: String, default: "#A5CFF5" },\n        targetAlignedColor: { type: String, default: "#FFC107" },\n        targetUnalignedColor: { type: String, default: "#FFE699" },\n        qRepr: { type: String, default: "cartoon" },\n        tRepr: { type: String, default: "cartoon" },\n        hits: { type: Object },\n        autoViewTime: { type: Number, default: 100 }\n    },\n    methods: {\n        // Create arrows connecting CA coordinates for query/target in match columns\n        async drawArrows(str1, str2) {\n            const shape = new Shape(\'arrows\');\n            await Promise.all(this.alignments.map(async (alignment) => {\n                const chain_q = getChainName(alignment.query);\n                const chain_t = getChainName(alignment.target);\n                const [sele_q, sele_t] = getMatchingColumns(alignment).map(arr => arr.join(" or "));\n                const str1_xyz = getAtomXYZ(str1, new Selection(`(${sele_q}) and :${chain_q}.CA`));\n                const str2_xyz = getAtomXYZ(str2, new Selection(`(${sele_t}) and :${chain_t}.CA`));\n                for (let i = 0; i < str1_xyz.length; i++) {\n                    shape.addArrow(str1_xyz[i], str2_xyz[i], [0, 1, 1], 0.4);\n                }\n            }));\n            let component = this.stage.addComponentFromObject(shape);\n            component.addRepresentation(\'buffer\');\n            component.setVisibility(this.showArrows);\n        },\n        handleToggleArrows() {\n            if (!this.stage) return;\n            this.showArrows = !this.showArrows;\n        },\n        handleToggleQuery() {\n            if (!this.stage) return;\n            if (__LOCAL__) {\n                this.showQuery = (this.showQuery === 0) ? 1 : 0;\n            } else {\n                this.showQuery = (this.showQuery === 2) ? 0 : this.showQuery + 1;\n            }\n        },\n        handleResetView() {\n            if (!this.stage) return;\n            this.setQuerySelection();\n        },\n        handleToggleTarget() {\n            if (!this.stage) return;\n            if (__LOCAL__) {\n                this.showTarget = (this.showTarget === 0) ? 1 : 0;\n            } else {\n                this.showTarget = (this.showTarget === 2) ? 0 : this.showTarget + 1; \n            }\n        },\n        clearSelection() {\n            if (!this.alignments || !this.stage) return;\n            let repr = this.stage.getRepresentationsByName("targetHighlight");\n            repr.setSelection()\n            repr.setVisibility(false)\n        },\n        setSelectionData(selection) {\n            // FIXME tube/cartoon representation cannot visualise <3 residues\n            //       https://github.com/nglviewer/ngl/issues/759\n            //       use licorice representation for this case? or just +1 to make 3\n            if (!this.alignments || !this.stage) return;\n            let repr = this.stage.getRepresentationsByName("targetHighlight");\n            repr.setSelection()\n            if (selection.length === 0) {\n                repr.setVisibility(false);\n                return;\n            }\n            let seles = [];\n            for (let [i, start, length] of selection) {\n                let chain = getChainName(this.alignments[i].target);\n                let end = start + length;\n                seles.push(`${start}-${end}:${chain}`);\n            } \n            let sele = seles.join(" or ");\n            repr.setSelection(sele);\n            repr.setVisibility(true);\n        },\n        setQuerySelection() {\n            let repr = this.stage.getRepresentationsByName("queryStructure");\n            if (!repr) return;\n            let sele = this.querySele;\n            repr.setSelection(sele);\n            repr.list[0].parent.autoView(sele, this.autoViewTime);\n            if (this.showQuery === 0) {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(false);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(false);\n            } else if (this.showQuery === 1) {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(true);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(false);\n            } else {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(true);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(true);\n            }\n        },\n        setTargetSelection() {\n            let repr = this.stage.getRepresentationsByName("targetStructure");\n            if (!repr) return;\n            let sele = this.targetSele;\n            repr.setSelection(sele);\n        },\n        async handleMakeImage() {\n            if (!this.stage)\n                return;\n            let hasQuery = this.stage.getRepresentationsByName("queryStructure").length > 0;\n            let title = this.alignments.map(aln => hasQuery ? `${aln.query}-${aln.target}` : aln.target).join("_");\n            this.stage.viewer.setLight(undefined, undefined, undefined, 0.2)\n            const blob = await this.stage.makeImage({\n                trim: true,\n                factor: (this.isFullscreen) ? 1 : 8,\n                antialias: true,\n                transparent: true,\n            });\n            this.stage.viewer.setLight(undefined, undefined, undefined, this.$vuetify.theme.dark ? 0.4 : 0.2)\n            download(blob, `${title}.pdb`)\n        },\n        handleMakePDB() {\n            if (!this.stage)\n                return;\n            const getPdbText = comp => {\n                let pw = new PdbWriter(comp.structure, { renumberSerial: false });\n                return pw.getData().split(\'\\n\').filter(line => line.startsWith(\'ATOM\')).join(\'\\n\');\n            }\n            let qPDB = this.stage.getComponentsByName("queryStructure").list.map(getPdbText); \n            let tPDB = this.stage.getComponentsByName("targetStructure").list.map(getPdbText);\n            if (!qPDB && !tPDB) \n                return;\n            let title = this.alignments.map(aln => qPDB ? `${aln.query}-${aln.target}` : aln.target);\n            let result = null;\n            if (qPDB && tPDB) {\n                result =\n`TITLE     ${title.join(" ")}\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms might have been re-generated by PULCHRA,\nREMARK              if they are not present in the original PDB file.\nMODEL        1\n${qPDB.join(\'\\n\')}\nENDMDL\nMODEL        2\n${tPDB.join(\'\\n\')}\nENDMDL\nEND\n`\n            } else {\n                result =\n`TITLE     ${title.join(" ")}\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms were re-generated by PULCHRA.\nMODEL        1\n${tPDB.join(\'\\n\')}\nENDMDL\nEND\n`\n            }\n            download(new Blob([result], { type: \'text/plain\' }), (title.join("_") + ".pdb"));\n        }\n    },\n    watch: {\n        \'showArrows\': function(val, _) {\n            if (!this.stage) return\n            this.stage.getComponentsByName("arrows").forEach(comp => { comp.setVisibility(val) });\n        },\n        \'showQuery\': function() {\n            if (!this.stage) return;\n            this.setQuerySelection();\n        },\n        \'showTarget\': function(val, _) {\n            if (!this.stage) return;\n            this.setTargetSelection();\n        },\n        \'highlights\': function(values) {\n            if (!this.stage || !values) return;\n            let selections = []\n            values.forEach((value, i) => {\n                if (!value) return;\n                let [start, length] = value;\n                selections.push([i, start, length]);\n            })\n            this.setSelectionData(selections)\n        }\n    },\n    computed: {\n        querySele: function() {\n            if (this.alignments.length === 0 || this.showQuery == 2)\n                return \'\';\n            if (this.showQuery === 0)\n                return this.alignments.map(a => `${a.qStartPos}-${a.qEndPos}:${getChainName(a.query)}`).join(" or ");\n            if (this.showQuery === 1)\n                return this.alignments.map(a => `:${getChainName(a.query)}`).join(" or ");\n        },\n        targetSele: function() {\n            if (this.alignments.length === 0 || this.showTarget == 2)\n                return \'\';\n            if (this.showTarget === 0)\n                return this.alignments.map(a => `${a.dbStartPos}-${a.dbEndPos}:${getChainName(a.target)}`).join(" or ");\n            if (this.showTarget === 1)\n                return this.alignments.map(a => `:${getChainName(a.target)}`).join(" or ");\n        },\n        tmPanelBindings: function() {\n            return (this.isFullscreen) ? { \'style\': \'margin-top: 10px; font-size: 2em; line-height: 2em\' } : {  }\n        },\n    },\n    async mounted() {\n        if (typeof(this.alignments[0].tCa) == "undefined")\n            return;\n\n        // Download from server --\x3e full input PDB from /result/query endpoint, saved with JSON.stringify\n        //                local --\x3e qCa string\n        // Tickets prefixed with \'user-\' only occur on user uploaded files\n        let queryPdb = "";\n        let hasQuery = true;\n        if (this.$LOCAL) {\n            if (this.hits.queries[0].hasOwnProperty(\'pdb\')) {\n                queryPdb = JSON.parse(this.hits.queries[0].pdb);\n            } else {\n                queryPdb = mockPDB(this.hits.queries[0].qCa, this.hits.queries[0].sequence, \'A\');\n            }\n        } else if (this.$route.params.ticket.startsWith(\'user\')) {\n            // Check for special \'user\' ticket for when users have uploaded JSON\n            if (this.hits.queries[0].hasOwnProperty(\'pdb\')) {\n                queryPdb = JSON.parse(this.hits.queries[0].pdb);\n            } else {\n                const localData = this.$root.userData[this.$route.params.entry];\n                queryPdb = mockPDB(localData.queries[0].qCa, localData.queries[0].sequence, \'A\');\n            }\n        } else {\n            try {\n                const request = await this.$axios.get("api/result/" + this.$route.params.ticket + \'/query\');\n                queryPdb = request.data;\n            } catch (e) {\n                queryPdb = "";\n                hasQuery = false;\n            }\n        }\n\n        // Run PULCHRA per chain then concatenate Structure objects in first StructureComponent\n        const targets = [];\n        const selections_t = [];\n        let renumber = 0;\n        for (let alignment of this.alignments) {\n            const chainPos = alignment.target.lastIndexOf(\'_\');\n            const chain = chainPos != -1 ? alignment.target.substring(chainPos + 1) : \'A\';\n            const mock = mockPDB(alignment.tCa, alignment.tSeq, chain);\n            const pdb = await pulchra(mock);\n            const component = await this.stage.loadFile(new Blob([pdb], { type: \'text/plain\' }), {ext: \'pdb\', firstModelOnly: true});\n            component.structure.eachChain(c => { c.chainname = chain; });\n            component.structure.eachAtom(a => { a.serial = renumber++; });\n            targets.push(component);\n            selections_t.push(`${alignment.dbStartPos}-${alignment.dbEndPos}:${chain}`);\n        }\n        const structure = concatStructures(this.alignments[0].target.split(\'_\')[0], ...targets.map(t => t.structure));\n        const target = this.stage.addComponentFromObject(structure, { name: "targetStructure" });\n        \n        target.addRepresentation(\'tube\', {\n            color: 0x11FFEE,\n            side: \'front\',\n            opacity: 0.5,\n            radius: 0.8,\n            visible: false,\n            name: \'targetHighlight\'\n        });\n\n        if (ColormakerRegistry.hasScheme("_targetScheme")) {\n            ColormakerRegistry.removeScheme("_targetScheme")\n        }\n        this.targetSchemeId = ColormakerRegistry.addSelectionScheme([\n            [this.targetAlignedColor, selections_t.join(" or ")],\n            [this.targetUnalignedColor, "*"]\n        ], "_targetScheme")\n\n        if (hasQuery) {\n            let data = \'\';\n            for (let line of queryPdb.split(\'\\n\')) {\n                let numCols = Math.max(0, 80 - line.length);\n                let newLine = line + \' \'.repeat(numCols) + \'\\n\';\n                data += newLine\n            }\n            queryPdb = data;\n\n            let query = await this.stage.loadFile(new Blob([queryPdb], { type: \'text/plain\' }), { ext: \'pdb\', firstModelOnly: true, name: \'queryStructure\'});\n            if (query && query.structure.getAtomProxy().isCg()) {\n                queryPdb = await pulchra(queryPdb);\n                this.stage.removeComponent(query);\n                query = await this.stage.loadFile(new Blob([queryPdb], { type: \'text/plain\' }), {ext: \'pdb\', firstModelOnly: true, name: \'queryStructure\'}); \n            }\n\n            // Map 1-based indices to residue index/resno; only need for query structure\n            // Use queryChainSele to make all selections based on actual query chain\n            const selections_q = [];\n            for (let alignment of this.alignments) {\n                const chainPos = alignment.query.lastIndexOf(\'_\');\n                const chain = chainPos != -1 ? alignment.query.substring(chainPos + 1) : \'A\';\n\n                selections_q.push(`${alignment.qStartPos}-${alignment.qEndPos} and :${chain}`);\n\n                // Renumber to avoid residue gaps\n                let renumber = 1;\n                query.structure.eachResidue(function(rp) {\n                    rp.resno = renumber++;\n                }, new Selection(`:${chain}`))\n            }\n            if (ColormakerRegistry.hasScheme("_queryScheme")) {\n                ColormakerRegistry.removeScheme("_queryScheme")\n            }\n            this.querySchemeId = ColormakerRegistry.addSelectionScheme([\n                [this.queryAlignedColor, selections_q.join(" or ")],\n                [this.queryUnalignedColor, "*"],\n            ], "_queryScheme")\n\n            // Re-align target to query using TM-align for better superposition\n            // Target 1st since TM-align generates superposition matrix for 1st structure\n            if (this.alignments[0].hasOwnProperty("complexu") && this.alignments[0].hasOwnProperty("complext")) {\n                const t = this.alignments[0].complext.split(\',\').map(x => parseFloat(x));\n                let u = this.alignments[0].complexu.split(\',\').map(x => parseFloat(x));\n                u = [\n                    [u[0], u[1], u[2]],\n                    [u[3], u[4], u[5]],\n                    [u[6], u[7], u[8]],\n                ];\n                // Can\'t use setTransform since we need the actual transformed coordinates for arrows\n                transformStructure(target.structure, t, u);\n                query.addRepresentation(this.qRepr, { color: this.querySchemeId, smoothSheet: true, name: "queryStructure"});\n                target.addRepresentation(this.tRepr, { color: this.targetSchemeId, smoothSheet: true, name: "targetStructure" });\n\n                // Make three separate surface representations based on query toggle state:\n                //   0: Aligned regions of aligned chains\n                //   1: Unaligned regions of aligned chains (shown with 0)\n                //   2: Full structure (all chains; shown with 0 and 1)\n                // Then toggle visibility when showQuery is changed by the user.\n                const surfaceSele0 = [];\n                const surfaceSele1 = [];\n                const surfaceSele2 = [];\n                for (let alignment of this.alignments) {\n                    let chain = getChainName(alignment.query);\n                    surfaceSele0.push(`${alignment.qStartPos}-${alignment.qEndPos}:${chain}`);\n                    surfaceSele1.push(`(not ${alignment.qStartPos}-${alignment.qEndPos} and :${chain})`);\n                    surfaceSele2.push(`:${chain}`);\n                }\n                const surfaceParams = {\n                    color: colorblindColors,\n                    opacity: 0.1,\n                    opaqueBack: false,\n                    useWorker: true\n                }\n                query.addRepresentation("surface", { sele: surfaceSele0.join(" or "), name: "querySurface-0", ...surfaceParams });\n                query.addRepresentation("surface", { sele: surfaceSele1.join(" or "), name: "querySurface-1", visible: false, ...surfaceParams });\n                query.addRepresentation("surface", { sele: `not (${surfaceSele2.join(" or ")})`, name: "querySurface-2", visible: false, ...surfaceParams });\n            } else {\n                // Generate subsetted PDBs for TM-align\n                let qSubPdb = makeSubPDB(query.structure, this.querySele);\n                let tSubPdb = makeSubPDB(target.structure, this.targetSele);\n                let alnFasta = `>target\\n${this.alignments[0].dbAln}\\n\\n>query\\n${this.alignments[0].qAln}`\n                const tm = await tmalign(tSubPdb, qSubPdb, alnFasta);\n                this.tmAlignResults = parseTMOutput(tm.output)\n                let { t, u } = parseTMMatrix(tm.matrix)\n                transformStructure(target.structure, t, u)\n                query.addRepresentation(this.qRepr, {color: this.querySchemeId, name: "queryStructure"});\n                target.addRepresentation(this.tRepr, {color: this.targetSchemeId, name: "targetStructure"});\n            }\n            await this.drawArrows(query.structure, target.structure)\n            this.setQuerySelection();\n            this.setTargetSelection();\n            query.autoView(this.querySele, this.autoViewTime)\n        } else {\n            target.addRepresentation(this.tRepr, {color: this.targetSchemeId, name: "targetStructure"})\n            this.setQuerySelection()\n            this.setTargetSelection();\n            this.stage.autoView(this.autoViewTime)\n        }\n        \n    },\n}\n<\/script>\n\n<style scoped>\n.structure-wrapper {\n    width: 500px;\n    height: 400px;\n    margin: 0 auto;\n}\n</style>\n\n<style>\n.theme--dark .structure-wrapper .v-tooltip__content {\n    background: rgba(97, 97, 97, 0.3);\n}\n/* @media only screen and (max-width: 600px) {\n    .structure-wrapper {\n        width: 300px;\n    }\n} */\n.structure-viewer {\n    width: 100%;\n    height: 100%;\n}\n.structure-viewer canvas {\n    border-radius: 2px;\n}\n.structure-panel {\n    position: relative;\n}\n.toolbar-panel {\n    display: inline-flex;\n    flex-direction: row;\n    position: absolute;\n    justify-content: center;\n    width: 100%;\n    bottom: 0;\n    z-index: 1;\n    left: 0;\n}\n.tmscore-panel {\n    position: absolute;\n    width: 100%;\n    top: 0;\n    left: 0;\n    z-index: 1;\n    font-family: monospace;\n    color: rgb(31, 119, 180);\n}\n.left-cell {\n    text-align: right;\n    width: 50%;\n}\n.right-cell {\n    text-align: left;\n    width: 50%;\n    padding-left: 0.3em;\n}\n</style>' ],
+                mappings: ";AA6jBA;IACA,iCAAA;AACA;AACA;;;;GAIA;AACA;IACA,WAAA;IACA,YAAA;AACA;AACA;IACA,kBAAA;AACA;AACA;IACA,kBAAA;AACA;AACA;IACA,oBAAA;IACA,mBAAA;IACA,kBAAA;IACA,uBAAA;IACA,WAAA;IACA,SAAA;IACA,UAAA;IACA,OAAA;AACA;AACA;IACA,kBAAA;IACA,WAAA;IACA,MAAA;IACA,OAAA;IACA,UAAA;IACA,sBAAA;IACA,wBAAA;AACA;AACA;IACA,iBAAA;IACA,UAAA;AACA;AACA;IACA,gBAAA;IACA,UAAA;IACA,mBAAA;AACA",
+                sourcesContent: [ '<template>\n<div class="structure-panel" v-if="alignments.length > 0 && \'tCa\' in alignments[0]">\n    <StructureViewerTooltip attach=".structure-panel" />\n    <div class="structure-wrapper" ref="structurepanel">\n        <table v-if="tmAlignResults" class="tmscore-panel" v-bind="tmPanelBindings">\n            <tr>\n                <td class="left-cell">TM-Score:</td>\n                <td class="right-cell">{{ tmAlignResults.tmScore }}</td>\n            </tr>\n            <tr>\n                <td class="left-cell">RMSD:</td>\n                <td class="right-cell">{{ tmAlignResults.rmsd  }}</td>\n            </tr>\n        </table>\n        <StructureViewerToolbar\n            :isFullscreen="isFullscreen"\n            :isSpinning="isSpinning"\n            :showQuery="showQuery"\n            :showTarget="showTarget"\n            :showArrows="showArrows"\n            :disableQueryButton="!hasQuery"\n            :disableArrowButton="!hasQuery"\n            @makeImage="handleMakeImage"\n            @makePDB="handleMakePDB"\n            @resetView="handleResetView"\n            @toggleFullscreen="handleToggleFullscreen"\n            @toggleTarget="handleToggleTarget"\n            @toggleQuery="handleToggleQuery"\n            @toggleArrows="handleToggleArrows"\n            @toggleSpin="handleToggleSpin"\n        />\n        <div class="structure-viewer" ref="viewport"></div>\n    </div>\n</div>\n</template>\n\n<script>\nimport StructureViewerTooltip from \'./StructureViewerTooltip.vue\';\nimport StructureViewerToolbar from \'./StructureViewerToolbar.vue\';\nimport StructureViewerMixin from \'./StructureViewerMixin.vue\';\nimport { mockPDB, makeSubPDB, transformStructure, makeMatrix4  } from \'./Utilities.js\';\nimport { pulchra } from \'pulchra-wasm\';\nimport { tmalign, parse as parseTMOutput, parseMatrix as parseTMMatrix } from \'tmalign-wasm\';\n\nimport Panel from \'./Panel.vue\';\nimport { Shape, Selection, download, ColormakerRegistry, PdbWriter, Color, concatStructures, StructureComponent } from \'ngl\';\n\n// Create NGL arrows from array of ([X, Y, Z], [X, Y, Z]) pairs\n// Get XYZ coordinates of CA of a given residue\nconst xyz = (structure, resIndex) => {\n    var rp = structure.getResidueProxy();\n    var ap = structure.getAtomProxy();\n    rp.index = resIndex;\n    ap.index = rp.getAtomIndexByName(\'CA\');\n    return [ap.x, ap.y, ap.z];\n}\n\n// Save indices of matching columns in an alignment\nconst getMatchingColumns = (alignment) => {\n    let cols_q = [];\n    let cols_t = [];\n    let id_q = alignment.qStartPos;\n    let id_t = alignment.dbStartPos;\n    for (let i = 0; i < alignment.qAln.length; i++) {\n        if (alignment.qAln[i] === \'-\' || alignment.dbAln[i] === \'-\') {\n            if (alignment.qAln[i] === \'-\') id_t++;\n            else id_q++;\n        } else {\n            cols_q.push(id_q);\n            cols_t.push(id_t);\n            id_q++;\n            id_t++;\n        }\n    }\n    return [cols_q, cols_t]\n}\n\n// Get chain from structure name like Structure_A\nconst getChainName = (name) => {\n    // HACK FIXME fix AF chain names\n    if (/_v[0-9]+$/.test(name)) {\n        return \'A\';\n    }\n    let pos = name.lastIndexOf(\'_\');\n    if (pos != -1) {\n        let match = name.substring(pos + 1);\n        return match.length >= 1 ? match[0] : \'A\';\n    }\n    // fallback\n    return \'A\';\n}\n\nconst getAccession = (name) => {\n    // HACK FIXME fix AF chain names\n    if (/_v[0-9]+$/.test(name)) {\n        return name;\n    }\n    let pos = name.lastIndexOf(\'_\');\n    return pos != -1 ? name.substring(0, pos) : name;\n}\n\n// Get coordinates of all atoms found in given selection\n// skip consecutive res indices as they are most likely alternative locations\n// foldseek always chooses the first alt locations, so we mimic this behavior\nconst getAtomXYZ = (structure, sele) => {\n    const xyz = [];\n    let lastResidueIndex = -1;\n\n    structure.eachAtom(ap => {\n        if (ap.resno !== lastResidueIndex) {\n            xyz.push([ap.x, ap.y, ap.z]);\n            lastResidueIndex = ap.resno;\n        }\n    }, sele); \n\n    return xyz;\n}\n\nconst colorblindColors = ColormakerRegistry.addScheme(function() {\n    let colors = [0x991999, 0x00BFBF, 0xE9967A, 0x009E73, 0xF0E442, 0x0072B2, 0xD55E00, 0xCC79A7];\n    this.atomColor = function(atom) {\n        return colors[atom.chainIndex % colors.length];\n    }\n}, "colorblindColors")\n\nconst getPdbText = comp => {\n    let pw = new PdbWriter(comp.structure, { renumberSerial: false });\n    return pw.getData().split(\'\\n\').filter(line => line.startsWith(\'ATOM\')).join(\'\\n\');\n}\n\nexport default {\n    name: "StructureViewer",\n    components: {\n        Panel,\n        StructureViewerTooltip,\n        StructureViewerToolbar,\n    },\n    mixins: [\n        StructureViewerMixin,\n    ],\n    data() {\n        return {\n            selection: null,\n            showArrows: false,\n            showQuery: 0,\n            showTarget: 0,\n            tmAlignResults: null,\n            hasQuery: true,\n        }\n    },\n    props: {\n        alignments: { type: Array },\n        highlights: { type: Array },\n        queryFile: { type: String },\n        queryAlignedColor: { type: String, default: "#1E88E5" },\n        queryUnalignedColor: { type: String, default: "#A5CFF5" },\n        targetAlignedColor: { type: String, default: "#FFC107" },\n        targetUnalignedColor: { type: String, default: "#FFE699" },\n        qRepr: { type: String, default: "cartoon" },\n        tRepr: { type: String, default: "cartoon" },\n        hits: { type: Object },\n        autoViewTime: { type: Number, default: 100 }\n    },\n    methods: {\n        // Create arrows connecting CA coordinates for query/target in match columns\n        async drawArrows(str1, str2) {\n            const shape = new Shape(\'arrows\');\n            await Promise.all(this.alignments.map(async (alignment) => {\n                const chain_q = getChainName(alignment.query);\n                const chain_t = getChainName(alignment.target);\n                const [sele_q, sele_t] = getMatchingColumns(alignment).map(arr => arr.join(" or "));\n\n                const str1_xyz = getAtomXYZ(str1, new Selection(`(${sele_q}) and :${chain_q}.CA`));\n                const str2_xyz = getAtomXYZ(str2, new Selection(`(${sele_t}) and :${chain_t}.CA`));\n\n                if (str1_xyz.length != str2_xyz.length) {\n                    console.warn("Different number of CA atoms in query and target", str1_xyz.length, str2_xyz.length);\n                }\n                for (let i = 0; i < Math.min(str1_xyz.length, str2_xyz.length); i++) {\n                    shape.addArrow(str1_xyz[i], str2_xyz[i], [0, 1, 1], 0.4);\n                }\n            }));\n            let component = this.stage.addComponentFromObject(shape);\n            component.addRepresentation(\'buffer\');\n            component.setVisibility(this.showArrows);\n        },\n        handleToggleArrows() {\n            if (!this.stage) return;\n            this.showArrows = !this.showArrows;\n        },\n        handleToggleQuery() {\n            if (!this.stage) return;\n            if (__LOCAL__) {\n                this.showQuery = (this.showQuery === 0) ? 1 : 0;\n            } else {\n                this.showQuery = (this.showQuery === 2) ? 0 : this.showQuery + 1;\n            }\n        },\n        handleResetView() {\n            if (!this.stage) return;\n            this.setQuerySelection();\n        },\n        handleToggleTarget() {\n            if (!this.stage) return;\n            if (__LOCAL__) {\n                this.showTarget = (this.showTarget === 0) ? 1 : 0;\n            } else {\n                this.showTarget = (this.showTarget === 2) ? 0 : this.showTarget + 1; \n            }\n        },\n        clearSelection() {\n            if (!this.alignments || !this.stage) return;\n            let repr = this.stage.getRepresentationsByName("targetHighlight");\n            repr.setSelection()\n            repr.setVisibility(false)\n        },\n        setSelectionData(selection) {\n            // FIXME tube/cartoon representation cannot visualise <3 residues\n            //       https://github.com/nglviewer/ngl/issues/759\n            //       use licorice representation for this case? or just +1 to make 3\n            if (!this.alignments || !this.stage) return;\n            let repr = this.stage.getRepresentationsByName("targetHighlight");\n            repr.setSelection()\n            if (selection.length === 0) {\n                repr.setVisibility(false);\n                return;\n            }\n            let seles = [];\n            for (let [i, start, length] of selection) {\n                let chain = getChainName(this.alignments[i].target);\n                let end = start + length;\n                seles.push(`${start}-${end}:${chain}`);\n            } \n            let sele = seles.join(" or ");\n            repr.setSelection(sele);\n            repr.setVisibility(true);\n        },\n        setQuerySelection() {\n            let repr = this.stage.getRepresentationsByName("queryStructure");\n            if (!repr) return;\n            let sele = this.querySele;\n            repr.setSelection(sele);\n            repr.list[0].parent.autoView(sele, this.autoViewTime);\n            if (this.showQuery === 0) {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(false);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(false);\n            } else if (this.showQuery === 1) {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(true);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(false);\n            } else {\n                this.stage.getRepresentationsByName("querySurface-1").setVisibility(true);\n                this.stage.getRepresentationsByName("querySurface-2").setVisibility(true);\n            }\n        },\n        setTargetSelection() {\n            let repr = this.stage.getRepresentationsByName("targetStructure");\n            if (!repr) return;\n            let sele = this.targetSele;\n            repr.setSelection(sele);\n        },\n        async handleMakeImage() {\n            if (!this.stage)\n                return;\n            let wasSpinning = this.isSpinning;\n            this.isSpinning = false;\n            let title = this.alignments.map(aln => this.hasQuery ? `${aln.query}-${aln.target}` : aln.target).join("_");\n            this.stage.viewer.setLight(undefined, undefined, undefined, 0.2)\n            const blob = await this.stage.makeImage({\n                trim: true,\n                factor: (this.isFullscreen) ? 1 : 8,\n                antialias: true,\n                transparent: true,\n            });\n            this.stage.viewer.setLight(undefined, undefined, undefined, this.$vuetify.theme.dark ? 0.4 : 0.2)\n            download(blob, `${title}.png`)\n            this.isSpinning = wasSpinning;\n        },\n        handleMakePDB() {\n            if (!this.stage)\n                return;\n            let qPDB = this.stage.getComponentsByName("queryStructure").list.map(getPdbText); \n            let tPDB = this.stage.getComponentsByName("targetStructure").list.map(getPdbText);\n            if (!qPDB && !tPDB) \n                return;\n            let title = this.alignments.map(aln => qPDB ? `${aln.query}-${aln.target}` : aln.target);\n            let result = null;\n            if (qPDB && tPDB) {\n                result =\n`TITLE     ${title.join(" ")}\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms might have been re-generated by PULCHRA,\nREMARK              if they are not present in the original PDB file.\nMODEL        1\n${qPDB.join(\'\\n\')}\nENDMDL\nMODEL        2\n${tPDB.join(\'\\n\')}\nENDMDL\nEND\n`\n            } else {\n                result =\n`TITLE     ${title.join(" ")}\nREMARK     This file was generated by the Foldseek webserver:\nREMARK       https://search.foldseek.com\nREMARK     Please cite:\nREMARK       https://doi.org/10.1101/2022.02.07.479398\nREMARK     Warning: Non C-alpha atoms were re-generated by PULCHRA.\nMODEL        1\n${tPDB.join(\'\\n\')}\nENDMDL\nEND\n`\n            }\n            download(new Blob([result], { type: \'text/plain\' }), (title.join("_") + ".pdb"));\n        }\n    },\n    watch: {\n        \'showArrows\': function(val, _) {\n            if (!this.stage) return\n            this.stage.getComponentsByName("arrows").forEach(comp => { comp.setVisibility(val) });\n        },\n        \'showQuery\': function() {\n            if (!this.stage) return;\n            this.setQuerySelection();\n        },\n        \'showTarget\': function(val, _) {\n            if (!this.stage) return;\n            this.setTargetSelection();\n        },\n        \'highlights\': function(values) {\n            if (!this.stage || !values) return;\n            let selections = []\n            values.forEach((value, i) => {\n                if (!value) return;\n                let [start, length] = value;\n                selections.push([i, start, length]);\n            })\n            this.setSelectionData(selections)\n        }\n    },\n    computed: {\n        querySele: function() {\n            if (this.alignments.length === 0 || this.showQuery == 2)\n                return \'\';\n            if (this.showQuery === 0)\n                return this.alignments.map(a => `${a.qStartPos}-${a.qEndPos}:${getChainName(a.query)}`).join(" or ");\n            if (this.showQuery === 1)\n                return this.alignments.map(a => `:${getChainName(a.query)}`).join(" or ");\n        },\n        targetSele: function() {\n            if (this.alignments.length === 0 || this.showTarget == 2)\n                return \'\';\n            if (this.showTarget === 0)\n                return this.alignments.map(a => `${a.dbStartPos}-${a.dbEndPos}:${getChainName(a.target)}`).join(" or ");\n            if (this.showTarget === 1)\n                return this.alignments.map(a => `:${getChainName(a.target)}`).join(" or ");\n        },\n        tmPanelBindings: function() {\n            return (this.isFullscreen) ? { \'style\': \'margin-top: 10px; font-size: 2em; line-height: 2em\' } : {  }\n        },\n    },\n    async mounted() {\n        if (typeof(this.alignments[0].tCa) == "undefined")\n            return;\n\n        // Download from server --\x3e full input PDB from /result/query endpoint, saved with JSON.stringify\n        //                local --\x3e qCa string\n        // Tickets prefixed with \'user-\' only occur on user uploaded files\n        let queryPdb = "";\n        this.hasQuery = true;\n        if (this.$LOCAL) {\n            if (this.hits.queries[0].hasOwnProperty(\'pdb\')) {\n                queryPdb = JSON.parse(this.hits.queries[0].pdb);\n            } else {\n                queryPdb = mockPDB(this.hits.queries[0].qCa, this.hits.queries[0].sequence, \'A\');\n            }\n        } else if (this.$route.params.ticket.startsWith(\'user-\')) {\n            // Check for special \'user\' ticket for when users have uploaded JSON\n            if (this.hits.queries[0].hasOwnProperty(\'pdb\')) {\n                queryPdb = JSON.parse(this.hits.queries[0].pdb);\n            } else {\n                const localData = this.$root.userData[this.$route.params.entry];\n                queryPdb = mockPDB(localData.queries[0].qCa, localData.queries[0].sequence, \'A\');\n            }\n        } else {\n            try {\n                const request = await this.$axios.get("api/result/" + this.$route.params.ticket + \'/query\');\n                queryPdb = request.data;\n            } catch (e) {\n                queryPdb = "";\n                this.hasQuery = false;\n            }\n        }\n\n        // Run PULCHRA per chain then concatenate Structure objects in first StructureComponent\n        const targets = [];\n        const selections_t = [];\n        let renumber = 0;\n        let lastIdx = null;\n        let remoteData = null;\n        let i = 0;\n        for (let alignment of this.alignments) {\n            const chain = getChainName(alignment.target);\n            let tSeq = alignment.tSeq;\n            let tCa = alignment.tCa;\n            if (Number.isInteger(alignment.tCa) && Number.isInteger(alignment.tSeq)) {\n                const db = alignment.db;\n                const idx = alignment.tCa;\n                if (idx != lastIdx) {\n                    const ticket =  this.$route.params.ticket;\n                    const response = await this.$axios.get("api/result/" + ticket + \'/\' + this.$route.params.entry + \'?format=brief&index=\' + idx + \'&database=\' + db);\n                    remoteData = response.data;\n                    lastIdx = idx;\n                }\n                tSeq = remoteData[i].tSeq;\n                tCa = remoteData[i].tCa;\n                i++;\n            }\n            const mock = mockPDB(tCa, tSeq, chain);\n            const pdb = await pulchra(mock);\n            const component = await this.stage.loadFile(new Blob([pdb], { type: \'text/plain\' }), {ext: \'pdb\', firstModelOnly: true});\n            component.structure.eachChain(c => { c.chainname = chain; });\n            component.structure.eachAtom(a => { a.serial = renumber++; });\n            targets.push(component);\n            selections_t.push(`${alignment.dbStartPos}-${alignment.dbEndPos}:${chain}`);\n        }\n        const structure = concatStructures(getAccession(this.alignments[0].target), ...targets.map(t => t.structure));\n        const target = this.stage.addComponentFromObject(structure, { name: "targetStructure" });\n        \n        target.addRepresentation(\'tube\', {\n            color: 0x11FFEE,\n            side: \'front\',\n            opacity: 0.5,\n            radius: 0.8,\n            visible: false,\n            name: \'targetHighlight\'\n        });\n\n        if (ColormakerRegistry.hasScheme("_targetScheme")) {\n            ColormakerRegistry.removeScheme("_targetScheme")\n        }\n        this.targetSchemeId = ColormakerRegistry.addSelectionScheme([\n            [this.targetAlignedColor, selections_t.join(" or ")],\n            [this.targetUnalignedColor, "*"]\n        ], "_targetScheme")\n\n        if (this.hasQuery) {\n            let data = \'\';\n            let ext = \'pdb\';\n            queryPdb = queryPdb.trimStart();\n            if (queryPdb[0] == "#" || queryPdb.startsWith("data_")) {\n                ext = \'cif\';\n                // NGL doesn\'t like AF3\'s _chem_comp entries\n                queryPdb = queryPdb.replaceAll("_chem_comp.", "_chem_comp_SKIP_HACK.");\n            } else {\n                for (let line of queryPdb.split(\'\\n\')) {\n                    let numCols = Math.max(0, 80 - line.length);\n                    let newLine = line + \' \'.repeat(numCols) + \'\\n\';\n                    data += newLine\n                }\n                queryPdb = data;\n            }\n\n            let query = await this.stage.loadFile(new Blob([queryPdb], { type: \'text/plain\' }), { ext: ext, firstModelOnly: true, name: \'queryStructure\'});\n            if (query && query.structure.getAtomProxy().isCg()) {\n                if (ext == "cif") {\n                    // FIXME: pulchra probably should learn mmCIF\n                    queryPdb = getPdbText(query);\n                }\n                queryPdb = await pulchra(queryPdb);\n                this.stage.removeComponent(query);\n                query = await this.stage.loadFile(new Blob([queryPdb], { type: \'text/plain\' }), {ext: \'pdb\', firstModelOnly: true, name: \'queryStructure\'}); \n            }\n\n            // Map 1-based indices to residue index/resno; only need for query structure\n            // Use queryChainSele to make all selections based on actual query chain\n            const selections_q = [];\n            for (let alignment of this.alignments) {\n                const chain = getChainName(alignment.query);\n\n                selections_q.push(`${alignment.qStartPos}-${alignment.qEndPos} and :${chain}`);\n\n                // Renumber to avoid residue gaps\n                let renumber = 1;\n                query.structure.eachResidue(function(rp) {\n                    rp.resno = renumber++;\n                }, new Selection(`:${chain}`))\n            }\n            if (ColormakerRegistry.hasScheme("_queryScheme")) {\n                ColormakerRegistry.removeScheme("_queryScheme")\n            }\n            this.querySchemeId = ColormakerRegistry.addSelectionScheme([\n                [this.queryAlignedColor, selections_q.join(" or ")],\n                [this.queryUnalignedColor, "*"],\n            ], "_queryScheme")\n\n            // Re-align target to query using TM-align for better superposition\n            // Target 1st since TM-align generates superposition matrix for 1st structure\n            if (this.alignments[0].hasOwnProperty("complexu") && this.alignments[0].hasOwnProperty("complext")) {\n                const t = this.alignments[0].complext.split(\',\').map(x => parseFloat(x));\n                let u = this.alignments[0].complexu.split(\',\').map(x => parseFloat(x));\n                u = [\n                    [u[0], u[1], u[2]],\n                    [u[3], u[4], u[5]],\n                    [u[6], u[7], u[8]],\n                ];\n                // Can\'t use setTransform since we need the actual transformed coordinates for arrows\n                transformStructure(target.structure, t, u);\n                query.addRepresentation(this.qRepr, { color: this.querySchemeId, smoothSheet: true, name: "queryStructure"});\n                target.addRepresentation(this.tRepr, { color: this.targetSchemeId, smoothSheet: true, name: "targetStructure" });\n\n                // Make three separate surface representations based on query toggle state:\n                //   0: Aligned regions of aligned chains\n                //   1: Unaligned regions of aligned chains (shown with 0)\n                //   2: Full structure (all chains; shown with 0 and 1)\n                // Then toggle visibility when showQuery is changed by the user.\n                const surfaceSele0 = [];\n                const surfaceSele1 = [];\n                const surfaceSele2 = [];\n                for (let alignment of this.alignments) {\n                    let chain = getChainName(alignment.query);\n                    surfaceSele0.push(`${alignment.qStartPos}-${alignment.qEndPos}:${chain}`);\n                    surfaceSele1.push(`(not ${alignment.qStartPos}-${alignment.qEndPos} and :${chain})`);\n                    surfaceSele2.push(`:${chain}`);\n                }\n                const surfaceParams = {\n                    color: colorblindColors,\n                    opacity: 0.1,\n                    opaqueBack: false,\n                    useWorker: false\n                }\n                query.addRepresentation("surface", { sele: surfaceSele0.join(" or "), name: "querySurface-0", ...surfaceParams });\n                query.addRepresentation("surface", { sele: surfaceSele1.join(" or "), name: "querySurface-1", visible: false, ...surfaceParams });\n                query.addRepresentation("surface", { sele: `not (${surfaceSele2.join(" or ")})`, name: "querySurface-2", visible: false, ...surfaceParams });\n            } else {\n                // Generate subsetted PDBs for TM-align\n                let qSubPdb = makeSubPDB(query.structure, this.querySele);\n                let tSubPdb = makeSubPDB(target.structure, this.targetSele);\n                let alnFasta = `>target\\n${this.alignments[0].dbAln}\\n\\n>query\\n${this.alignments[0].qAln}`\n                const tm = await tmalign(tSubPdb, qSubPdb, alnFasta);\n                this.tmAlignResults = parseTMOutput(tm.output)\n                let { t, u } = parseTMMatrix(tm.matrix)\n                transformStructure(target.structure, t, u)\n                query.addRepresentation(this.qRepr, {color: this.querySchemeId, name: "queryStructure"});\n                target.addRepresentation(this.tRepr, {color: this.targetSchemeId, name: "targetStructure"});\n            }\n            await this.drawArrows(query.structure, target.structure)\n            this.setQuerySelection();\n            this.setTargetSelection();\n            query.autoView(this.querySele, this.autoViewTime)\n        } else {\n            target.addRepresentation(this.tRepr, {color: this.targetSchemeId, name: "targetStructure"})\n            this.setTargetSelection();\n            this.stage.autoView(this.autoViewTime)\n        }\n        \n    },\n}\n<\/script>\n\n<style scoped>\n.structure-wrapper {\n    width: 500px;\n    height: 400px;\n    margin: 0 auto;\n}\n</style>\n\n<style>\n.theme--dark .structure-wrapper .v-tooltip__content {\n    background: rgba(97, 97, 97, 0.3);\n}\n/* @media only screen and (max-width: 600px) {\n    .structure-wrapper {\n        width: 300px;\n    }\n} */\n.structure-viewer {\n    width: 100%;\n    height: 100%;\n}\n.structure-viewer canvas {\n    border-radius: 2px;\n}\n.structure-panel {\n    position: relative;\n}\n.toolbar-panel {\n    display: inline-flex;\n    flex-direction: row;\n    position: absolute;\n    justify-content: center;\n    width: 100%;\n    bottom: 0;\n    z-index: 1;\n    left: 0;\n}\n.tmscore-panel {\n    position: absolute;\n    width: 100%;\n    top: 0;\n    left: 0;\n    z-index: 1;\n    font-family: monospace;\n    color: rgb(31, 119, 180);\n}\n.left-cell {\n    text-align: right;\n    width: 50%;\n}\n.right-cell {\n    text-align: left;\n    width: 50%;\n    padding-left: 0.3em;\n}\n</style>' ],
                 sourceRoot: ""
             } ]);
             const o = s;
@@ -5130,8 +5439,8 @@
                 version: 3,
                 sources: [ "webpack://./frontend/StructureViewerMSA.vue" ],
                 names: [],
-                mappings: ";AAuUA;IACA,WAAA;IACA,YAAA;IACA,kBAAA;AACA;AACA;IACA,WAAA;IACA,YAAA;IACA,kBAAA;IACA,SAAA;IACA,OAAA;IACA,QAAA;IACA,MAAA;IACA,SAAA;IACA,UAAA;IACA,gBAAA;AACA",
-                sourcesContent: [ "<template>\n<div class=\"structure-panel\">\n    <StructureViewerTooltip attach=\".structure-panel\" />\n    <div class=\"structure-wrapper\" ref=\"structurepanel\">\n        <StructureViewerToolbar\n            :isFullscreen=\"isFullscreen\"\n            :isSpinning=\"isSpinning\"\n            @makeImage=\"handleMakeImage\"\n            @makePDB=\"handleMakePDB\"\n            @resetView=\"handleResetView\"\n            @toggleFullscreen=\"handleToggleFullscreen\"\n            @toggleSpin=\"handleToggleSpin\"\n            disableArrowButton\n            disableQueryButton\n            disableTargetButton\n            style=\"position: absolute; bottom: 8px;\"\n        />\n        <div class=\"structure-viewer\" ref=\"viewport\" />\n    </div>\n</div>\n</template>\n\n<script>\nimport StructureViewerTooltip from './StructureViewerTooltip.vue';\nimport StructureViewerToolbar from './StructureViewerToolbar.vue';\nimport StructureViewerMixin from './StructureViewerMixin.vue';\nimport { mockPDB, makeSubPDB, makeMatrix4, interpolateMatrices, animateMatrix  } from './Utilities.js';\nimport { download, PdbWriter, Matrix4, Quaternion, Vector3 } from 'ngl';\nimport { pulchra } from 'pulchra-wasm';\nimport { tmalign, parse as parseTMOutput, parseMatrix as parseTMMatrix } from 'tmalign-wasm';\n\n// Mock alignment object from two (MSA-derived) aligned strings\nfunction mockAlignment(one, two) {\n    let res = { backtrace: \"\", qAln: \"\", dbAln: \"\" };\n    let started = false; // flag for first Match column in backtrace\n    let m = 0;           // index in msa\n    let qr = 0;          // index in seq\n    let tr = 0;\n    let qBuffer = \"\";\n    let tBuffer = \"\";\n    while (m < one.length) {\n        const qc = one[m];\n        const tc = two[m];\n        if (qc === '-' && tc === '-') {\n            // Skip gap columns\n        } else if (qc === '-') {\n            if (started) {\n                res.backtrace += 'D';               \n                qBuffer += qc;\n                tBuffer += tc;\n            }\n            ++tr;\n        } else if (tc === '-') {\n            if (started) {\n                res.backtrace += 'I';\n                qBuffer += qc;\n                tBuffer += tc;\n            }\n            ++qr;\n        } else {\n            if (started) {\n                res.qAln += qBuffer;\n                res.dbAln += tBuffer;\n                qBuffer = \"\";\n                tBuffer = \"\";\n            } else {\n                started = true;\n                res.qStartPos = qr;\n                res.dbStartPos = tr;\n            }\n            res.backtrace += 'M';\n            qBuffer += qc;\n            tBuffer += tc;\n            res.qEndPos = qr;\n            res.dbEndPos = tr;\n            ++qr;\n            ++tr;\n        }\n        ++m;\n    }\n    res.qStartPos++;\n    res.dbStartPos++;\n    res.qSeq  = one.replace(/-/g, '');\n    res.tSeq  = two.replace(/-/g, '');\n    return res;\n}\n\nfunction generateSelections(newValues, oldValues, refIndex) {\n    const update = [];\n    const remove = [];\n    const add    = [];\n    const reference = {};\n    const oldValuesSet = new Set(oldValues);\n    newValues.forEach((newValue, index) => {\n        if (index === refIndex) {\n            reference.item = newValue;\n            if (oldValuesSet.has(newValue)) {\n                reference.status = 'update';\n                oldValuesSet.delete(newValue);\n            } else {\n                reference.status = 'new';\n            }\n            return;\n        }\n        if (oldValuesSet.has(newValue)) {\n            update.push(newValue);\n            oldValuesSet.delete(newValue);\n        } else {\n            add.push(newValue);\n        }\n    });\n    remove.push(...oldValuesSet);\n    return { update, remove, add, reference };\n}\n\nexport default {\n    name: \"StructureViewerMSA\",\n    components: {\n        StructureViewerToolbar,\n        StructureViewerTooltip,\n    },\n    mixins: [\n        StructureViewerMixin,\n    ],\n    data: () => ({\n        structures: [],  // { name, aa, 3di (ss), ca, NGL structure, alignment, map }\n        curReferenceIndex: 0,\n        oldReference: \"\"\n    }),\n    props: {\n        entries: { type: Array },\n        reference: { type: Number },\n        bgColorLight: { type: String, default: \"white\" },\n        bgColorDark: { type: String, default: \"#1E1E1E\" },\n        representationStyle: { type: String, default: \"cartoon\" },\n        referenceStyleParameters: {\n            type: Object,\n            default: () => ({ color: '#1E88E5', opacity: 1.0 })\n        },\n        regularStyleParameters: {\n            type: Object,\n            default: () => ({ color: '#FFC107', opacity: 0.5, side: 'front' })\n        },\n    },\n    methods: {\n        resetView() {\n            if (!this.stage) return;\n            if (this.structures.length > 0) {\n                this.structures[this.curReferenceIndex].structure.autoView(this.transitionDuration);\n            } else {\n                this.stage.autoView(this.transitionDuration);\n            }\n        },\n        makePDB() {\n            if (!this.stage) return\n            let PDB;\n            let result = `\\\nTITLE     Superposed structures from Foldmason alignment\nREMARK    This file was generated by the FoldMason webserver:\nREMARK      https://mason.foldseek.com\nREMARK    Please cite:\nREMARK      <insert citation>\nREMARK    Warning: Non C-alpha atoms may have been re-generated by PULCHRA\nREMARK             if they are not present in the original PDB file.\n`;\n            this.structures.forEach((structure, index) => {\n                PDB = new PdbWriter(structure.structure.structure, { renumberSerial: false }).getData(); \n                PDB = PDB.split('\\n').filter(line => line.startsWith(\"ATOM\")).join('\\n');\n                result += `\\\nMODEL     ${index}\nREMARK    Name: ${structure.name}\n${PDB}\nENDMDL\n`;\n            });\n            result += \"END\";\n            download(new Blob([result], { type: 'text/plain' }), \"foldmason.pdb\")\n        },\n        makeImage() {\n            if (!this.stage) return\n            this.stage.viewer.setLight(undefined, undefined, undefined, 0.2)\n            this.stage.makeImage({\n                trim: true,\n                factor: (this.isFullscreen) ? 1 : 8,\n                antialias: true,\n                transparent: true,\n            }).then((blob) => {\n                this.stage.viewer.setLight(undefined, undefined, undefined, this.$vuetify.theme.dark ? 0.4 : 0.2)\n                download(blob, \"foldmason.png\")\n            })\n        },\n        async tmAlignToReference(index) {\n            if (index === this.curReferenceIndex) {\n                return;\n            }\n            const reference = this.structures[this.curReferenceIndex].structure;\n            const alignment = mockAlignment(this.structures[this.curReferenceIndex].aa, this.structures[index].aa);\n            const alnFasta = `>target\\n${alignment.dbAln}\\n\\n>query\\n${alignment.qAln}`;\n            const structure = this.structures[index].structure;\n            const [queryPDB, targetPDB] = await Promise.all([\n                makeSubPDB(reference.structure, alignment ? `${alignment.qStartPos}-${alignment.qEndPos}` : ''),\n                makeSubPDB(structure.structure, alignment ? `${alignment.dbStartPos}-${alignment.dbEndPos}` : '')\n            ]);\n            const { output, matrix } = await tmalign(targetPDB, queryPDB, alnFasta);\n            const { t, u }  = parseTMMatrix(matrix);\n            const tmResults = parseTMOutput(output);\n            return Promise.resolve({\n                matrix: makeMatrix4(t, u),\n                tmResults: tmResults,\n                alignment: alignment,\n            });\n        },\n        async addStructureToStage(data) {\n            const { name, aa, ca } = data;\n            const index = this.structures.push({...data}) - 1;\n            const pdb = await pulchra(mockPDB(ca, aa.replace(/-/g, ''), 'A'));\n            const structure = await this.stage.loadFile(\n                new Blob([pdb], { type: 'text/plain' }),\n                {ext: 'pdb', firstModelOnly: true, name: name }\n            );\n            this.structures[index].index = index;\n            this.structures[index].structure = structure;\n            return index;\n        },\n        async shiftStructure({ structure }, index, shiftValue) {\n            const { x, y, z } = structure.position;\n            const offset = index * shiftValue;\n            structure.setPosition({x: x + offset, y: y + offset, z: z + offset })\n            this.stage.viewer.requestRender()\n        },\n        async explode(shiftValue) {\n            if (!this.stage) return;\n            this.structures.forEach((structure, index) => this.shiftStructure(structure, index, shiftValue));\n            this.stage.autoView();\n        },\n        async updateEntries(newValues, oldValues) {\n            if (!this.stage)\n                return;\n            const { update, remove, add, reference } = generateSelections(newValues, oldValues, this.reference);\n            const isReferenceEmpty = Object.keys(reference).length === 0;\n            const isNewReference = isReferenceEmpty || ['new', 'update'].includes(reference.status);  //reference.item.name !== this.oldReference;\n            this.oldReference = isReferenceEmpty ? \"\" : reference.item.name;\n\n            // Always deal with the reference structure first\n            if (!isReferenceEmpty && isNewReference) {\n                let idx;\n                if (reference.status === \"update\") {\n                    idx = this.structures.findIndex(item => item.name === reference.item.name);\n                    this.structures[idx].representation.setParameters(this.referenceStyleParameters);\n                    this.structures[idx].structure.setTransform(new Matrix4());\n                } else {\n                    idx = await this.addStructureToStage(reference.item);\n                    this.structures[idx].representation = this.structures[idx].structure.addRepresentation(\n                        this.representationStyle,\n                        this.referenceStyleParameters\n                    );\n                }\n                this.structures[idx].structure.autoView();\n                this.curReferenceIndex = idx;\n            }\n\n            await Promise.all(\n                update.map(async (item) => {\n                    const index = this.structures.findIndex(structure => item.name === structure.name);\n                    if (index === -1) {\n                        return;\n                    }\n                    if (isNewReference) {\n                        const entry = this.structures[index];\n                        entry.representation.setVisibility(false);\n                        const { matrix, tmResults, alignment } = await this.tmAlignToReference(index);\n                        entry.tmResults = tmResults;\n                        entry.alignment = alignment;                \n                        entry.representation.setParameters(this.regularStyleParameters);\n                        entry.structure.setTransform(matrix);\n                        entry.representation.setVisibility(true);\n                        // animateMatrix(this.structures[index].structure, matrix, 1000);\n                    }\n                })\n            );\n\n            await Promise.all(\n                remove.map(async (item) => {\n                    this.stage\n                        .getComponentsByName(item.name)\n                        .forEach(item => this.stage.removeComponent(item));\n                    const index = this.structures.findIndex(structure => item.name === structure.name);\n                    this.structures.splice(index, 1);\n                })\n            );\n\n            await Promise.all(\n                add.map(async (item) => {\n                    const index = await this.addStructureToStage(item);\n                    const { matrix, tmResults, alignment } = await this.tmAlignToReference(index);\n                    const entry = this.structures[index];\n                    entry.tmResults = tmResults;\n                    entry.alignment = alignment;\n                    entry.representation = entry.structure.addRepresentation(\n                        this.representationStyle,\n                        this.regularStyleParameters\n                    );\n                    entry.structure.setTransform(matrix);\n                })\n            );\n        },\n    },\n    watch: {\n        '$vuetify.theme.dark': function() {\n            this.stage.viewer.setBackground(this.bgColor);\n        },\n        entries: function(newV, oldV) {\n            this.updateEntries(newV, oldV);\n        },\n    },\n    computed: {\n        bgColor() {\n            return this.$vuetify.theme.dark ? this.bgColorDark : this.bgColorLight;\n        },\n        ambientIntensity() {\n            this.$vuetify.theme.dark ? 0.4 : 0.2;\n        },\n    },\n}\n<\/script>\n\n<style scoped>\n.structure-panel {\n    width: 100%;\n    height: 100%;\n    position: relative;\n}\n.structure-viewer {\n    width: 100%;\n    height: 100%;\n    position: absolute;\n    bottom: 0;\n    left: 0;\n    right: 0;\n    top: 0;\n    margin: 0;\n    padding: 0;\n    overflow: hidden;\n}\n</style>" ],
+                mappings: ";AA+VA;IACA,WAAA;IACA,YAAA;IACA,kBAAA;AACA;AACA;IACA,WAAA;IACA,YAAA;IACA,kBAAA;IACA,SAAA;IACA,OAAA;IACA,QAAA;IACA,MAAA;IACA,SAAA;IACA,UAAA;IACA,gBAAA;AACA",
+                sourcesContent: [ '<template>\n<div class="structure-panel">\n    <StructureViewerTooltip attach=".structure-panel" />\n    <div class="structure-wrapper" ref="structurepanel">\n        <StructureViewerToolbar\n            :isFullscreen="isFullscreen"\n            :isSpinning="isSpinning"\n            @makeImage="handleMakeImage"\n            @makePDB="handleMakePDB"\n            @resetView="handleResetView"\n            @toggleFullscreen="handleToggleFullscreen"\n            @toggleSpin="handleToggleSpin"\n            disableArrowButton\n            disableQueryButton\n            disableTargetButton\n            style="position: absolute; bottom: 8px;"\n        />\n        <div class="structure-viewer" ref="viewport" />\n    </div>\n</div>\n</template>\n\n<script>\nimport StructureViewerTooltip from \'./StructureViewerTooltip.vue\';\nimport StructureViewerToolbar from \'./StructureViewerToolbar.vue\';\nimport StructureViewerMixin from \'./StructureViewerMixin.vue\';\nimport { tmalign, parse as parseTMOutput, parseMatrix as parseTMMatrix } from \'tmalign-wasm\';\nimport { mockPDB, makeSubPDB, makeMatrix4, interpolateMatrices, animateMatrix  } from \'./Utilities.js\';\nimport { download, PdbWriter, Matrix4, Quaternion, Vector3, concatStructures } from \'ngl\';\nimport { pulchra } from \'pulchra-wasm\';\n\n// Mock alignment object from two (MSA-derived) aligned strings\nfunction mockAlignment(one, two) {\n    let res = { backtrace: "", qAln: "", dbAln: "" };\n    let started = false; // flag for first Match column in backtrace\n    let m = 0;           // index in msa\n    let qr = 0;          // index in seq\n    let tr = 0;\n    let qBuffer = "";\n    let tBuffer = "";\n    while (m < one.length) {\n        const qc = one[m];\n        const tc = two[m];\n        if (qc === \'-\' && tc === \'-\') {\n            // Skip gap columns\n        } else if (qc === \'-\') {\n            if (started) {\n                res.backtrace += \'D\';               \n                qBuffer += qc;\n                tBuffer += tc;\n            }\n            ++tr;\n        } else if (tc === \'-\') {\n            if (started) {\n                res.backtrace += \'I\';\n                qBuffer += qc;\n                tBuffer += tc;\n            }\n            ++qr;\n        } else {\n            if (started) {\n                res.qAln += qBuffer;\n                res.dbAln += tBuffer;\n                qBuffer = "";\n                tBuffer = "";\n            } else {\n                started = true;\n                res.qStartPos = qr;\n                res.dbStartPos = tr;\n            }\n            res.backtrace += \'M\';\n            qBuffer += qc;\n            tBuffer += tc;\n            res.qEndPos = qr;\n            res.dbEndPos = tr;\n            ++qr;\n            ++tr;\n        }\n        ++m;\n    }\n    res.qStartPos++;\n    res.dbStartPos++;\n    res.qSeq  = one.replace(/-/g, \'\');\n    res.tSeq  = two.replace(/-/g, \'\');\n    return res;\n}\n\nexport default {\n    name: "StructureViewerMSA",\n    components: {\n        StructureViewerToolbar,\n        StructureViewerTooltip,\n    },\n    mixins: [\n        StructureViewerMixin,\n    ],\n    data: () => ({\n        structures: [],  // { name, aa, 3di (ss), ca, NGL structure, alignment, map }\n        curReferenceIndex: -1,  // index in ALL sequences, not just visualised subset - used as key\n    }),\n    props: {\n        entries: { type: Array, required: true },\n        selection: { type: Array, required: true },\n        reference: { type: Number, required: true },\n        bgColorLight: { type: String, default: "white" },\n        bgColorDark: { type: String, default: "#1E1E1E" },\n        representationStyle: { type: String, default: "cartoon" },\n        referenceStyleParameters: {\n            type: Object,\n            default: () => ({ color: \'#1E88E5\', opacity: 1.0 })\n        },\n        regularStyleParameters: {\n            type: Object,\n            default: () => ({ color: \'#FFC107\', opacity: 0.5, side: \'front\' })\n        },\n    },\n    methods: {\n        resetView() {\n            if (!this.stage) return;\n            if (this.selection.length > 0) {\n                this.getComponentByIndex(this.reference).autoView(this.transitionDuration);\n            } else {\n                this.stage.autoView(this.transitionDuration);\n            }\n        },\n        makePDB() {\n            if (!this.stage) return\n            let PDB;\n            let result = `\\\nTITLE     Superposed structures from Foldmason alignment\nREMARK    This file was generated by the FoldMason webserver:\nREMARK      https://search.foldseek.com/foldmason\nREMARK    Please cite:\nREMARK      https://doi.org/10.1101/2024.08.01.606130\nREMARK    Warning: Non C-alpha atoms may have been re-generated by PULCHRA\nREMARK             if they are not present in the original PDB file.\n`;\n            this.stage.eachComponent(comp => {\n                let clone = concatStructures("clone", comp.structure)\n                let matrix = new Matrix4();\n                matrix.fromArray(comp.transform.elements);\n                clone.eachAtom(ap => {\n                    let position = new Vector3(ap.x, ap.y, ap.z);\n                    position.applyMatrix4(matrix);\n                    ap.x = position.x;\n                    ap.y = position.y;\n                    ap.z = position.z;\n                });\n                PDB = new PdbWriter(clone, { renumberSerial: false }).getData();\n                PDB = PDB.split(\'\\n\').filter(line => line.startsWith("ATOM")).join(\'\\n\');\n                let index = parseInt(comp.structure.name.replace("key-", "")); \n                let name = this.entries[index].name;\n                result += `\\\nMODEL     ${index}\nREMARK    Name: ${name}\n${PDB}\nENDMDL\n`;\n            }, "structure")\n            result += "END";\n            download(new Blob([result], { type: \'text/plain\' }), "foldmason.pdb")\n        },\n        makeImage() {\n            if (!this.stage) return\n            this.stage.viewer.setLight(undefined, undefined, undefined, 0.2)\n            this.stage.makeImage({\n                trim: true,\n                factor: (this.isFullscreen) ? 1 : 8,\n                antialias: true,\n                transparent: true,\n            }).then((blob) => {\n                this.stage.viewer.setLight(undefined, undefined, undefined, this.$vuetify.theme.dark ? 0.4 : 0.2)\n                download(blob, "foldmason.png")\n            })\n        },\n        getComponentByIndex(index) {\n            if (!this.stage) return;\n            const compList = this.stage.getComponentsByName(`key-${index}`);\n            if (compList.list.length === 0) return -1;\n            return compList.list[0];\n        },\n        async tmAlignToReference(index) {\n            if (index === this.reference) {\n                return;\n            }\n            const refData = this.entries[this.reference];\n            const newData = this.entries[index];\n            const refComp = this.getComponentByIndex(this.reference);\n            const newComp = this.getComponentByIndex(index);\n            const aln = mockAlignment(refData.aa, newData.aa);\n            const fasta = `>target\\n${aln.dbAln}\\n\\n>query\\n${aln.qAln}`;\n            const [queryPDB, targetPDB] = await Promise.all([\n                makeSubPDB(refComp.structure, aln ? `${aln.qStartPos}-${aln.qEndPos}` : \'\'),\n                makeSubPDB(newComp.structure, aln ? `${aln.dbStartPos}-${aln.dbEndPos}` : \'\')\n            ]);\n            if (!__LOCAL__) {\n                const worker = new Worker(new URL("TMAlignWorker.js", import.meta.url));\n                return new Promise((resolve, reject) => {\n                    worker.onmessage = function (e) {\n                        const { t, u, tmResults } = e.data;\n                        resolve({\n                            matrix: makeMatrix4(t, u),\n                            tmResults: tmResults\n                        }); \n                        worker.terminate();\n                    }\n                    worker.onerror = function (e) {\n                        reject(e);\n                        worker.terminate();\n                    }\n                    worker.postMessage({ refPDB: targetPDB, newPDB: queryPDB, alnFasta: fasta });\n                });\n            }\n            const { output, matrix } = await tmalign(targetPDB, queryPDB, fasta);\n            const { t, u }  = parseTMMatrix(matrix);\n            const tmResults = parseTMOutput(output);\n            return Promise.resolve({\n                matrix: makeMatrix4(t, u),\n                tmResults: tmResults,\n                alignment: aln\n            });\n        },\n        async addStructureToStage(index, aa, ca) {\n            const mock = mockPDB(ca, aa.replace(/-/g, \'\'), \'A\');\n            const pdb  = await pulchra(mock);\n            const blob = new Blob([pdb], { type: \'text/plain\' })\n            return this.stage.loadFile(blob, { ext: \'pdb\', firstModelOnly: true, name: `key-${index}` });\n        },\n        async shiftStructure({ structure }, index, shiftValue) {\n            const { x, y, z } = structure.position;\n            const offset = index * shiftValue;\n            structure.setPosition({x: x + offset, y: y + offset, z: z + offset })\n            this.stage.viewer.requestRender()\n        },\n        async explode(shiftValue) {\n            if (!this.stage) return;\n            this.structures.forEach((structure, index) => this.shiftStructure(structure, index, shiftValue));\n            this.stage.autoView();\n        },\n        async updateEntries(newValues, oldValues) {\n            if (!this.stage) {\n                return;\n            }\n\n            // Selections - structures to update/remove/add\n            const newSet = new Set(newValues);\n            const oldSet = new Set(oldValues);\n            \n            if (newSet.size === 0) {\n                this.stage.removeAllComponents();\n                return;\n            }\n\n            const update = [];\n            const remove = [];\n            const add    = [];\n\n            for (const value of oldSet) {\n                if (value === this.reference) continue;\n                if (newSet.has(value)) {\n                    update.push(value);\n                } else {\n                    remove.push(value);\n                }\n            }\n            for (const value of newSet) {\n                if (value === this.reference || oldSet.has(value)) continue;\n                add.push(value);\n            }\n\n            // Changed status of reference\n            const isDiffReference = this.reference !== this.curReferenceIndex;\n            const isNewReference  = !oldSet.has(this.reference);\n            const referenceChanged = isDiffReference || isNewReference;\n\n            this.curReferenceIndex = this.reference;\n\n            // Update the reference\n            // If reference already exists, just change the colour and reset its transform\n            // Otherwise add as new structure to the NGL Stage\n            if (referenceChanged) {\n                let data = this.entries[this.reference];\n                let ref;\n                if (isNewReference) {\n                    ref = await this.addStructureToStage(this.reference, data.aa, data.ca);\n                    ref.addRepresentation(this.representationStyle, this.referenceStyleParameters);\n                } else {\n                    ref = this.getComponentByIndex(this.reference);\n                    ref.reprList[0].setVisibility(false);\n                    ref.reprList[0].setParameters(this.referenceStyleParameters)\n                    ref.setTransform(new Matrix4());\n                    ref.reprList[0].setVisibility(true);\n                }\n                ref.autoView();\n            }\n\n            await Promise.all(\n                add.map(async (idx) => {\n                    const data = this.entries[idx];\n                    const structure = await this.addStructureToStage(idx, data.aa, data.ca);\n                    const { matrix } = await this.tmAlignToReference(idx);\n                    structure.setTransform(matrix);\n                    structure.addRepresentation(this.representationStyle, this.regularStyleParameters);\n                })\n            );\n\n            await Promise.all(\n                remove.map(async (idx) => {\n                    const structure = this.getComponentByIndex(idx);\n                    this.stage.removeComponent(structure);\n                })\n            );\n            \n            if (!referenceChanged) {\n                return;\n            }\n\n            await Promise.all(\n                update.map(async (idx) => {\n                    const structure = this.getComponentByIndex(idx); \n                    if (!structure || structure.reprList.length === 0) return;\n                    const [ representation ] = structure.reprList;\n                    representation.setVisibility(false);\n                    const { matrix } = await this.tmAlignToReference(idx);\n                    representation.setParameters(this.regularStyleParameters)\n                    structure.setTransform(matrix);\n                    representation.setVisibility(true);\n                })\n            );\n        },\n    },\n    watch: {\n        \'$vuetify.theme.dark\': function() {\n            this.stage.viewer.setBackground(this.bgColor);\n        },\n        selection: function(newV, oldV) {\n            this.updateEntries(newV, oldV);\n        },\n    },\n    computed: {\n        bgColor() {\n            return this.$vuetify.theme.dark ? this.bgColorDark : this.bgColorLight;\n        },\n        ambientIntensity() {\n            this.$vuetify.theme.dark ? 0.4 : 0.2;\n        },\n    },\n}\n<\/script>\n\n<style scoped>\n.structure-panel {\n    width: 100%;\n    height: 100%;\n    position: relative;\n}\n.structure-viewer {\n    width: 100%;\n    height: 100%;\n    position: absolute;\n    bottom: 0;\n    left: 0;\n    right: 0;\n    top: 0;\n    margin: 0;\n    padding: 0;\n    overflow: hidden;\n}\n</style>' ],
                 sourceRoot: ""
             } ]);
             const o = s;
@@ -5158,35 +5467,35 @@
                 default: () => o
             });
             var r = t(7537), i = t.n(r), a = t(3645), s = t.n(a)()(i());
-            s.push([ e.id, "\ncanvas {\n    image-rendering: pixelated;\n}\n", "", {
+            s.push([ e.id, "\ncanvas {\n    image-rendering: pixelated;\n    cursor: auto;\n}\ncanvas.hover {\n    cursor: pointer;\n}\n", "", {
                 version: 3,
                 sources: [ "webpack://./frontend/Tree.vue" ],
                 names: [],
-                mappings: ";AA0OA;IACA,0BAAA;AACA",
-                sourcesContent: [ "<template>\n<div style=\"padding: 10px; height: inherit; width: 100%; overflow-y: auto;\" ref=\"parentDiv\">\n    <canvas id=\"tree\"/>\n</div>\n</template>\n\n<script>\nimport { tryFixName, debounce } from './Utilities'; \n\nfunction sortTreeByLeafOrder(tree, leafOrder) {\n\n    function findDeepestLeafIndex(node) {\n        if (!node.branches || node.branches.length === 0) {\n            return leafOrder.indexOf(node.name);\n        }\n        return Math.min(...node.branches.map(findDeepestLeafIndex));\n    }\n\n    function sortNode(node) {\n        if (!node.branches || node.branches.length === 0) {\n            return; // Leaf node, no action needed\n        }\n\n        // Ensure each child is sorted\n        node.branches.forEach(sortNode);\n\n        // Compare the deepest leaf index of each child\n        let leftIndex = findDeepestLeafIndex(node.branches[0]);\n        let rightIndex = findDeepestLeafIndex(node.branches[1]);\n\n        // Swap children if necessary\n        if (leftIndex > rightIndex) {\n            [node.branches[0], node.branches[1]] = [node.branches[1], node.branches[0]];\n        }\n    }\n\n    // Start the sorting process from the root\n    sortNode(tree);\n    return tree;\n}\n\n// TODO sort by MSA order\n// highlight selected sequences\nfunction parseNewick(newick, order) {\n    let tokens = newick.split(/\\s*(;|\\(|\\)|,|:)\\s*/);\n    let stack = [];\n    let tree = {};\n    let current_node = tree;\n    let headers = [];\n    for (let token of tokens) {\n        switch (token) {\n            case '(': // new branch set\n                let branch = { height: 1 };\n                current_node.branches = [branch];\n                stack.push(current_node);\n                current_node = branch;\n                break;\n            case ',': // another branch\n                branch = { height: 1 };\n                stack[stack.length - 1].branches.push(branch);\n                current_node = branch;\n                break;\n            case ')': // end of branch set\n                current_node = stack.pop();\n                if (current_node.branches) {\n                    current_node.height = countLeaves(current_node);\n                }\n                break;\n            default: // leaf or branch name\n                if (token.length > 0) {\n                    current_node.name = tryFixName(token);\n                    headers.push(current_node.name);\n                }\n        }\n    }\n    // sortTree(tree);\n    tree = sortTreeByLeafOrder(tree, order)\n   \n    // printNode(tree)\n    return { tree, headers };\n}\n\nfunction printNode(node) {\n    console.log(node)\n    if (!node.branches) {\n        return;\n    }\n    for (let child of node.branches) {\n        printNode(child) \n    }\n}\n\nfunction countLeaves(node) {\n    if (!node.branches || node.branches.length === 0) {\n        return 1;\n    }\n    let leaves = 0;\n    node.branches.forEach(child => {\n        leaves += countLeaves(child);\n    });\n    return leaves;\n}\n\nfunction calculateTreeDepth(node, currentDepth=0) {\n    if (!node) return currentDepth;\n    if (!node.branches || node.branches.length === 0) return currentDepth;\n    let depth = currentDepth;\n    node.branches.forEach(child => {\n        depth = Math.max(depth, calculateTreeDepth(child, currentDepth + 1));\n    });\n    return depth;\n}\n   \nexport default {\n    data() {\n        return {\n            'tree': {},\n            'headers': [],\n            'resizeObserver': null,\n        }\n    },\n    props: {\n        newick: { type: String },\n        selection: { type: Array },\n        reference: { type: Number },\n        order: { type: Array },\n        leafSpacing: { type: Number, default: 20 },\n        fontNormal: { type: String, default: \"normal 12px sans-serif\" },\n        fontSelected: { type: String, default: \"normal 600 12px sans-serif\" },\n        referenceColor: { type: String, default: \"#1E88E5\" },\n        selectionColor: { type: String, default: \"#E6AC00\" }\n    },\n    computed: {\n        strokeStyle() {\n            return this.$vuetify.theme.dark ? 'white' : 'black';\n        }\n    },\n    watch: {\n        'tree': function() {\n            this.visualiseTree();\n        },\n        '$vuetify.theme.dark': function() {\n            this.visualiseTree();\n        },\n        'selection': function() {\n            this.visualiseTree();\n        },\n    },\n    methods: {\n        drawElbowConnector(ctx, startX, startY, endX, endY) {\n            ctx.beginPath();\n            ctx.moveTo(startX, startY);\n            ctx.lineTo(startX, endY); // Vertical line\n            ctx.lineTo(endX, endY);   // Horizontal line\n            ctx.strokeStyle = this.strokeStyle;\n            ctx.stroke();\n            ctx.closePath();\n        },\n        isSelection(node) {\n            if (!this.selection) return false;\n            return (this.selection.includes(node.name));\n        },\n        isReference(node) {\n            return (this.reference !== undefined && this.selection[this.reference] === node.name);\n        },\n        drawTree(ctx, node, startX, startY, length, depth=0, childIndex=0, fullWidth=100) {\n            const endX = (!node.branches ? fullWidth : startX + length);\n            const endY = startY + this.leafSpacing * (\n                childIndex === 0\n                    ? -(node.branches ? node.branches[1].height : 0.5)\n                    : +(node.branches ? node.branches[0].height : 0.5)\n            );\n            this.drawElbowConnector(ctx, startX, startY, endX, endY);\n            if (node.branches) {\n                for (let i = 0; i < node.branches.length; i++) {\n                    this.drawTree(ctx, node.branches[i], endX, endY, length, depth + 1, i, fullWidth);\n                }\n            } else {\n                if (this.selection) {\n                    ctx.font = this.isSelection(node) ? this.fontSelected : this.fontNormal;\n                    ctx.fillStyle = this.isSelection(node)\n                        ? (this.isReference(node) ? this.referenceColor : this.selectionColor)\n                        : this.strokeStyle;\n                }\n                ctx.fillText(node.name, endX + 5, endY + 4);\n            }\n        },\n        clearTree() {\n            let canvas = document.getElementById('tree');\n            let ctx = canvas.getContext('2d');\n            ctx.clearRect(0, 0, canvas.width, canvas.height);\n        },\n        visualiseTree() {\n            let canvas = document.getElementById('tree');\n            let ctx = canvas.getContext('2d');\n            ctx.clearRect(0, 0, canvas.width, canvas.height);\n            ctx.strokeStyle = this.strokeStyle;\n            ctx.font = this.fontSelected;  // Calculate width bolded\n            \n            let headerWidth = 0;\n            this.headers.forEach(header => {\n                let { width } = ctx.measureText(header);\n                headerWidth = Math.max(headerWidth, width);\n            })\n\n            canvas.style.width = '100%';\n            canvas.style.height = `${this.tree.height * this.leafSpacing}px`;\n\n            let depth = calculateTreeDepth(this.tree);\n            let fullWidth = canvas.offsetWidth - headerWidth - 10;\n            let length = fullWidth / (depth + 1);\n\n            const ratio = window.devicePixelRatio;\n            canvas.height = this.tree.height * this.leafSpacing * ratio;\n            canvas.width = canvas.offsetWidth * ratio;\n            ctx.scale(ratio, ratio);\n            ctx.font = this.fontNormal;\n            this.drawTree(ctx, this.tree, -5, this.tree.height * this.leafSpacing, length, 0, 0, fullWidth);           \n        }\n    },\n    mounted() {\n        let { tree, headers } = parseNewick(this.newick, this.order)\n        this.tree = tree;\n        this.headers = headers;\n        this.resizeObserver = new ResizeObserver(debounce(this.visualiseTree, 200)).observe(this.$refs.parentDiv);\n    },\n    beforeDestroy() {\n        if (this.resizeObserver)\n            this.resizeObserver.disconnect();\n    }\n}\n<\/script>\n\n<style>\ncanvas {\n    image-rendering: pixelated;\n}\n</style>" ],
+                mappings: ";AAuRA;IACA,0BAAA;IACA,YAAA;AACA;AACA;IACA,eAAA;AACA",
+                sourcesContent: [ '<template>\n<div style="padding: 10px; height: inherit; width: 100%; overflow-y: auto;" ref="parentDiv">\n    <canvas\n        id="tree"\n        :class="canvasClass"\n        @click="handleClick"\n        @mousemove="handleMouseOver"\n        @mouseleave="handleMouseLeave"\n    />\n</div>\n</template>\n\n<script>\nimport { tryFixName, debounce } from \'./Utilities\'; \n\nfunction sortTreeByLeafOrder(tree, leafOrder) {\n\n    function findDeepestLeafIndex(node) {\n        if (!node.branches || node.branches.length === 0) {\n            return leafOrder.indexOf(node.name);\n        }\n        return Math.min(...node.branches.map(findDeepestLeafIndex));\n    }\n\n    function sortNode(node) {\n        if (!node.branches || node.branches.length === 0) {\n            return; // Leaf node, no action needed\n        }\n\n        // Ensure each child is sorted\n        node.branches.forEach(sortNode);\n\n        // Compare the deepest leaf index of each child\n        let leftIndex = findDeepestLeafIndex(node.branches[0]);\n        let rightIndex = findDeepestLeafIndex(node.branches[1]);\n\n        // Swap children if necessary\n        if (leftIndex > rightIndex) {\n            [node.branches[0], node.branches[1]] = [node.branches[1], node.branches[0]];\n        }\n    }\n\n    // Start the sorting process from the root\n    sortNode(tree);\n    return tree;\n}\n\n// TODO sort by MSA order\n// highlight selected sequences\nfunction parseNewick(newick, order) {\n    let tokens = newick.split(/\\s*(;|\\(|\\)|,|:)\\s*/);\n    let stack = [];\n    let tree = {};\n    let current_node = tree;\n    let headers = [];\n    for (let token of tokens) {\n        switch (token) {\n            case \'(\': // new branch set\n                let branch = { height: 1 };\n                current_node.branches = [branch];\n                stack.push(current_node);\n                current_node = branch;\n                break;\n            case \',\': // another branch\n                branch = { height: 1 };\n                stack[stack.length - 1].branches.push(branch);\n                current_node = branch;\n                break;\n            case \')\': // end of branch set\n                current_node = stack.pop();\n                if (current_node.branches) {\n                    current_node.height = countLeaves(current_node);\n                }\n                break;\n            default: // leaf or branch name\n                if (token.length > 0) {\n                    current_node.name = tryFixName(token);\n                    headers.push(current_node.name);\n                }\n        }\n    }\n    // sortTree(tree);\n    tree = sortTreeByLeafOrder(tree, order)\n   \n    // printNode(tree)\n    return { tree, headers };\n}\n\nfunction printNode(node) {\n    console.log(node)\n    if (!node.branches) {\n        return;\n    }\n    for (let child of node.branches) {\n        printNode(child) \n    }\n}\n\nfunction countLeaves(node) {\n    if (!node.branches || node.branches.length === 0) {\n        return 1;\n    }\n    let leaves = 0;\n    node.branches.forEach(child => {\n        leaves += countLeaves(child);\n    });\n    return leaves;\n}\n\nfunction calculateTreeDepth(node, currentDepth=0) {\n    if (!node) return currentDepth;\n    if (!node.branches || node.branches.length === 0) return currentDepth;\n    let depth = currentDepth;\n    node.branches.forEach(child => {\n        depth = Math.max(depth, calculateTreeDepth(child, currentDepth + 1));\n    });\n    return depth;\n}\n   \nexport default {\n    data() {\n        return {\n            tree: {},\n            headers: [],\n            resizeObserver: null,\n            headerStartX: null,\n            isHovering: false\n        }\n    },\n    props: {\n        newick: { type: String },\n        selection: { type: Array },\n        reference: { type: Number },\n        order: { type: Array },\n        fontNormal: { type: String, default: "normal 12px sans-serif" },\n        fontSelected: { type: String, default: "normal 600 12px sans-serif" },\n        referenceColor: { type: String, default: "#1E88E5" },\n        selectionColor: { type: String, default: "#E6AC00" },\n        maxHeaderChars: { type: Number, default: 25 }\n    },\n    computed: {\n        strokeStyle() {\n            return this.$vuetify.theme.dark ? \'white\' : \'black\';\n        },\n        canvasClass() {\n            return this.isHovering ? "hover" : "";\n        }\n    },\n    watch: {\n        \'tree\': function() {\n            this.visualiseTree();\n        },\n        \'$vuetify.theme.dark\': function() {\n            this.visualiseTree();\n        },\n        \'selection\': function() {\n            this.visualiseTree();\n        },\n    },\n    methods: {\n        drawElbowConnector(ctx, startX, startY, endX, endY) {\n            ctx.beginPath();\n            ctx.moveTo(startX, startY);\n            ctx.lineTo(startX, endY); // Vertical line\n            ctx.lineTo(endX, endY);   // Horizontal line\n            ctx.strokeStyle = this.strokeStyle;\n            ctx.stroke();\n            ctx.closePath();\n        },\n        isSelection(node) {\n            if (!this.selection) return false;\n            return (this.selection.includes(node.name));\n        },\n        isReference(node) {\n            if (this.reference === undefined || this.reference === -1) return false;\n            return (node.name === this.order[this.reference]);\n        },\n        drawTree(ctx, node, startX, startY, length, headerHeight, depth=0, childIndex=0, fullWidth=100) {\n            const endX = (!node.branches ? fullWidth : startX + length);\n            const endY = startY + headerHeight * (\n                childIndex === 0\n                    ? -(node.branches ? node.branches[1].height : 0.5)\n                    : +(node.branches ? node.branches[0].height : 0.5)\n            );\n            this.drawElbowConnector(ctx, startX, startY, endX, endY);\n            if (node.branches) {\n                for (let i = 0; i < node.branches.length; i++) {\n                    this.drawTree(ctx, node.branches[i], endX, endY, length, headerHeight, depth + 1, i, fullWidth);\n                }\n            } else {\n                if (this.selection) {\n                    ctx.font = this.isSelection(node) ? this.fontSelected : this.fontNormal;\n                    ctx.fillStyle = this.isSelection(node)\n                        ? (this.isReference(node) ? this.referenceColor : this.selectionColor)\n                        : this.strokeStyle;\n                }\n                let name = (node.name.length > this.maxHeaderChars)\n                    ? `${node.name.substring(0, this.maxHeaderChars)}…`\n                    : node.name;\n                ctx.fillText(name, endX + 5, endY + 4);\n            }\n        },\n        clearTree() {\n            let canvas = document.getElementById(\'tree\');\n            let ctx = canvas.getContext(\'2d\');\n            ctx.clearRect(0, 0, canvas.width, canvas.height);\n        },\n        visualiseTree() {\n            let canvas = document.getElementById(\'tree\');\n            if (!canvas) {\n                return;\n            }\n            let ctx = canvas.getContext(\'2d\');\n            ctx.clearRect(0, 0, canvas.width, canvas.height);\n            ctx.strokeStyle = this.strokeStyle;\n            ctx.font = this.fontSelected;  // Calculate width bolded\n            \n            // Calculate spacing for header substrings of length maxHeaderChars\n            // +extra to account for ellipsis\n            let headerWidth = 0;\n            let headerHeight = 0;\n            this.headers.forEach(header => {\n                let { width, fontBoundingBoxAscent } = ctx.measureText(header.substring(0, this.maxHeaderChars + 3));\n                headerWidth = Math.max(headerWidth, width);\n                headerHeight = Math.max(headerHeight, fontBoundingBoxAscent);\n            });\n            headerHeight *= 2\n            \n            canvas.style.width = \'100%\';\n            canvas.style.height = `${this.headers.length * headerHeight}px`;\n\n            let depth = calculateTreeDepth(this.tree);\n            let fullWidth = canvas.offsetWidth - headerWidth;\n            let length = fullWidth / (depth + 1);\n            \n            // Store x position where headers start being drawn\n            // Used when identifying header on click\n            this.headerStartX = fullWidth;\n\n            // Prevent blurriness on high DPI displays\n            const ratio = window.devicePixelRatio;\n            canvas.height = this.headers.length * headerHeight * ratio;\n            canvas.width = canvas.offsetWidth * ratio;\n            ctx.scale(ratio, ratio);\n\n            ctx.font = this.fontNormal;\n            this.drawTree(ctx, this.tree, -5, this.headers.length * headerHeight, length, headerHeight, 0, 0, fullWidth);           \n        },\n        handleClick(event) {\n            if (event.layerX > this.headerStartX) {\n                const canvas = event.target;\n                const divHeight = canvas.height / this.headers.length;\n                const index = Math.floor(event.offsetY * window.devicePixelRatio / divHeight);\n                const status = (this.selection.length === 0 || event.altKey) ? "newStructureReference" : "newStructureSelection";\n                this.$emit(status, index);\n            }\n        },\n        handleMouseOver(event) {\n            this.isHovering = (event.layerX > this.headerStartX);\n        },\n        handleMouseLeave() {\n            this.isHovering = false;\n        }\n    },\n    mounted() {\n        let { tree, headers } = parseNewick(this.newick, this.order)\n        this.tree = tree;\n        this.headers = headers;\n        this.resizeObserver = new ResizeObserver(debounce(this.visualiseTree, 200)).observe(this.$refs.parentDiv);\n    },\n    beforeDestroy() {\n        if (this.resizeObserver) {\n            this.resizeObserver.disconnect();\n        }\n    }\n}\n<\/script>\n\n<style>\ncanvas {\n    image-rendering: pixelated;\n    cursor: auto;\n}\ncanvas.hover {\n    cursor: pointer;\n}\n</style>' ],
                 sourceRoot: ""
             } ]);
             const o = s;
         },
         9010: (e, n, t) => {
             var r = t(7537), i = t(3645), a = t(1667), s = t(7204), o = t(1464), l = i(r), c = a(s), u = a(o);
-            l.push([ e.id, "@font-face{font-family:InconsolataClustal;src:url(" + c + "),url(" + u + ')}.hide{display:none}.db{border-left:5px solid #000}@media print,screen and (max-width: 599px){small.ticket{display:inline-block;line-height:.9}}.result-table a.anchor{display:block;position:relative;top:-125px;visibility:hidden}.result-table a:not([href]){color:#333}.result-table a:not([href]):not([href]):hover{text-decoration:none}.result-table td,.result-table th{padding:0 6px;text-align:left}.result-table .hit.active{background:#f9f9f9}.result-table .alignment-action{text-align:center;word-wrap:normal}.theme--dark .result-table a:not([href]){color:#eee}.theme--dark .result-table .hit.active{background:#333}@media print,screen and (min-width: 961px){.result-table{table-layout:fixed;border-collapse:collapse;width:100%}.result-table th.thin,.result-table td.thin{white-space:nowrap}.result-table .long{overflow:hidden;word-break:keep-all;text-overflow:ellipsis;white-space:nowrap}}@media print{.result-table .alignment-action{display:none}}@media screen and (max-width: 960px){.result-table{width:100%}.result-table col{width:auto !important}.result-table .long{height:100% !important;white-space:normal !important;min-height:48px}.result-table .hits{min-width:300px}.result-table tbody td a{min-width:100px}.result-table tbody td.graphical div.ruler{margin:10px 0}.result-table thead{display:none}.result-table tfoot th{border:0;display:inherit}.result-table tr{box-shadow:0 2px 3px rgba(0,0,0,.1),0 0 0 1px rgba(0,0,0,.1);max-width:100%;position:relative;display:block;padding:.5em}.result-table tr td{border:0;display:inherit}.result-table tr td:last-child{border-bottom:0}.result-table tr:not(:last-child){margin-bottom:1rem}.result-table tr:not(.is-selected){background:inherit}.result-table tr:not(.is-selected):hover{background-color:inherit}.result-table tr.detail{margin-top:-1rem}.result-table tr:not(.detail):not(.is-empty):not(.table-footer) td{display:flex;border-bottom:1px solid #eee;flex-direction:row}.result-table tr:not(.detail):not(.is-empty):not(.table-footer) td:last-child{border-bottom:0}.result-table tr:not(.detail):not(.is-empty):not(.table-footer) td:before{content:attr(data-label);font-weight:600;margin-right:auto;padding-right:.5em;word-break:keep-all;flex:1;white-space:nowrap}.result-table tbody td a,.result-table tbody td span{flex:2;margin-left:auto;text-align:right;word-wrap:anywhere}}.alignment{position:absolute;left:4px;right:4px;z-index:999;box-shadow:0 3px 5px -1px rgba(0,0,0,.2),0 6px 10px 0 rgba(0,0,0,.14),0 1px 18px 0 rgba(0,0,0,.12) !important}.alignment .residues{font-family:InconsolataClustal,Inconsolata,Consolas,Menlo,Monaco,"Cascadia Mono","Segoe UI Mono","Roboto Mono","Oxygen Mono","Ubuntu Monospace","Source Code Pro","Fira Mono","Droid Sans Mono","Courier New",monospace;white-space:pre}.theme--dark .alignment .residues{color:#fff}', "", {
+            l.push([ e.id, ".theme--light.v-btn-toggle:not(.v-btn-toggle--group){background:#fff;color:rgba(0,0,0,.87)}.theme--light.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn{border-color:rgba(0,0,0,.12) !important}.theme--light.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn:focus:not(:active){border-color:rgba(0,0,0,.26)}.theme--light.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn .v-icon{color:#000}.theme--dark.v-btn-toggle:not(.v-btn-toggle--group){background:#1e1e1e;color:#fff}.theme--dark.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn{border-color:rgba(255,255,255,.12) !important}.theme--dark.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn:focus:not(:active){border-color:rgba(255,255,255,.3)}.theme--dark.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn .v-icon{color:#fff}.v-btn-toggle{border-radius:4px;display:inline-flex;max-width:100%}.v-btn-toggle>.v-btn.v-btn{border-radius:0;border-style:solid;border-width:thin;box-shadow:none;box-shadow:none;opacity:.8;padding:0 12px}.v-application--is-ltr .v-btn-toggle>.v-btn.v-btn:first-child{border-top-left-radius:inherit;border-bottom-left-radius:inherit}.v-application--is-rtl .v-btn-toggle>.v-btn.v-btn:first-child{border-top-right-radius:inherit;border-bottom-right-radius:inherit}.v-application--is-ltr .v-btn-toggle>.v-btn.v-btn:last-child{border-top-right-radius:inherit;border-bottom-right-radius:inherit}.v-application--is-rtl .v-btn-toggle>.v-btn.v-btn:last-child{border-top-left-radius:inherit;border-bottom-left-radius:inherit}.v-btn-toggle>.v-btn.v-btn--active{color:inherit;opacity:1}.v-btn-toggle>.v-btn.v-btn:after{display:none}.v-application--is-ltr .v-btn-toggle>.v-btn.v-btn:not(:first-child){border-left-width:0}.v-application--is-rtl .v-btn-toggle>.v-btn.v-btn:not(:last-child){border-left-width:0}.v-btn-toggle .v-btn.v-btn.v-size--default{min-width:48px;min-height:0}.v-btn-toggle:not(.v-btn-toggle--dense) .v-btn.v-btn.v-size--default{height:48px}.v-btn-toggle--borderless>.v-btn.v-btn{border-width:0}.v-btn-toggle--dense>.v-btn.v-btn{padding:0 8px}.v-btn-toggle--group{border-radius:0}.v-btn-toggle--group>.v-btn.v-btn{background-color:transparent !important;border-color:transparent;margin:4px;min-width:auto}.v-btn-toggle--rounded{border-radius:24px}.v-btn-toggle--shaped{border-radius:24px 4px}.v-btn-toggle--tile{border-radius:0}@font-face{font-family:InconsolataClustal;src:url(" + c + "),url(" + u + ')}.hide{display:none}.db{border-left:5px solid #000}@media print,screen and (max-width: 599px){small.ticket{display:inline-block;line-height:.9}}.result-table a.anchor{display:block;position:relative;top:-125px;visibility:hidden}.result-table a:not([href]){color:#333}.result-table a:not([href]):not([href]):hover{text-decoration:none}.result-table td,.result-table th{padding:0 6px;text-align:left}.result-table .hit.active{background:#f9f9f9}.result-table .alignment-action{text-align:center;word-wrap:normal}.theme--dark .result-table a:not([href]){color:#eee}.theme--dark .result-table .hit.active{background:#333}@media print,screen and (min-width: 961px){.result-table{table-layout:fixed;border-collapse:collapse;width:100%}.result-table th.thin,.result-table td.thin{white-space:nowrap}.result-table .long{overflow:hidden;word-break:keep-all;text-overflow:ellipsis;white-space:nowrap}}@media print{.result-table .alignment-action{display:none}}@media screen and (max-width: 960px){.result-table{width:100%}.result-table col{width:auto !important}.result-table .long{height:100% !important;white-space:normal !important;min-height:48px}.result-table .hits{min-width:300px}.result-table tbody td a{min-width:100px}.result-table tbody td.graphical div.ruler{margin:10px 0}.result-table thead{display:none}.result-table tfoot th{border:0;display:inherit}.result-table tr{box-shadow:0 2px 3px rgba(0,0,0,.1),0 0 0 1px rgba(0,0,0,.1);max-width:100%;position:relative;display:block;padding:.5em}.result-table tr td{border:0;display:inherit}.result-table tr td:last-child{border-bottom:0}.result-table tr:not(:last-child){margin-bottom:1rem}.result-table tr:not(.is-selected){background:inherit}.result-table tr:not(.is-selected):hover{background-color:inherit}.result-table tr.detail{margin-top:-1rem}.result-table tr:not(.detail):not(.is-empty):not(.table-footer) td{display:flex;border-bottom:1px solid #eee;flex-direction:row}.result-table tr:not(.detail):not(.is-empty):not(.table-footer) td:last-child{border-bottom:0}.result-table tr:not(.detail):not(.is-empty):not(.table-footer) td:before{content:attr(data-label);font-weight:600;margin-right:auto;padding-right:.5em;word-break:keep-all;flex:1;white-space:nowrap}.result-table tbody td a,.result-table tbody td span{flex:2;margin-left:auto;text-align:right;word-wrap:anywhere}}.alignment{position:absolute;left:4px;right:4px;z-index:999;box-shadow:0 3px 5px -1px rgba(0,0,0,.2),0 6px 10px 0 rgba(0,0,0,.14),0 1px 18px 0 rgba(0,0,0,.12) !important}.alignment .residues{font-family:InconsolataClustal,Inconsolata,Consolas,Menlo,Monaco,"Cascadia Mono","Segoe UI Mono","Roboto Mono","Oxygen Mono","Ubuntu Monospace","Source Code Pro","Fira Mono","Droid Sans Mono","Courier New",monospace;white-space:pre}.theme--dark .alignment .residues{color:#fff}', "", {
                 version: 3,
-                sources: [ "webpack://./frontend/ResultView.vue" ],
+                sources: [ "webpack://./node_modules/vuetify/src/components/VBtnToggle/VBtnToggle.sass", "webpack://./node_modules/vuetify/src/styles/settings/_variables.scss", "webpack://./node_modules/vuetify/src/components/VBtnToggle/_variables.scss", "webpack://./node_modules/vuetify/src/styles/tools/_rtl.sass", "webpack://./frontend/ResultView.vue" ],
                 names: [],
-                mappings: "AAyVA,WACA,8BAAA,CACA,mFAAA,CAIA,MACI,YAAA,CAGJ,IACI,0BAAA,CAGJ,2CACI,aACI,oBAAA,CACA,cAAA,CAAA,CAKJ,uBACI,aAAA,CACA,iBAAA,CACA,UAAA,CACA,iBAAA,CAGJ,4BACI,UAAA,CACA,8CACI,oBAAA,CAIR,kCACI,aAAA,CACA,eAAA,CAGJ,0BACI,kBAAA,CAOJ,gCACI,iBAAA,CACA,gBAAA,CAOA,yCACI,UAAA,CAGJ,uCACI,eAAA,CASZ,2CACI,cACI,kBAAA,CACA,wBAAA,CACA,UAAA,CACA,4CACI,kBAAA,CAEJ,oBACI,eAAA,CACA,mBAAA,CACA,sBAAA,CACA,kBAAA,CAAA,CAKZ,aACI,gCACI,YAAA,CAAA,CAIR,qCACI,cACI,UAAA,CACA,kBACI,qBAAA,CAEJ,oBACI,sBAAA,CACA,6BAAA,CACA,eAAA,CAEJ,oBACI,eAAA,CAEJ,yBACI,eAAA,CAEJ,2CACI,aAAA,CAEJ,oBACI,YAAA,CAEJ,uBACI,QAAA,CACA,eAAA,CAEJ,iBACI,4DAAA,CACA,cAAA,CACA,iBAAA,CACA,aAAA,CACA,YAAA,CAEJ,oBACI,QAAA,CACA,eAAA,CAEJ,+BACI,eAAA,CAEJ,kCACI,kBAAA,CAEJ,mCACI,kBAAA,CAEJ,yCACI,wBAAA,CAEJ,wBACI,gBAAA,CAEJ,mEACI,YAAA,CACA,4BAAA,CACA,kBAAA,CAEA,8EACI,eAAA,CAGR,0EACI,wBAAA,CACA,eAAA,CACA,iBAAA,CACA,kBAAA,CACA,mBAAA,CACA,MAAA,CACA,kBAAA,CAGJ,qDACI,MAAA,CACA,gBAAA,CACA,gBAAA,CACA,kBAAA,CAAA,CAKZ,WACI,iBAAA,CACA,QAAA,CACA,SAAA,CACA,WAAA,CACA,6GAAA,CAEA,qBACI,uNAAA,CACA,eAAA,CAIA,kCACI,UAAA",
-                sourcesContent: [ '@import "_variables.scss";\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n@font-face {\nfont-family: InconsolataClustal;\nsrc: url(assets/InconsolataClustal2.woff2),\n     url(assets/InconsolataClustal2.woff);\n}\n\n.hide {\n    display: none;\n}\n\n.db {\n    border-left: 5px solid black;\n}\n\n@media print, screen and (max-width: 599px) {\n    small.ticket {\n        display: inline-block;\n        line-height: 0.9;\n    }\n}\n\n.result-table {\n    a.anchor {\n        display: block;\n        position: relative;\n        top: -125px;\n        visibility: hidden;\n    }\n\n    a:not([href]) {\n        color: #333;\n        &:not([href]):hover {\n            text-decoration: none;\n        }\n    }\n\n    td, th {\n        padding: 0 6px;\n        text-align: left;\n    }\n\n    .hit.active {\n        background: #f9f9f9;\n    }\n\n    // tbody:hover td[rowspan], tbody tr:hover {\n    //     background: #eee;\n    // }\n\n    .alignment-action {\n        text-align: center;\n        word-wrap: normal;\n    }\n}\n\n\n.theme--dark {\n    .result-table {\n        a:not([href])  {\n            color: #eee;\n        }\n\n        .hit.active {\n            background: #333;\n        }\n\n        // tbody:hover td[rowspan], tbody tr:hover {\n        //     background: #333;\n        // }\n    }\n}\n\n@media print, screen and (min-width: 961px) {\n    .result-table {\n        table-layout: fixed;\n        border-collapse: collapse;\n        width: 100%;\n        th.thin, td.thin {\n            white-space: nowrap;\n        }\n        .long {\n            overflow: hidden;\n            word-break: keep-all;\n            text-overflow: ellipsis;\n            white-space: nowrap;\n        }\n    }\n}\n\n@media print {\n    .result-table .alignment-action {\n        display: none;\n    }\n}\n\n@media screen and (max-width: 960px) {\n    .result-table {\n        width: 100%;\n        col {\n            width: auto !important;\n        }\n        .long {\n            height: 100% !important;\n            white-space: normal !important;\n            min-height: 48px;\n        }\n        .hits {\n            min-width: 300px;\n        }\n        tbody td a {\n            min-width: 100px;\n        }\n        tbody td.graphical div.ruler {\n            margin: 10px 0;\n        }\n        thead {\n            display: none;\n        }\n        tfoot th {\n            border: 0;\n            display: inherit;\n        }\n        tr {\n            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.1);\n            max-width: 100%;\n            position: relative;\n            display: block;\n            padding: 0.5em;\n        }\n        tr td {\n            border: 0;\n            display: inherit;\n        }\n        tr td:last-child {\n            border-bottom: 0;\n        }\n        tr:not(:last-child) {\n            margin-bottom: 1rem;\n        }\n        tr:not(.is-selected) {\n            background: inherit;\n        }\n        tr:not(.is-selected):hover {\n            background-color: inherit;\n        }\n        tr.detail {\n            margin-top: -1rem;\n        }\n        tr:not(.detail):not(.is-empty):not(.table-footer) td {\n            display: flex;\n            border-bottom: 1px solid #eee;\n            flex-direction: row;\n\n            &:last-child {\n                border-bottom: 0;\n            }\n        }\n        tr:not(.detail):not(.is-empty):not(.table-footer) td:before {\n            content: attr(data-label);\n            font-weight: 600;\n            margin-right: auto;\n            padding-right: 0.5em;\n            word-break: keep-all;\n            flex: 1;\n            white-space: nowrap;\n        }\n\n        tbody td a, tbody td span {\n            flex: 2;\n            margin-left: auto;\n            text-align: right;\n            word-wrap: anywhere;\n        }\n    }\n}\n\n.alignment {\n    position:absolute;\n    left:4px;\n    right:4px;\n    z-index: 999;\n    box-shadow: 0 3px 5px -1px rgba(0,0,0,.2),0 6px 10px 0 rgba(0,0,0,.14),0 1px 18px 0 rgba(0,0,0,.12) !important;\n\n    .residues {\n        font-family: InconsolataClustal, Inconsolata, Consolas, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;\n        white-space: pre;\n    }\n\n    .theme--dark & {\n        .residues {\n            color: #fff;\n        }\n    }\n}\n\n' ],
+                mappings: "AAKE,qDACE,eAAA,CACA,qBAAA,CAEA,kEACE,uCAAA,CAEA,qFACE,4BAAA,CAEF,0EACE,UAAA,CAXN,oDACE,kBAAA,CACA,UAAA,CAEA,iEACE,6CAAA,CAEA,oFACE,iCAAA,CAEF,yEACE,UAAA,CAGR,cACE,iBCbmB,CDcnB,mBAAA,CACA,cAAA,CAEA,2BACE,eAAA,CACA,kBAAA,CACA,iBAAA,CACA,eAAA,CACA,eAAA,CACA,UEvBqB,CFwBrB,cE1BqB,CAAA,8DF8BjB,8BAAA,CACA,iCAAA,CGnCN,8DHsCM,+BAAA,CACA,kCAAA,CGnCN,6DHuCM,+BAAA,CACA,kCAAA,CG5CN,6DH+CM,8BAAA,CACA,iCAAA,CAEJ,mCACE,aAAA,CACA,SAAA,CAEF,iCACE,YAAA,CAGA,oEACE,mBAAA,CAGF,mEACE,mBAAA,CAEN,2CACE,cE7DmB,CF8DnB,YAAA,CAGA,qEACE,WEpEkB,CFuEtB,uCACE,cAAA,CAGF,kCACE,aEvE2B,CFyE/B,qBACE,eAAA,CAEA,kCACE,uCAAA,CACA,wBAAA,CACA,UE9E0B,CF+E1B,cAAA,CAEJ,uBACE,kBEpF+B,CFsFjC,sBACE,sBAAA,CAEF,oBACE,eAAA,CIkRF,WACA,8BAAA,CACA,mFAAA,CAIA,MACI,YAAA,CAGJ,IACI,0BAAA,CAGJ,2CACI,aACI,oBAAA,CACA,cAAA,CAAA,CAKJ,uBACI,aAAA,CACA,iBAAA,CACA,UAAA,CACA,iBAAA,CAGJ,4BACI,UAAA,CACA,8CACI,oBAAA,CAIR,kCACI,aAAA,CACA,eAAA,CAGJ,0BACI,kBAAA,CAOJ,gCACI,iBAAA,CACA,gBAAA,CAOA,yCACI,UAAA,CAGJ,uCACI,eAAA,CASZ,2CACI,cACI,kBAAA,CACA,wBAAA,CACA,UAAA,CACA,4CACI,kBAAA,CAEJ,oBACI,eAAA,CACA,mBAAA,CACA,sBAAA,CACA,kBAAA,CAAA,CAKZ,aACI,gCACI,YAAA,CAAA,CAIR,qCACI,cACI,UAAA,CACA,kBACI,qBAAA,CAEJ,oBACI,sBAAA,CACA,6BAAA,CACA,eAAA,CAEJ,oBACI,eAAA,CAEJ,yBACI,eAAA,CAEJ,2CACI,aAAA,CAEJ,oBACI,YAAA,CAEJ,uBACI,QAAA,CACA,eAAA,CAEJ,iBACI,4DAAA,CACA,cAAA,CACA,iBAAA,CACA,aAAA,CACA,YAAA,CAEJ,oBACI,QAAA,CACA,eAAA,CAEJ,+BACI,eAAA,CAEJ,kCACI,kBAAA,CAEJ,mCACI,kBAAA,CAEJ,yCACI,wBAAA,CAEJ,wBACI,gBAAA,CAEJ,mEACI,YAAA,CACA,4BAAA,CACA,kBAAA,CAEA,8EACI,eAAA,CAGR,0EACI,wBAAA,CACA,eAAA,CACA,iBAAA,CACA,kBAAA,CACA,mBAAA,CACA,MAAA,CACA,kBAAA,CAGJ,qDACI,MAAA,CACA,gBAAA,CACA,gBAAA,CACA,kBAAA,CAAA,CAKZ,WACI,iBAAA,CACA,QAAA,CACA,SAAA,CACA,WAAA,CACA,6GAAA,CAEA,qBACI,uNAAA,CACA,eAAA,CAIA,kCACI,UAAA",
+                sourcesContent: [ "// Imports\n@import './_variables.scss'\n\n// Theme\n+theme(v-btn-toggle) using ($material)\n  &:not(.v-btn-toggle--group)\n    background: map-get($material, 'cards')\n    color: map-deep-get($material, 'text', 'primary')\n\n    .v-btn.v-btn\n      border-color: map-get($material, 'dividers') !important\n\n      &:focus:not(:active)\n        border-color: map-deep-get($material, 'buttons', 'disabled')\n\n      .v-icon\n        color: map-deep-get($material, 'toggle-buttons', 'color')\n\n// Block\n.v-btn-toggle\n  border-radius: $btn-toggle-border-radius\n  display: inline-flex\n  max-width: 100%\n\n  > .v-btn.v-btn\n    border-radius: 0\n    border-style: solid\n    border-width: thin\n    box-shadow: none\n    box-shadow: none\n    opacity: $btn-toggle-btn-opacity\n    padding: $btn-toggle-btn-padding\n\n    &:first-child\n      +ltr()\n        border-top-left-radius: inherit\n        border-bottom-left-radius: inherit\n\n      +rtl()\n        border-top-right-radius: inherit\n        border-bottom-right-radius: inherit\n\n    &:last-child\n      +ltr()\n        border-top-right-radius: inherit\n        border-bottom-right-radius: inherit\n\n      +rtl()\n        border-top-left-radius: inherit\n        border-bottom-left-radius: inherit\n\n    &--active\n      color: inherit\n      opacity: 1\n\n    &:after\n      display: none\n\n    +ltr()\n      &:not(:first-child)\n        border-left-width: 0\n\n    +rtl()\n      &:not(:last-child)\n        border-left-width: 0\n\n  .v-btn.v-btn.v-size--default\n    min-width: $btn-toggle-btn-width\n    min-height: 0\n\n  &:not(.v-btn-toggle--dense)\n    .v-btn.v-btn.v-size--default\n      height: $btn-toggle-btn-height\n\n.v-btn-toggle--borderless\n  > .v-btn.v-btn\n    border-width: 0\n\n.v-btn-toggle--dense\n  > .v-btn.v-btn\n    padding: $btn-toggle-dense-btn-padding\n\n.v-btn-toggle--group\n  border-radius: 0\n\n  > .v-btn.v-btn\n    background-color: transparent !important\n    border-color: transparent\n    margin: $btn-toggle-group-btn-margin\n    min-width: auto\n\n.v-btn-toggle--rounded\n  border-radius: $btn-toggle-round-border-radius\n\n.v-btn-toggle--shaped\n  border-radius: $btn-toggle-shaped-border-radius $btn-toggle-border-radius\n\n.v-btn-toggle--tile\n  border-radius: 0\n", "@import '../tools/_functions.sass';\n\n$color-pack: true !default;\n\n$body-font-family: 'Roboto', sans-serif !default;\n$font-size-root: 16px !default;\n$line-height-root: 1.5 !default;\n$border-radius-root: 4px !default;\n\n$rounded: () !default;\n$rounded: map-deep-merge(\n  (\n    0: 0,\n    'sm': $border-radius-root / 2,\n    null: $border-radius-root,\n    'lg': $border-radius-root * 2,\n    'xl': $border-radius-root * 6,\n    'pill': 9999px,\n    'circle': 50%\n  ),\n  $rounded\n);\n\n$spacer: 4px !default;\n$spacers-steps: 16 !default; \n\n$spacers: () !default;\n@if (type-of($spacers) == list) {\n  @for $i from 0 through $spacers-steps {\n    $spacers: map-merge($spacers, ($i: $spacer * $i))\n  }\n}\n\n$negative-spacers: () !default;\n@if (type-of($negative-spacers) == list) {\n  @for $i from 1 through $spacers-steps {\n    $negative-spacers: map-merge($negative-spacers, (\"n\" + $i: -$spacer * $i))\n  }\n}\n\n$grid-breakpoints: () !default;\n$grid-breakpoints: map-deep-merge(\n  (\n    'xs': 0,\n    'sm': 600px,\n    'md': 960px,\n    'lg': 1280px - 16px,\n    'xl': 1920px - 16px\n  ),\n  $grid-breakpoints\n);\n\n$grid-gutter: $spacer * 6 !default;\n$form-grid-gutter: $spacer * 2 !default;\n$grid-columns: 12 !default;\n\n$container-padding-x: $grid-gutter / 2 !default;\n\n$grid-gutters: () !default;\n$grid-gutters: map-deep-merge(\n  (\n    'xs': $grid-gutter / 12,\n    'sm': $grid-gutter / 6,\n    'md': $grid-gutter / 3,\n    'lg': $grid-gutter * 2/3,\n    'xl': $grid-gutter\n  ),\n  $grid-gutters\n);\n\n$container-max-widths: () !default;\n$container-max-widths: map-deep-merge(\n  (\n    'md': map-get($grid-breakpoints, 'md') * 0.9375,\n    'lg': map-get($grid-breakpoints, 'lg') * 0.9375,\n    'xl': map-get($grid-breakpoints, 'xl') * 0.9375\n  ),\n  $container-max-widths\n);\n\n$display-breakpoints: () !default;\n$display-breakpoints: map-deep-merge(\n  (\n    'print-only': 'only print',\n    'screen-only': 'only screen',\n    'xs-only': 'only screen and (max-width: #{map-get($grid-breakpoints, 'sm') - 0.02})',\n    'sm-only': 'only screen and (min-width: #{map-get($grid-breakpoints, 'sm')}) and (max-width: #{map-get($grid-breakpoints, 'md') - 0.02})',\n    'sm-and-down': 'only screen and (max-width: #{map-get($grid-breakpoints, 'md') - 0.02})',\n    'sm-and-up': 'only screen and (min-width: #{map-get($grid-breakpoints, 'sm')})',\n    'md-only': 'only screen and (min-width: #{map-get($grid-breakpoints, 'md')}) and (max-width: #{map-get($grid-breakpoints, 'lg') - 0.02})',\n    'md-and-down': 'only screen and (max-width: #{map-get($grid-breakpoints, 'lg') - 0.02})',\n    'md-and-up': 'only screen and (min-width: #{map-get($grid-breakpoints, 'md')})',\n    'lg-only': 'only screen and (min-width: #{map-get($grid-breakpoints, 'lg')}) and (max-width: #{map-get($grid-breakpoints, 'xl') - 0.02})',\n    'lg-and-down': 'only screen and (max-width: #{map-get($grid-breakpoints, 'xl') - 0.02})',\n    'lg-and-up': 'only screen and (min-width: #{map-get($grid-breakpoints, 'lg')})',\n    'xl-only': 'only screen and (min-width: #{map-get($grid-breakpoints, 'xl')})'\n  ),\n  $display-breakpoints\n);\n\n$font-weights: () !default;\n$font-weights: map-deep-merge(\n  (\n    'thin': 100,\n    'light': 300,\n    'regular': 400,\n    'medium': 500,\n    'bold': 700,\n    'black': 900\n  ),\n  $font-weights\n);\n\n$heading-font-family: $body-font-family !default;\n\n$headings: () !default;\n$headings: map-deep-merge(\n  (\n    'h1': (\n      'size': 6rem,\n      'weight': 300,\n      'line-height': 6rem,\n      'letter-spacing': -.015625em,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'h2': (\n      'size': 3.75rem,\n      'weight': 300,\n      'line-height': 3.75rem,\n      'letter-spacing': -.0083333333em,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'h3': (\n      'size': 3rem,\n      'weight': 400,\n      'line-height': 3.125rem,\n      'letter-spacing': normal,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'h4': (\n      'size': 2.125rem,\n      'weight': 400,\n      'line-height': 2.5rem,\n      'letter-spacing': .0073529412em,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'h5': (\n      'size': 1.5rem,\n      'weight': 400,\n      'line-height': 2rem,\n      'letter-spacing': normal,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'h6': (\n      'size': 1.25rem,\n      'weight': 500,\n      'line-height': 2rem,\n      'letter-spacing': .0125em,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'subtitle-1': (\n      'size': 1rem,\n      'weight': normal,\n      'line-height': 1.75rem,\n      'letter-spacing': .009375em,\n      'font-family': $body-font-family,\n      'text-transform': false\n    ),\n    'subtitle-2': (\n      'size': .875rem,\n      'weight': 500,\n      'line-height': 1.375rem,\n      'letter-spacing': .0071428571em,\n      'font-family': $body-font-family,\n      'text-transform': false\n    ),\n    'body-1': (\n      'size': 1rem,\n      'weight': 400,\n      'line-height': 1.5rem,\n      'letter-spacing': .03125em,\n      'font-family': $body-font-family,\n      'text-transform': false\n    ),\n    'body-2': (\n      'size': .875rem,\n      'weight': 400,\n      'line-height': 1.25rem,\n      'letter-spacing': .0178571429em,\n      'font-family': $body-font-family,\n      'text-transform': false\n    ),\n    'button': (\n      'size': .875rem,\n      'weight': 500,\n      'line-height': 2.25rem,\n      'letter-spacing': .0892857143em,\n      'font-family': $body-font-family,\n      'text-transform': uppercase\n    ),\n    'caption': (\n      'size': .75rem,\n      'weight': 400,\n      'line-height': 1.25rem,\n      'letter-spacing': .0333333333em,\n      'font-family': $body-font-family,\n      'text-transform': false\n    ),\n    'overline': (\n      'size': .75rem,\n      'weight': 500,\n      'line-height': 2rem,\n      'letter-spacing': .1666666667em,\n      'font-family': $body-font-family,\n      'text-transform': uppercase\n    )\n  ),\n  $headings\n);\n\n$typography: () !default;\n@each $type, $values in $headings {\n  $typography: map-deep-merge(\n    $typography,\n    (#{$type}: map-values($values))\n  );\n}\n\n$transition: () !default;\n$transition: map-deep-merge(\n  (\n    'fast-out-slow-in': cubic-bezier(0.4, 0, 0.2, 1),\n    'linear-out-slow-in': cubic-bezier(0, 0, 0.2, 1),\n    'fast-out-linear-in': cubic-bezier(0.4, 0, 1, 1),\n    'ease-in-out': cubic-bezier(0.4, 0, 0.6, 1),\n    'fast-in-fast-out': cubic-bezier(0.25, 0.8, 0.25, 1),\n    'swing': cubic-bezier(0.25, 0.8, 0.5, 1)\n  ),\n  $transition\n);\n$primary-transition: 0.3s map-get($transition, 'swing') !default;\n$secondary-transition: 0.2s map-get($transition, 'ease-in-out') !default;\n\n// Ripples //;\n$ripple-animation-transition-in: transform 0.25s map-get($transition, 'fast-out-slow-in'), opacity 0.1s map-get($transition, 'fast-out-slow-in') !default;\n$ripple-animation-transition-out: opacity 0.3s map-get($transition, 'fast-out-slow-in') !default;\n$ripple-animation-visible-opacity: 0.25 !default;\n\n// Elements //;\n$bootable-transition: 0.2s map-get($transition, 'fast-out-slow-in') !default;\n$blockquote-font-size: 18px !default;\n$blockquote-font-weight: 300 !default;\n$code-kbd-border-radius: 3px !default;\n$code-kbd-font-size: 85% !default;\n$code-kbd-font-weight: normal !default;\n$code-padding: .2em .4em !default;\n$kbd-padding: .2em .4rem !default;\n$input-top-spacing: 16px !default;\n$text-field-active-label-height: 12px !default;\n", "@import '../../styles/styles.sass';\n\n$btn-toggle-border-radius: $border-radius-root !default;\n$btn-toggle-shaped-border-radius: 24px !default;\n$btn-toggle-btn-height: 48px !default;\n$btn-toggle-btn-padding: 0 12px !default;\n$btn-toggle-btn-width: 48px !default;\n$btn-toggle-btn-opacity: 0.8 !default;\n$btn-toggle-round-border-radius: 24px !default;\n$btn-toggle-dense-btn-padding: 0 8px !default;\n$btn-toggle-group-btn-margin: 4px !default;\n", "@mixin rtl()\n  .v-application--is-rtl &\n    @content\n\n@mixin ltr()\n  .v-application--is-ltr &\n    @content\n", '@import "_variables.scss";\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n@font-face {\nfont-family: InconsolataClustal;\nsrc: url(assets/InconsolataClustal2.woff2),\n     url(assets/InconsolataClustal2.woff);\n}\n\n.hide {\n    display: none;\n}\n\n.db {\n    border-left: 5px solid black;\n}\n\n@media print, screen and (max-width: 599px) {\n    small.ticket {\n        display: inline-block;\n        line-height: 0.9;\n    }\n}\n\n.result-table {\n    a.anchor {\n        display: block;\n        position: relative;\n        top: -125px;\n        visibility: hidden;\n    }\n\n    a:not([href]) {\n        color: #333;\n        &:not([href]):hover {\n            text-decoration: none;\n        }\n    }\n\n    td, th {\n        padding: 0 6px;\n        text-align: left;\n    }\n\n    .hit.active {\n        background: #f9f9f9;\n    }\n\n    // tbody:hover td[rowspan], tbody tr:hover {\n    //     background: #eee;\n    // }\n\n    .alignment-action {\n        text-align: center;\n        word-wrap: normal;\n    }\n}\n\n\n.theme--dark {\n    .result-table {\n        a:not([href])  {\n            color: #eee;\n        }\n\n        .hit.active {\n            background: #333;\n        }\n\n        // tbody:hover td[rowspan], tbody tr:hover {\n        //     background: #333;\n        // }\n    }\n}\n\n@media print, screen and (min-width: 961px) {\n    .result-table {\n        table-layout: fixed;\n        border-collapse: collapse;\n        width: 100%;\n        th.thin, td.thin {\n            white-space: nowrap;\n        }\n        .long {\n            overflow: hidden;\n            word-break: keep-all;\n            text-overflow: ellipsis;\n            white-space: nowrap;\n        }\n    }\n}\n\n@media print {\n    .result-table .alignment-action {\n        display: none;\n    }\n}\n\n@media screen and (max-width: 960px) {\n    .result-table {\n        width: 100%;\n        col {\n            width: auto !important;\n        }\n        .long {\n            height: 100% !important;\n            white-space: normal !important;\n            min-height: 48px;\n        }\n        .hits {\n            min-width: 300px;\n        }\n        tbody td a {\n            min-width: 100px;\n        }\n        tbody td.graphical div.ruler {\n            margin: 10px 0;\n        }\n        thead {\n            display: none;\n        }\n        tfoot th {\n            border: 0;\n            display: inherit;\n        }\n        tr {\n            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.1);\n            max-width: 100%;\n            position: relative;\n            display: block;\n            padding: 0.5em;\n        }\n        tr td {\n            border: 0;\n            display: inherit;\n        }\n        tr td:last-child {\n            border-bottom: 0;\n        }\n        tr:not(:last-child) {\n            margin-bottom: 1rem;\n        }\n        tr:not(.is-selected) {\n            background: inherit;\n        }\n        tr:not(.is-selected):hover {\n            background-color: inherit;\n        }\n        tr.detail {\n            margin-top: -1rem;\n        }\n        tr:not(.detail):not(.is-empty):not(.table-footer) td {\n            display: flex;\n            border-bottom: 1px solid #eee;\n            flex-direction: row;\n\n            &:last-child {\n                border-bottom: 0;\n            }\n        }\n        tr:not(.detail):not(.is-empty):not(.table-footer) td:before {\n            content: attr(data-label);\n            font-weight: 600;\n            margin-right: auto;\n            padding-right: 0.5em;\n            word-break: keep-all;\n            flex: 1;\n            white-space: nowrap;\n        }\n\n        tbody td a, tbody td span {\n            flex: 2;\n            margin-left: auto;\n            text-align: right;\n            word-wrap: anywhere;\n        }\n    }\n}\n\n.alignment {\n    position:absolute;\n    left:4px;\n    right:4px;\n    z-index: 999;\n    box-shadow: 0 3px 5px -1px rgba(0,0,0,.2),0 6px 10px 0 rgba(0,0,0,.14),0 1px 18px 0 rgba(0,0,0,.12) !important;\n\n    .residues {\n        font-family: InconsolataClustal, Inconsolata, Consolas, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;\n        white-space: pre;\n    }\n\n    .theme--dark & {\n        .residues {\n            color: #fff;\n        }\n    }\n}\n\n' ],
                 sourceRoot: ""
             } ]), e.exports = l;
         },
         5385: (e, n, t) => {
             var r = t(7537), i = t(3645)(r);
-            i.push([ e.id, ".ruler[data-v-2b7861b2]{position:relative;width:100%;height:10px;border-top:1px solid #333}.tick-label[data-v-2b7861b2]{position:absolute;word-wrap:normal;font-size:9px;word-break:keep-all;line-height:1em;margin-top:7px;width:50px;margin-left:-25px;text-align:center;font-weight:bold}.tick-label-top[data-v-2b7861b2]{margin-top:-15px}.query[data-v-2b7861b2]{position:absolute;top:0;bottom:0;margin-top:-5px;--chevron-width: 5px;height:10px}.chevron-start[data-v-2b7861b2]{position:absolute;left:0;bottom:0;top:0;width:5px;clip-path:polygon(0 0, var(--chevron-width) 0, var(--chevron-width) 100%, 0 100%, var(--chevron-width) 50%)}.query.reversed .chevron-start[data-v-2b7861b2]{clip-path:polygon(var(--chevron-width) 0, 0 50%, var(--chevron-width) 100%)}.chevron-mid[data-v-2b7861b2]{position:absolute;left:5px;right:5px;bottom:0;top:0}.chevron-end[data-v-2b7861b2]{position:absolute;right:0;bottom:0;top:0;width:5px;clip-path:polygon(0 0, var(--chevron-width) 50%, 0 100%)}.query.reversed .chevron-end[data-v-2b7861b2]{clip-path:polygon(0 0, var(--chevron-width) 0, 0 50%, var(--chevron-width) 100%, 0 100%);clip-path:polygon()}.theme--dark .ruler[data-v-2b7861b2]{border-color:#aaa}", "", {
+            i.push([ e.id, ".theme--light.v-btn-toggle[data-v-2b7861b2]:not(.v-btn-toggle--group){background:#fff;color:rgba(0,0,0,.87)}.theme--light.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn[data-v-2b7861b2]{border-color:rgba(0,0,0,.12) !important}.theme--light.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn[data-v-2b7861b2]:focus:not(:active){border-color:rgba(0,0,0,.26)}.theme--light.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn .v-icon[data-v-2b7861b2]{color:#000}.theme--dark.v-btn-toggle[data-v-2b7861b2]:not(.v-btn-toggle--group){background:#1e1e1e;color:#fff}.theme--dark.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn[data-v-2b7861b2]{border-color:rgba(255,255,255,.12) !important}.theme--dark.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn[data-v-2b7861b2]:focus:not(:active){border-color:rgba(255,255,255,.3)}.theme--dark.v-btn-toggle:not(.v-btn-toggle--group) .v-btn.v-btn .v-icon[data-v-2b7861b2]{color:#fff}.v-btn-toggle[data-v-2b7861b2]{border-radius:4px;display:inline-flex;max-width:100%}.v-btn-toggle>.v-btn.v-btn[data-v-2b7861b2]{border-radius:0;border-style:solid;border-width:thin;box-shadow:none;box-shadow:none;opacity:.8;padding:0 12px}.v-application--is-ltr .v-btn-toggle>.v-btn.v-btn[data-v-2b7861b2]:first-child{border-top-left-radius:inherit;border-bottom-left-radius:inherit}.v-application--is-rtl .v-btn-toggle>.v-btn.v-btn[data-v-2b7861b2]:first-child{border-top-right-radius:inherit;border-bottom-right-radius:inherit}.v-application--is-ltr .v-btn-toggle>.v-btn.v-btn[data-v-2b7861b2]:last-child{border-top-right-radius:inherit;border-bottom-right-radius:inherit}.v-application--is-rtl .v-btn-toggle>.v-btn.v-btn[data-v-2b7861b2]:last-child{border-top-left-radius:inherit;border-bottom-left-radius:inherit}.v-btn-toggle>.v-btn.v-btn--active[data-v-2b7861b2]{color:inherit;opacity:1}.v-btn-toggle>.v-btn.v-btn[data-v-2b7861b2]:after{display:none}.v-application--is-ltr .v-btn-toggle>.v-btn.v-btn[data-v-2b7861b2]:not(:first-child){border-left-width:0}.v-application--is-rtl .v-btn-toggle>.v-btn.v-btn[data-v-2b7861b2]:not(:last-child){border-left-width:0}.v-btn-toggle .v-btn.v-btn.v-size--default[data-v-2b7861b2]{min-width:48px;min-height:0}.v-btn-toggle:not(.v-btn-toggle--dense) .v-btn.v-btn.v-size--default[data-v-2b7861b2]{height:48px}.v-btn-toggle--borderless>.v-btn.v-btn[data-v-2b7861b2]{border-width:0}.v-btn-toggle--dense>.v-btn.v-btn[data-v-2b7861b2]{padding:0 8px}.v-btn-toggle--group[data-v-2b7861b2]{border-radius:0}.v-btn-toggle--group>.v-btn.v-btn[data-v-2b7861b2]{background-color:transparent !important;border-color:transparent;margin:4px;min-width:auto}.v-btn-toggle--rounded[data-v-2b7861b2]{border-radius:24px}.v-btn-toggle--shaped[data-v-2b7861b2]{border-radius:24px 4px}.v-btn-toggle--tile[data-v-2b7861b2]{border-radius:0}.ruler[data-v-2b7861b2]{position:relative;width:100%;height:10px;border-top:1px solid #333}.tick-label[data-v-2b7861b2]{position:absolute;word-wrap:normal;font-size:9px;word-break:keep-all;line-height:1em;margin-top:7px;width:50px;margin-left:-25px;text-align:center;font-weight:bold}.tick-label-top[data-v-2b7861b2]{margin-top:-15px}.query[data-v-2b7861b2]{position:absolute;top:0;bottom:0;margin-top:-5px;--chevron-width: 5px;height:10px}.chevron-start[data-v-2b7861b2]{position:absolute;left:0;bottom:0;top:0;width:5px;clip-path:polygon(0 0, var(--chevron-width) 0, var(--chevron-width) 100%, 0 100%, var(--chevron-width) 50%)}.query.reversed .chevron-start[data-v-2b7861b2]{clip-path:polygon(var(--chevron-width) 0, 0 50%, var(--chevron-width) 100%)}.chevron-mid[data-v-2b7861b2]{position:absolute;left:5px;right:5px;bottom:0;top:0}.chevron-end[data-v-2b7861b2]{position:absolute;right:0;bottom:0;top:0;width:5px;clip-path:polygon(0 0, var(--chevron-width) 50%, 0 100%)}.query.reversed .chevron-end[data-v-2b7861b2]{clip-path:polygon(0 0, var(--chevron-width) 0, 0 50%, var(--chevron-width) 100%, 0 100%);clip-path:polygon()}.theme--dark .ruler[data-v-2b7861b2]{border-color:#aaa}", "", {
                 version: 3,
-                sources: [ "webpack://./frontend/Ruler.vue" ],
+                sources: [ "webpack://./node_modules/vuetify/src/components/VBtnToggle/VBtnToggle.sass", "webpack://./node_modules/vuetify/src/styles/settings/_variables.scss", "webpack://./node_modules/vuetify/src/components/VBtnToggle/_variables.scss", "webpack://./node_modules/vuetify/src/styles/tools/_rtl.sass", "webpack://./frontend/Ruler.vue" ],
                 names: [],
-                mappings: "AAwDA,wBACE,iBAAA,CACA,UAAA,CACA,WAAA,CACA,yBAAA,CAGF,6BACE,iBAAA,CACA,gBAAA,CACA,aAAA,CACA,mBAAA,CACA,eAAA,CACA,cAAA,CACA,UAAA,CACA,iBAAA,CACA,iBAAA,CACA,gBAAA,CAGF,iCACE,gBAAA,CAGF,wBACE,iBAAA,CACA,KAAA,CACA,QAAA,CACA,eAAA,CACA,oBAAA,CACA,WAAA,CAGF,gCACE,iBAAA,CACA,MAAA,CACA,QAAA,CACA,KAAA,CACA,SAAA,CACA,2GAAA,CAGF,gDACE,2EAAA,CAGF,8BACE,iBAAA,CACA,QAAA,CACA,SAAA,CACA,QAAA,CACA,KAAA,CAGF,8BACE,iBAAA,CACA,OAAA,CACA,QAAA,CACA,KAAA,CACA,SAAA,CACA,wDAAA,CAEF,8CACE,wFAAA,CACA,mBAAA,CAIE,qCACE,iBAAA",
-                sourcesContent: [ '@import "_variables.scss";\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n.ruler {\n  position: relative;\n  width: 100%;\n  height: 10px;\n  border-top: 1px solid #333;\n}\n\n.tick-label {\n  position: absolute;\n  word-wrap: normal;\n  font-size: 9px;\n  word-break: keep-all;\n  line-height: 1em;\n  margin-top: 7px;\n  width: 50px;\n  margin-left: -25px;\n  text-align: center;\n  font-weight: bold;\n}\n\n.tick-label-top {\n  margin-top: -15px;\n}\n\n.query {\n  position: absolute;\n  top: 0;\n  bottom: 0;\n  margin-top: -5px;\n  --chevron-width: 5px;\n  height: 10px;\n}\n\n.chevron-start {\n  position: absolute;\n  left:0;\n  bottom:0;\n  top:0;\n  width:5px;\n  clip-path: polygon(0 0, var(--chevron-width) 0, var(--chevron-width) 100%, 0 100%, var(--chevron-width) 50%);\n}\n\n.query.reversed .chevron-start {\n  clip-path: polygon(var(--chevron-width) 0, 0 50%, var(--chevron-width) 100%);\n}\n\n.chevron-mid {\n  position: absolute;\n  left:5px;\n  right:5px;\n  bottom:0;\n  top:0;\n}\n\n.chevron-end {\n  position: absolute;\n  right:0;\n  bottom:0;\n  top:0;\n  width:5px;\n  clip-path: polygon(0 0, var(--chevron-width) 50%, 0 100%);\n}\n.query.reversed .chevron-end {\n  clip-path: polygon(0 0, var(--chevron-width) 0, 0 50%, var(--chevron-width) 100%, 0 100%);\n  clip-path: polygon()\n}\n\n.theme--dark {\n    .ruler {\n      border-color: #aaa;\n    }\n}\n' ],
+                mappings: "AAKE,sEACE,eAAA,CACA,qBAAA,CAEA,mFACE,uCAAA,CAEA,sGACE,4BAAA,CAEF,2FACE,UAAA,CAXN,qEACE,kBAAA,CACA,UAAA,CAEA,kFACE,6CAAA,CAEA,qGACE,iCAAA,CAEF,0FACE,UAAA,CAGR,+BACE,iBCbmB,CDcnB,mBAAA,CACA,cAAA,CAEA,4CACE,eAAA,CACA,kBAAA,CACA,iBAAA,CACA,eAAA,CACA,eAAA,CACA,UEvBqB,CFwBrB,cE1BqB,CAAA,+EF8BjB,8BAAA,CACA,iCAAA,CGnCN,+EHsCM,+BAAA,CACA,kCAAA,CGnCN,8EHuCM,+BAAA,CACA,kCAAA,CG5CN,8EH+CM,8BAAA,CACA,iCAAA,CAEJ,oDACE,aAAA,CACA,SAAA,CAEF,kDACE,YAAA,CAGA,qFACE,mBAAA,CAGF,oFACE,mBAAA,CAEN,4DACE,cE7DmB,CF8DnB,YAAA,CAGA,sFACE,WEpEkB,CFuEtB,wDACE,cAAA,CAGF,mDACE,aEvE2B,CFyE/B,sCACE,eAAA,CAEA,mDACE,uCAAA,CACA,wBAAA,CACA,UE9E0B,CF+E1B,cAAA,CAEJ,wCACE,kBEpF+B,CFsFjC,uCACE,sBAAA,CAEF,qCACE,eAAA,CI1CF,wBACE,iBAAA,CACA,UAAA,CACA,WAAA,CACA,yBAAA,CAGF,6BACE,iBAAA,CACA,gBAAA,CACA,aAAA,CACA,mBAAA,CACA,eAAA,CACA,cAAA,CACA,UAAA,CACA,iBAAA,CACA,iBAAA,CACA,gBAAA,CAGF,iCACE,gBAAA,CAGF,wBACE,iBAAA,CACA,KAAA,CACA,QAAA,CACA,eAAA,CACA,oBAAA,CACA,WAAA,CAGF,gCACE,iBAAA,CACA,MAAA,CACA,QAAA,CACA,KAAA,CACA,SAAA,CACA,2GAAA,CAGF,gDACE,2EAAA,CAGF,8BACE,iBAAA,CACA,QAAA,CACA,SAAA,CACA,QAAA,CACA,KAAA,CAGF,8BACE,iBAAA,CACA,OAAA,CACA,QAAA,CACA,KAAA,CACA,SAAA,CACA,wDAAA,CAEF,8CACE,wFAAA,CACA,mBAAA,CAIE,qCACE,iBAAA",
+                sourcesContent: [ "// Imports\n@import './_variables.scss'\n\n// Theme\n+theme(v-btn-toggle) using ($material)\n  &:not(.v-btn-toggle--group)\n    background: map-get($material, 'cards')\n    color: map-deep-get($material, 'text', 'primary')\n\n    .v-btn.v-btn\n      border-color: map-get($material, 'dividers') !important\n\n      &:focus:not(:active)\n        border-color: map-deep-get($material, 'buttons', 'disabled')\n\n      .v-icon\n        color: map-deep-get($material, 'toggle-buttons', 'color')\n\n// Block\n.v-btn-toggle\n  border-radius: $btn-toggle-border-radius\n  display: inline-flex\n  max-width: 100%\n\n  > .v-btn.v-btn\n    border-radius: 0\n    border-style: solid\n    border-width: thin\n    box-shadow: none\n    box-shadow: none\n    opacity: $btn-toggle-btn-opacity\n    padding: $btn-toggle-btn-padding\n\n    &:first-child\n      +ltr()\n        border-top-left-radius: inherit\n        border-bottom-left-radius: inherit\n\n      +rtl()\n        border-top-right-radius: inherit\n        border-bottom-right-radius: inherit\n\n    &:last-child\n      +ltr()\n        border-top-right-radius: inherit\n        border-bottom-right-radius: inherit\n\n      +rtl()\n        border-top-left-radius: inherit\n        border-bottom-left-radius: inherit\n\n    &--active\n      color: inherit\n      opacity: 1\n\n    &:after\n      display: none\n\n    +ltr()\n      &:not(:first-child)\n        border-left-width: 0\n\n    +rtl()\n      &:not(:last-child)\n        border-left-width: 0\n\n  .v-btn.v-btn.v-size--default\n    min-width: $btn-toggle-btn-width\n    min-height: 0\n\n  &:not(.v-btn-toggle--dense)\n    .v-btn.v-btn.v-size--default\n      height: $btn-toggle-btn-height\n\n.v-btn-toggle--borderless\n  > .v-btn.v-btn\n    border-width: 0\n\n.v-btn-toggle--dense\n  > .v-btn.v-btn\n    padding: $btn-toggle-dense-btn-padding\n\n.v-btn-toggle--group\n  border-radius: 0\n\n  > .v-btn.v-btn\n    background-color: transparent !important\n    border-color: transparent\n    margin: $btn-toggle-group-btn-margin\n    min-width: auto\n\n.v-btn-toggle--rounded\n  border-radius: $btn-toggle-round-border-radius\n\n.v-btn-toggle--shaped\n  border-radius: $btn-toggle-shaped-border-radius $btn-toggle-border-radius\n\n.v-btn-toggle--tile\n  border-radius: 0\n", "@import '../tools/_functions.sass';\n\n$color-pack: true !default;\n\n$body-font-family: 'Roboto', sans-serif !default;\n$font-size-root: 16px !default;\n$line-height-root: 1.5 !default;\n$border-radius-root: 4px !default;\n\n$rounded: () !default;\n$rounded: map-deep-merge(\n  (\n    0: 0,\n    'sm': $border-radius-root / 2,\n    null: $border-radius-root,\n    'lg': $border-radius-root * 2,\n    'xl': $border-radius-root * 6,\n    'pill': 9999px,\n    'circle': 50%\n  ),\n  $rounded\n);\n\n$spacer: 4px !default;\n$spacers-steps: 16 !default; \n\n$spacers: () !default;\n@if (type-of($spacers) == list) {\n  @for $i from 0 through $spacers-steps {\n    $spacers: map-merge($spacers, ($i: $spacer * $i))\n  }\n}\n\n$negative-spacers: () !default;\n@if (type-of($negative-spacers) == list) {\n  @for $i from 1 through $spacers-steps {\n    $negative-spacers: map-merge($negative-spacers, (\"n\" + $i: -$spacer * $i))\n  }\n}\n\n$grid-breakpoints: () !default;\n$grid-breakpoints: map-deep-merge(\n  (\n    'xs': 0,\n    'sm': 600px,\n    'md': 960px,\n    'lg': 1280px - 16px,\n    'xl': 1920px - 16px\n  ),\n  $grid-breakpoints\n);\n\n$grid-gutter: $spacer * 6 !default;\n$form-grid-gutter: $spacer * 2 !default;\n$grid-columns: 12 !default;\n\n$container-padding-x: $grid-gutter / 2 !default;\n\n$grid-gutters: () !default;\n$grid-gutters: map-deep-merge(\n  (\n    'xs': $grid-gutter / 12,\n    'sm': $grid-gutter / 6,\n    'md': $grid-gutter / 3,\n    'lg': $grid-gutter * 2/3,\n    'xl': $grid-gutter\n  ),\n  $grid-gutters\n);\n\n$container-max-widths: () !default;\n$container-max-widths: map-deep-merge(\n  (\n    'md': map-get($grid-breakpoints, 'md') * 0.9375,\n    'lg': map-get($grid-breakpoints, 'lg') * 0.9375,\n    'xl': map-get($grid-breakpoints, 'xl') * 0.9375\n  ),\n  $container-max-widths\n);\n\n$display-breakpoints: () !default;\n$display-breakpoints: map-deep-merge(\n  (\n    'print-only': 'only print',\n    'screen-only': 'only screen',\n    'xs-only': 'only screen and (max-width: #{map-get($grid-breakpoints, 'sm') - 0.02})',\n    'sm-only': 'only screen and (min-width: #{map-get($grid-breakpoints, 'sm')}) and (max-width: #{map-get($grid-breakpoints, 'md') - 0.02})',\n    'sm-and-down': 'only screen and (max-width: #{map-get($grid-breakpoints, 'md') - 0.02})',\n    'sm-and-up': 'only screen and (min-width: #{map-get($grid-breakpoints, 'sm')})',\n    'md-only': 'only screen and (min-width: #{map-get($grid-breakpoints, 'md')}) and (max-width: #{map-get($grid-breakpoints, 'lg') - 0.02})',\n    'md-and-down': 'only screen and (max-width: #{map-get($grid-breakpoints, 'lg') - 0.02})',\n    'md-and-up': 'only screen and (min-width: #{map-get($grid-breakpoints, 'md')})',\n    'lg-only': 'only screen and (min-width: #{map-get($grid-breakpoints, 'lg')}) and (max-width: #{map-get($grid-breakpoints, 'xl') - 0.02})',\n    'lg-and-down': 'only screen and (max-width: #{map-get($grid-breakpoints, 'xl') - 0.02})',\n    'lg-and-up': 'only screen and (min-width: #{map-get($grid-breakpoints, 'lg')})',\n    'xl-only': 'only screen and (min-width: #{map-get($grid-breakpoints, 'xl')})'\n  ),\n  $display-breakpoints\n);\n\n$font-weights: () !default;\n$font-weights: map-deep-merge(\n  (\n    'thin': 100,\n    'light': 300,\n    'regular': 400,\n    'medium': 500,\n    'bold': 700,\n    'black': 900\n  ),\n  $font-weights\n);\n\n$heading-font-family: $body-font-family !default;\n\n$headings: () !default;\n$headings: map-deep-merge(\n  (\n    'h1': (\n      'size': 6rem,\n      'weight': 300,\n      'line-height': 6rem,\n      'letter-spacing': -.015625em,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'h2': (\n      'size': 3.75rem,\n      'weight': 300,\n      'line-height': 3.75rem,\n      'letter-spacing': -.0083333333em,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'h3': (\n      'size': 3rem,\n      'weight': 400,\n      'line-height': 3.125rem,\n      'letter-spacing': normal,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'h4': (\n      'size': 2.125rem,\n      'weight': 400,\n      'line-height': 2.5rem,\n      'letter-spacing': .0073529412em,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'h5': (\n      'size': 1.5rem,\n      'weight': 400,\n      'line-height': 2rem,\n      'letter-spacing': normal,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'h6': (\n      'size': 1.25rem,\n      'weight': 500,\n      'line-height': 2rem,\n      'letter-spacing': .0125em,\n      'font-family': $heading-font-family,\n      'text-transform': false\n    ),\n    'subtitle-1': (\n      'size': 1rem,\n      'weight': normal,\n      'line-height': 1.75rem,\n      'letter-spacing': .009375em,\n      'font-family': $body-font-family,\n      'text-transform': false\n    ),\n    'subtitle-2': (\n      'size': .875rem,\n      'weight': 500,\n      'line-height': 1.375rem,\n      'letter-spacing': .0071428571em,\n      'font-family': $body-font-family,\n      'text-transform': false\n    ),\n    'body-1': (\n      'size': 1rem,\n      'weight': 400,\n      'line-height': 1.5rem,\n      'letter-spacing': .03125em,\n      'font-family': $body-font-family,\n      'text-transform': false\n    ),\n    'body-2': (\n      'size': .875rem,\n      'weight': 400,\n      'line-height': 1.25rem,\n      'letter-spacing': .0178571429em,\n      'font-family': $body-font-family,\n      'text-transform': false\n    ),\n    'button': (\n      'size': .875rem,\n      'weight': 500,\n      'line-height': 2.25rem,\n      'letter-spacing': .0892857143em,\n      'font-family': $body-font-family,\n      'text-transform': uppercase\n    ),\n    'caption': (\n      'size': .75rem,\n      'weight': 400,\n      'line-height': 1.25rem,\n      'letter-spacing': .0333333333em,\n      'font-family': $body-font-family,\n      'text-transform': false\n    ),\n    'overline': (\n      'size': .75rem,\n      'weight': 500,\n      'line-height': 2rem,\n      'letter-spacing': .1666666667em,\n      'font-family': $body-font-family,\n      'text-transform': uppercase\n    )\n  ),\n  $headings\n);\n\n$typography: () !default;\n@each $type, $values in $headings {\n  $typography: map-deep-merge(\n    $typography,\n    (#{$type}: map-values($values))\n  );\n}\n\n$transition: () !default;\n$transition: map-deep-merge(\n  (\n    'fast-out-slow-in': cubic-bezier(0.4, 0, 0.2, 1),\n    'linear-out-slow-in': cubic-bezier(0, 0, 0.2, 1),\n    'fast-out-linear-in': cubic-bezier(0.4, 0, 1, 1),\n    'ease-in-out': cubic-bezier(0.4, 0, 0.6, 1),\n    'fast-in-fast-out': cubic-bezier(0.25, 0.8, 0.25, 1),\n    'swing': cubic-bezier(0.25, 0.8, 0.5, 1)\n  ),\n  $transition\n);\n$primary-transition: 0.3s map-get($transition, 'swing') !default;\n$secondary-transition: 0.2s map-get($transition, 'ease-in-out') !default;\n\n// Ripples //;\n$ripple-animation-transition-in: transform 0.25s map-get($transition, 'fast-out-slow-in'), opacity 0.1s map-get($transition, 'fast-out-slow-in') !default;\n$ripple-animation-transition-out: opacity 0.3s map-get($transition, 'fast-out-slow-in') !default;\n$ripple-animation-visible-opacity: 0.25 !default;\n\n// Elements //;\n$bootable-transition: 0.2s map-get($transition, 'fast-out-slow-in') !default;\n$blockquote-font-size: 18px !default;\n$blockquote-font-weight: 300 !default;\n$code-kbd-border-radius: 3px !default;\n$code-kbd-font-size: 85% !default;\n$code-kbd-font-weight: normal !default;\n$code-padding: .2em .4em !default;\n$kbd-padding: .2em .4rem !default;\n$input-top-spacing: 16px !default;\n$text-field-active-label-height: 12px !default;\n", "@import '../../styles/styles.sass';\n\n$btn-toggle-border-radius: $border-radius-root !default;\n$btn-toggle-shaped-border-radius: 24px !default;\n$btn-toggle-btn-height: 48px !default;\n$btn-toggle-btn-padding: 0 12px !default;\n$btn-toggle-btn-width: 48px !default;\n$btn-toggle-btn-opacity: 0.8 !default;\n$btn-toggle-round-border-radius: 24px !default;\n$btn-toggle-dense-btn-padding: 0 8px !default;\n$btn-toggle-group-btn-margin: 4px !default;\n", "@mixin rtl()\n  .v-application--is-rtl &\n    @content\n\n@mixin ltr()\n  .v-application--is-ltr &\n    @content\n", '@import "_variables.scss";\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n.ruler {\n  position: relative;\n  width: 100%;\n  height: 10px;\n  border-top: 1px solid #333;\n}\n\n.tick-label {\n  position: absolute;\n  word-wrap: normal;\n  font-size: 9px;\n  word-break: keep-all;\n  line-height: 1em;\n  margin-top: 7px;\n  width: 50px;\n  margin-left: -25px;\n  text-align: center;\n  font-weight: bold;\n}\n\n.tick-label-top {\n  margin-top: -15px;\n}\n\n.query {\n  position: absolute;\n  top: 0;\n  bottom: 0;\n  margin-top: -5px;\n  --chevron-width: 5px;\n  height: 10px;\n}\n\n.chevron-start {\n  position: absolute;\n  left:0;\n  bottom:0;\n  top:0;\n  width:5px;\n  clip-path: polygon(0 0, var(--chevron-width) 0, var(--chevron-width) 100%, 0 100%, var(--chevron-width) 50%);\n}\n\n.query.reversed .chevron-start {\n  clip-path: polygon(var(--chevron-width) 0, 0 50%, var(--chevron-width) 100%);\n}\n\n.chevron-mid {\n  position: absolute;\n  left:5px;\n  right:5px;\n  bottom:0;\n  top:0;\n}\n\n.chevron-end {\n  position: absolute;\n  right:0;\n  bottom:0;\n  top:0;\n  width:5px;\n  clip-path: polygon(0 0, var(--chevron-width) 50%, 0 100%);\n}\n.query.reversed .chevron-end {\n  clip-path: polygon(0 0, var(--chevron-width) 0, 0 50%, var(--chevron-width) 100%, 0 100%);\n  clip-path: polygon()\n}\n\n.theme--dark {\n    .ruler {\n      border-color: #aaa;\n    }\n}\n' ],
                 sourceRoot: ""
             } ]), e.exports = i;
         },
@@ -5194,121 +5503,121 @@
             var r = t(9837);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("4fa110d4", r, !1, {});
+            (0, t(7913).Z)("4fa110d4", r, !1, {});
         },
         603: (e, n, t) => {
             var r = t(5426);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("59383ee7", r, !1, {});
+            (0, t(7913).Z)("59383ee7", r, !1, {});
         },
         5685: (e, n, t) => {
             var r = t(7562);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("a7333c86", r, !1, {});
+            (0, t(7913).Z)("a7333c86", r, !1, {});
         },
         2237: (e, n, t) => {
             var r = t(5229);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("35bdd9d0", r, !1, {});
+            (0, t(7913).Z)("35bdd9d0", r, !1, {});
         },
         4869: (e, n, t) => {
             var r = t(5479);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("d70395c2", r, !1, {});
+            (0, t(7913).Z)("d70395c2", r, !1, {});
         },
         55: (e, n, t) => {
             var r = t(7212);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("08f57856", r, !1, {});
+            (0, t(7913).Z)("08f57856", r, !1, {});
         },
         7316: (e, n, t) => {
             var r = t(6791);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("e7ce63d2", r, !1, {});
+            (0, t(7913).Z)("e7ce63d2", r, !1, {});
         },
         1574: (e, n, t) => {
             var r = t(1229);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("4c075a21", r, !1, {});
+            (0, t(7913).Z)("4c075a21", r, !1, {});
         },
         9146: (e, n, t) => {
             var r = t(4569);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("5d44b975", r, !1, {});
+            (0, t(7913).Z)("5d44b975", r, !1, {});
         },
         5367: (e, n, t) => {
             var r = t(6686);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("2ec3240b", r, !1, {});
+            (0, t(7913).Z)("2ec3240b", r, !1, {});
         },
         2556: (e, n, t) => {
             var r = t(864);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("0a2d9f56", r, !1, {});
+            (0, t(7913).Z)("0a2d9f56", r, !1, {});
         },
         8973: (e, n, t) => {
             var r = t(8742);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("77ba9bdc", r, !1, {});
+            (0, t(7913).Z)("77ba9bdc", r, !1, {});
         },
         5877: (e, n, t) => {
             var r = t(405);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("a3a33312", r, !1, {});
+            (0, t(7913).Z)("a3a33312", r, !1, {});
         },
         9121: (e, n, t) => {
             var r = t(7866);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("802ef828", r, !1, {});
+            (0, t(7913).Z)("802ef828", r, !1, {});
         },
         6226: (e, n, t) => {
             var r = t(6732);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("9e5866ec", r, !1, {});
+            (0, t(7913).Z)("9e5866ec", r, !1, {});
         },
         4678: (e, n, t) => {
             var r = t(8786);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("0ac3d6be", r, !1, {});
+            (0, t(7913).Z)("0ac3d6be", r, !1, {});
         },
         7539: (e, n, t) => {
             var r = t(6237);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("4acebb77", r, !1, {});
+            (0, t(7913).Z)("4acebb77", r, !1, {});
         },
         6406: (e, n, t) => {
             var r = t(5727);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("48dc9db7", r, !1, {});
+            (0, t(7913).Z)("48dc9db7", r, !1, {});
         },
         5264: (e, n, t) => {
             var r = t(9010);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("122feea2", r, !1, {});
+            (0, t(7913).Z)("122feea2", r, !1, {});
         },
         5941: (e, n, t) => {
             var r = t(5385);
             r.__esModule && (r = r.default), "string" == typeof r && (r = [ [ e.id, r, "" ] ]), 
             r.locals && (e.exports = r.locals);
-            (0, t(5346).Z)("6d831950", r, !1, {});
+            (0, t(7913).Z)("6d831950", r, !1, {});
         },
         1464: e => {
             "use strict";
@@ -5388,7 +5697,7 @@
             enumerable: !0,
             get: n[t]
         });
-    }, r.g = function() {
+    }, r.u = e => "tmworker.js", r.g = function() {
         if ("object" == typeof globalThis) return globalThis;
         try {
             return this || new Function("return this")();
@@ -5401,7 +5710,8 @@
         }), Object.defineProperty(e, "__esModule", {
             value: !0
         });
-    }, r.nmd = e => (e.paths = [], e.children || (e.children = []), e), r.p = "/", (() => {
+    }, r.nmd = e => (e.paths = [], e.children || (e.children = []), e), r.j = 179, r.p = "/", 
+    (() => {
         r.b = document.baseURI || self.location.href;
         var e = {
             179: 0
