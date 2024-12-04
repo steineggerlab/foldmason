@@ -5,24 +5,21 @@
 #include "TMaligner.h"
 
 const unsigned int NOT_AVAILABLE_CHAIN_KEY = 4294967295;
-const double MAX_ASSIGNED_CHAIN_RATIO = 1.0;
+const float MAX_ASSIGNED_CHAIN_RATIO = 1.0;
 const double TOO_SMALL_MEAN = 1.0;
 const double TOO_SMALL_CV = 0.1;
 const double FILTERED_OUT = 0.0;
 const unsigned int INITIALIZED_LABEL = 0;
 const unsigned int MIN_PTS = 2;
-const float DEFAULT_EPS = 0.1;
 const float LEARNING_RATE = 0.1;
 const float TM_SCORE_MARGIN = 0.7;
-const float DEF_TM_SCORE = -1.0;
-const int UNINITIALIZED = 0;
 const unsigned int MULTIPLE_CHAINED_COMPLEX = 2;
 const unsigned int SIZE_OF_SUPERPOSITION_VECTOR = 12;
+const int SKIP_MONOMERS = 1;
 typedef std::pair<std::string, std::string> compNameChainName_t;
 typedef std::map<unsigned int, unsigned int> chainKeyToComplexId_t;
 typedef std::map<unsigned int, std::vector<unsigned int>> complexIdToChainKeys_t;
 typedef std::vector<unsigned int> cluster_t;
-typedef std::map<std::pair<unsigned int, unsigned int>, float> distMap_t;
 typedef std::string resultToWrite_t;
 typedef std::string chainName_t;
 typedef std::pair<unsigned int, resultToWrite_t> resultToWriteWithKey_t;
@@ -96,13 +93,12 @@ struct ChainToChainAln {
     unsigned int label;
     float tmScore;
 
-    float getDistance(const ChainToChainAln &o) {
+    float getDistance(const ChainToChainAln &o) const {
         float dist = 0;
         for (size_t i=0; i<SIZE_OF_SUPERPOSITION_VECTOR; i++) {
             dist += std::pow(superposition[i] - o.superposition[i], 2);
         }
-        dist = std::sqrt(dist);
-        return dist;
+        return std::sqrt(dist);
     }
 
     void free() {
@@ -220,13 +216,37 @@ static ComplexDataHandler parseScoreComplexResult(const char *data, Matcher::res
     float qCov = SmithWaterman::computeCov(qStartPos==-1 ? 0 : qStartPos, qEndPos, qLen);
     float dbCov = SmithWaterman::computeCov(dbStartPos==-1 ? 0 : dbStartPos, dbEndPos, dbLen);
     size_t alnLength = Matcher::computeAlnLength(qStartPos==-1 ? 0 : qStartPos, qEndPos, dbStartPos==-1 ? 0 : dbStartPos, dbEndPos);
-    double qTmScore = std::stod(entry[11]);
-    double tTmScore = std::stod(entry[12]);
+    double qTmScore = strtod(entry[11], NULL);
+    double tTmScore = strtod(entry[12], NULL);
     std::string uString = std::string(entry[13], entry[14] - entry[13]-1);
     std::string tString = std::string(entry[14], entry[15] - entry[14]-1);
     auto assId = Util::fast_atoi<unsigned int>(entry[15]);
     res = Matcher::result_t(dbKey, score, qCov, dbCov, seqId, eval, alnLength, qStartPos, qEndPos, qLen, dbStartPos, dbEndPos, dbLen, -1, -1, -1, -1, backtrace);
     return {assId, qTmScore, tTmScore, uString, tString, true};
+}
+
+static char* fastfloatToBuffer(float value, char* buffer) {
+    if (value < 0) {
+        value *= -1;
+        *(buffer) = '-';
+        buffer++;
+    }
+    int value1 = (int)(value);
+    buffer = Itoa::i32toa_sse2(value1, buffer);
+    *(buffer) = '.';
+    buffer++;
+
+    double value2 = value - value1;
+    if (value2 < 0.1){
+        *(buffer) = '0';
+        buffer++;
+    }
+    if (value2 < 0.01){
+        *(buffer) = '0';
+        buffer++;
+    }
+    buffer = Itoa::i32toa_sse2((int)(value2 * 1000), buffer);
+    return buffer;
 }
 
 #endif //FOLDSEEK_MULTIMERUTIL_H
