@@ -32,6 +32,11 @@ public:
     static const int ALIGNMENT_TYPE_TMALIGN = 1;
     static const int ALIGNMENT_TYPE_3DI_AA = 2;
 
+    static const int TMSCORE_THRESHOLD_MODE_ALIGNMENT = 0;
+    static const int TMSCORE_THRESHOLD_MODE_QUERY = 1;
+    static const int TMSCORE_THRESHOLD_MODE_TARGET = 2;
+    static const int TMSCORE_THRESHOLD_MODE_MIN = 3;
+
     static const int PREF_MODE_KMER = 0;
     static const int PREF_MODE_UNGAPPED = 1;
     static const int PREF_MODE_EXHAUSTIVE = 2;
@@ -65,6 +70,9 @@ public:
     static const int OUTFMT_COMPLEX_U = 56;
     static const int OUTFMT_COMPLEX_T = 57;
 
+    static const int DB_EXTRACT_MODE_CHAIN = 0;
+    static const int DB_EXTRACT_MODE_INTERFACE = 1;
+
     static const int COORD_STORE_MODE_CA_FLOAT = 1;
     static const int COORD_STORE_MODE_CA_DIFF  = 2;
     static const int COORD_STORE_MODE_CA_PLAIN_TEXT  = 3;
@@ -81,6 +89,11 @@ public:
     static const int PDB_OUTPUT_MODE_SINGLECHAIN = 1;
     static const int PDB_OUTPUT_MODE_COMPLEX = 2;
 
+    // filter mode
+    // static const int FILTER_MODE_INTERFACE  = 0;
+    // static const int FILTER_MODE_CONFORMATION = 1;
+    // static const int FILTER_MODE_LOOSE = 2;
+
     // TODO
     static const unsigned int FORMAT_ALIGNMENT_PDB_SUPERPOSED = 5;
     std::vector<MMseqsParameter *> strucclust;
@@ -96,6 +109,9 @@ public:
     std::vector<MMseqsParameter *> structurecreatedb;
     std::vector<MMseqsParameter *> compressca;
     std::vector<MMseqsParameter *> scoremultimer;
+    std::vector<MMseqsParameter *> filtermultimer;
+    std::vector<MMseqsParameter *> multimerclusterworkflow;
+    std::vector<MMseqsParameter *> easymultimerclusterworkflow;
     std::vector<MMseqsParameter *> multimersearchworkflow;
     std::vector<MMseqsParameter *> easymultimersearchworkflow;
     std::vector<MMseqsParameter *> createmultimerreport;
@@ -104,6 +120,7 @@ public:
 
     PARAMETER(PARAM_PREF_MODE)
     PARAMETER(PARAM_TMSCORE_THRESHOLD)
+    PARAMETER(PARAM_TMSCORE_THRESHOLD_MODE)
     PARAMETER(PARAM_TMALIGN_HIT_ORDER)
     PARAMETER(PARAM_LDDT_THRESHOLD)
     PARAMETER(PARAM_SORT_BY_STRUCTURE_BITS)
@@ -116,6 +133,7 @@ public:
     PARAMETER(PARAM_N_SAMPLE)
     PARAMETER(PARAM_COORD_STORE_MODE)
     PARAMETER(PARAM_MIN_ASSIGNED_CHAINS_THRESHOLD)
+    PARAMETER(PARAM_MONOMER_INCLUDE_MODE)
     PARAMETER(PARAM_CLUSTER_SEARCH)
     PARAMETER(PARAM_FILE_INCLUDE)
     PARAMETER(PARAM_FILE_EXCLUDE)
@@ -128,9 +146,15 @@ public:
     PARAMETER(PARAM_PDB_OUTPUT_MODE)
     PARAMETER(PARAM_PROSTT5_MODEL)
     PARAMETER(PARAM_GPU)
+    PARAMETER(PARAM_DB_EXTRACTION_MODE)
+    PARAMETER(PARAM_DISTANCE_THRESHOLD)
+    PARAMETER(PARAM_MULTIMER_TM_THRESHOLD)
+    PARAMETER(PARAM_CHAIN_TM_THRESHOLD)
+    PARAMETER(PARAM_INTERFACE_LDDT_THRESHOLD)
 
     int prefMode;
     float tmScoreThr;
+    int tmScoreThrMode;
     int tmAlignHitOrder;
     float lddtThr;
     int sortByStructureBits;
@@ -143,6 +167,7 @@ public:
     int nsample;
     int coordStoreMode;
     float minAssignedChainsThreshold;
+    int monomerIncludeMode;
     int clusterSearch;
     std::string fileInclude;
     std::string fileExclude;
@@ -151,8 +176,13 @@ public:
     double eValueThrExpandMultimer;
     int inputFormat;
     int pdbOutputMode;
+    float filtMultimerTmThr;
+    float filtChainTmThr;
+    float filtInterfaceLddtThr;
     std::string prostt5Model;
     int gpu;
+    int dbExtractionMode;
+    float distanceThreshold;
 
     static std::vector<int> getOutputFormat(int formatMode, const std::string &outformat, bool &needSequences, bool &needBacktrace, bool &needFullHeaders,
                                             bool &needLookup, bool &needSource, bool &needTaxonomyMapping, bool &needTaxonomy, bool &needQCa, bool &needTCa, bool &needTMaligner,
