@@ -665,42 +665,38 @@ std::vector<AlnSimple> parseAndScoreExternalHits(
 #pragma omp for schedule(dynamic, 10)
     for (size_t i = 0; i < cluDbr->getSize(); ++i) {
         char *data = cluDbr->getData(i, thread_idx);
-        unsigned int queryKey = cluDbr->getDbKey(i);
-        
-        size_t queryId = seqDbrAA.getId(queryKey);
-        seqQueryAa.mapSequence(queryId, queryKey, seqDbrAA.getData(queryId, thread_idx), seqDbrAA.getSeqLen(queryId));
-        queryId = seqDbr3Di.getId(queryKey);
-        seqQuerySs.mapSequence(queryId, queryKey, seqDbr3Di.getData(queryId, thread_idx), seqDbr3Di.getSeqLen(queryId));
-        
-        structureSmithWaterman.ssw_init(
-            &seqQueryAa,
-            &seqQuerySs,
-            tinySubMatAA,
-            tinySubMat3Di,
-            subMat_aa
-        );
+       
+        std::vector<unsigned int> memberDbKeys;
        
         while (*data != '\0') {
             Util::parseKey(data, buffer);
-            const unsigned int dbKey = (unsigned int) strtoul(buffer, NULL, 10);
-            if (queryKey == dbKey) {
-                data = Util::skipLine(data);
-                continue;
-            }
-            size_t dbId = seqDbrAA.getId(dbKey);
-            seqDbAa.mapSequence(dbId, dbKey, seqDbrAA.getData(dbId, thread_idx), seqDbrAA.getSeqLen(dbId));
-            dbId = seqDbr3Di.getId(dbKey);
-            seqDbSs.mapSequence(dbId, dbKey, seqDbr3Di.getData(dbId, thread_idx), seqDbr3Di.getSeqLen(dbId));
-            AlnSimple aln;
-            aln.queryId = queryKey;
-            aln.targetId = dbKey;
-            aln.score = structureSmithWaterman.ungapped_alignment(
-                seqDbAa.numSequence,
-                seqDbSs.numSequence,
-                seqDbAa.L
-            );
-            threadAlnResults.push_back(aln);
+            unsigned int dbKey = (unsigned int) strtoul(buffer, NULL, 10);
+            memberDbKeys.push_back(dbKey);
             data = Util::skipLine(data);
+        }
+        
+        Debug(Debug::INFO) << "All-vs-all of " << memberDbKeys.size() << " structures (" << 
+            memberDbKeys.size()*(memberDbKeys.size()+1)/2 - memberDbKeys.size() << " comparisons)\n";
+
+        for (size_t j = 0; j < memberDbKeys.size(); j++) {
+            unsigned int queryKey = memberDbKeys[j];
+            size_t queryId = seqDbrAA.getId(queryKey);
+            seqQueryAa.mapSequence(queryId, queryKey, seqDbrAA.getData(queryId, thread_idx), seqDbrAA.getSeqLen(queryId));
+            queryId = seqDbr3Di.getId(queryKey);
+            seqQuerySs.mapSequence(queryId, queryKey, seqDbr3Di.getData(queryId, thread_idx), seqDbr3Di.getSeqLen(queryId));
+            structureSmithWaterman.ssw_init(&seqQueryAa, &seqQuerySs, tinySubMatAA, tinySubMat3Di, subMat_aa);
+            for (size_t k = j + 1; k < memberDbKeys.size(); k++) {
+                unsigned int dbKey = memberDbKeys[k];
+                size_t dbId = seqDbrAA.getId(dbKey);
+                seqDbAa.mapSequence(dbId, dbKey, seqDbrAA.getData(dbId, thread_idx), seqDbrAA.getSeqLen(dbId));
+                dbId = seqDbr3Di.getId(dbKey);
+                seqDbSs.mapSequence(dbId, dbKey, seqDbr3Di.getData(dbId, thread_idx), seqDbr3Di.getSeqLen(dbId));
+                AlnSimple aln;
+                aln.queryId = queryKey;
+                aln.targetId = dbKey;
+                aln.score = structureSmithWaterman.ungapped_alignment(seqDbAa.numSequence, seqDbSs.numSequence, seqDbAa.L);
+                threadAlnResults.push_back(aln);
+            }
         }
     }
 #pragma omp critical
@@ -1280,18 +1276,19 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 par.compBiasCorrection,
                 par.compBiasCorrectionScale
             );
+            hits.insert(hits.end(), externalHits.begin(), externalHits.end());
             // maybe a bit dangerous because memory of hits might be doubled
-            for (size_t i = 0; i < externalHits.size(); i++)
-                hits.push_back(externalHits[i]);
         }
+        
         sortHitsByScore(hits);
         
         Debug(Debug::INFO) << "Generating guide tree\n";
         hits = mst(hits, sequenceCnt);
+        // assert(hits.size() == sequenceCnt - 1);  // should be n-1 edges
 
         Debug(Debug::INFO) << "Optimising merge order\n";
         hits = reorderLinkage(hits, merges, sequenceCnt);
-
+        
         NewickParser::Node* root = NewickParser::buildTree(hits); 
         NewickParser::addNames(root, &qdbrH);
         std::string nw = NewickParser::toNewick(root);
