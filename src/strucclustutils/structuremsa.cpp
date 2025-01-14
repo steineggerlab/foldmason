@@ -214,11 +214,11 @@ inline size_t get1dIndex(size_t i, size_t j, size_t N) {
 std::vector<AlnSimple> updateAllScores(
     DBReader<unsigned int> &seqDbrAA,
     DBReader<unsigned int> &seqDbr3Di,
+    DBReader<unsigned int> *cluDbr,
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
     SubstitutionMatrix * subMat_aa,
     SubstitutionMatrix * subMat_3di,
-    bool * alreadyMerged,
     int maxSeqLen,
     int alphabetSize,
     int compBiasCorrection,
@@ -249,13 +249,15 @@ std::vector<AlnSimple> updateAllScores(
         subMat_3di
     );
     std::vector<AlnSimple> threadHits;
-
+    
 #pragma omp for schedule(dynamic, 10)
     for (unsigned int i = 0; i < sequenceCnt; i++) {
-        if (alreadyMerged[i])
-            continue;
-
         unsigned int mergedKey = seqDbrAA.getDbKey(i);
+        if (cluDbr != NULL && cluDbr->getId(mergedKey) == UINT_MAX) {
+            // If we have a cluster db and this structure is NOT in it, skip
+            // Should only align the representatives
+            continue;
+        }
         size_t mergedId  = seqDbrAA.getId(mergedKey);
         seqMergedAa.mapSequence(mergedId, mergedKey, seqDbrAA.getData(mergedId, thread_idx), seqDbrAA.getSeqLen(mergedId));
         mergedId = seqDbr3Di.getId(mergedKey);
@@ -270,12 +272,13 @@ std::vector<AlnSimple> updateAllScores(
         );
 
         for (size_t j = i + 1; j < sequenceCnt; j++) {
-            if (alreadyMerged[j] || i == j)
-                continue;
-
             size_t targetKey = seqDbrAA.getDbKey(j);
+            if (cluDbr != NULL && cluDbr->getId(targetKey) == UINT_MAX) {
+                continue;
+            }
             size_t targetId  = seqDbrAA.getId(targetKey);
             seqTargetAa.mapSequence(targetId, targetKey, seqDbrAA.getData(targetId, i), seqDbrAA.getSeqLen(targetId));
+            targetId = seqDbr3Di.getId(targetKey);
             seqTargetSs.mapSequence(targetId, targetKey, seqDbr3Di.getData(targetId, i), seqDbr3Di.getSeqLen(targetId));
 
             AlnSimple aln;
@@ -1177,13 +1180,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
     Debug(Debug::INFO) << "Set up tiny substitution matrices\n";
 
-    bool * alreadyMerged = new bool[sequenceCnt];
-   
     DBReader<unsigned int> * cluDbr = NULL;
 
     if (preCluster) {
-        // consider everything merged and unmerge the ones that are not
-        memset(alreadyMerged, 1, sizeof(bool) * sequenceCnt);
         cluDbr = new DBReader<unsigned int>(
             par.db2.c_str(),
             par.db2Index.c_str(),
@@ -1191,14 +1190,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             DBReader<unsigned int>::USE_INDEX | DBReader<unsigned int>::USE_DATA
         );
         cluDbr->open(DBReader<unsigned int>::LINEAR_ACCCESS);
-        // mark all sequences that are already clustered as merged
-        for(size_t i = 0; i < cluDbr->getSize(); i++){
-            unsigned int dbKey = cluDbr->getDbKey(i);
-            alreadyMerged[dbKey] = 0;
-        }
-    } else {
-        memset(alreadyMerged, 0, sizeof(bool) * sequenceCnt);
-    }       
+    }
     
     // Check if guide tree argument given
     // Try parse --> read if non-empty, otherwise generate one and write
@@ -1259,14 +1251,15 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         Debug(Debug::INFO) << "Optimising merge order\n";
         hits = reorderLinkage(hits, merges, sequenceCnt);
     } else {
+        Debug(Debug::INFO) << "Performing initial all vs all alignments\n";
         hits = updateAllScores(
             seqDbrAA,
             seqDbr3Di,
+            cluDbr,
             tinySubMatAA,
             tinySubMat3Di,
             &subMat_aa,
             &subMat_3di,
-            alreadyMerged,
             par.maxSeqLen,
             subMat_3di.alphabetSize,
             par.compBiasCorrection,
@@ -1291,7 +1284,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             for (size_t i = 0; i < externalHits.size(); i++)
                 hits.push_back(externalHits[i]);
         }
-        Debug(Debug::INFO) << "Performing initial all vs all alignments\n";
         sortHitsByScore(hits);
         
         Debug(Debug::INFO) << "Generating guide tree\n";
@@ -1664,7 +1656,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     FileUtil::remove((par.filenames[par.filenames.size()-1] + "_3di.index").c_str());
 
     // Cleanup
-    delete[] alreadyMerged;
     free(tinySubMatAA);
     free(tinySubMat3Di);
     seqDbrAA.close();
