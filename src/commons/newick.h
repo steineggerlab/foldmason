@@ -7,10 +7,10 @@
 #ifndef NEWICK_H
 #define NEWICK_H
 
-struct AlnSimple {
-    size_t queryId;
-    size_t targetId;
-    int score;
+struct __attribute__((__packed__)) AlnSimple {
+    unsigned int queryId;
+    unsigned int targetId;
+    unsigned short score;
 };
 
 class NewickParser {

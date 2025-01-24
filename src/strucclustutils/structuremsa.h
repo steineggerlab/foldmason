@@ -23,6 +23,43 @@ struct GapData {
     size_t endGaps;
 };
 
+// FIXME currently this does not take into account db key/id, it is just using
+// the queryId/targetId from ungapped aln, which is dbKey and may not map
+// to vector indices
+class UnionFind {
+    public:
+        UnionFind(int n) {
+            parent.resize(n);
+            rank.resize(n, 0);
+            std::iota(parent.begin(), parent.end(), 0);
+        }
+        
+        int find(unsigned int x) {
+            if (parent[x] != x) {
+                parent[x] = find(parent[x]);
+            }
+            return parent[x];
+        }
+        
+        void unionSets(unsigned int x, unsigned int y) {
+            int rootX = find(x);
+            int rootY = find(y);
+            if (rootX != rootY) {
+                if (rank[rootX] > rank[rootY]) {
+                    parent[rootY] = rootX;
+                } else if (rank[rootX] < rank[rootY]) {
+                    parent[rootX] = rootY;
+                } else {
+                    parent[rootY] = rootX;
+                    rank[rootX]++;
+                }
+            }
+        }
+
+    private:
+        std::vector<unsigned int> parent, rank;
+};
+
 GapData getGapData(const Matcher::result_t &res, const std::vector<size_t>& qMap, const std::vector<size_t>& tMap);
 
 void updateCIGARs(
