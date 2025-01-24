@@ -40,10 +40,11 @@
 
 
 // Return the CA coordinates of a given db index as a string
-std::string getXYZstring(size_t index, int length, DBReader<unsigned int> *db) {
+std::string getXYZstring(size_t key, int length, DBReader<unsigned int> *db) {
     Coordinate16 coords;
-    char *cadata = db->getData(index, 0);
-    size_t caLength = db->getEntryLen(index);
+    unsigned int dbId = db->getId(key);
+    char *cadata = db->getData(dbId, 0);
+    size_t caLength = db->getEntryLen(dbId);
     float *caData = coords.read(cadata, length, caLength);
     std::string xyz;
     std::stringstream xyzz;
@@ -258,14 +259,16 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     std::vector<float> perColumnScore(alnLength, 0.0);
     std::vector<int>   perColumnCount(alnLength, 0);
 
+    float n_sum = 0.0;
     float sum = 0.0;
+    int numPairs_ne = 0;
     int numPairs = cigars.size() * (cigars.size() - 1) / 2;
     
     // Sort subset vector by indices so we can initQuery in outer loop
     // AND ensure it is only ever done in one direction
     std::sort(subset.begin(), subset.end(), [&keys](int a, int b) { return keys[a] < keys[b]; });
     
-#pragma omp parallel reduction(+:sum) reduction(vsum:perColumnScore,perColumnCount)
+#pragma omp parallel reduction(+:sum) reduction(+:n_sum) reduction(vsum:perColumnScore,perColumnCount)
 {
     unsigned int thread_idx = 0;
 #ifdef OPENMP
@@ -345,17 +348,29 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
             for (int k = 0; k < lddtres.scoreLength; k++) {
                 if (lddtres.perCaLddtScore[k] == 0.0)
                     continue;
+                numPairs_ne++;
+                n_sum += lddtres.perCaLddtScore[k];
                 int idx = match_to_msa[k];
                 perColumnCount[idx] += 1;
                 perColumnScore[idx] += lddtres.perCaLddtScore[k];
             }
             sum += lddtres.avgLddtScore;
+
+            // float n_lddt = (lddtres.avgLddtScore * std::min(i_length, j_length)) / non_empty;
+            // Debug(Debug::INFO) << "nLDDT: " << n_lddt << '\n';
+            // n_sum += n_lddt;
+            
             
             match_to_msa.clear();
         }
     }
     delete lddtcalculator;
 }
+    // float msa_n_lddt = n_sum / numPairs;
+    float msa_n_lddt = n_sum / numPairs_ne;
+    Debug(Debug::INFO) << "MSA pair sum: " << n_sum << '\n';
+    Debug(Debug::INFO) << "  MSA #pairs: " << numPairs_ne << '\n';
+    Debug(Debug::INFO) << "   MSA nLDDT: " << msa_n_lddt << '\n';
 
     std::vector<int> colCounts = countColumns(cigars, subset, alnLength);
     float scaledSum = 0.0;
