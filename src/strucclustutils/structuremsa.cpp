@@ -38,6 +38,8 @@
 #include "newick.h"
 #include "MSA.h"
 
+#include "LoLAlign.h"
+
 #ifdef OPENMP
 #include <omp.h>
 #endif
@@ -1060,6 +1062,64 @@ void testSeqLens(std::vector<size_t> &MAYBE_UNUSED(indices), std::vector<std::ve
     }
 }
 
+Matcher::result_t pairwiseLoLalign(
+    int mergedId,
+    int targetId,
+    DBReader<unsigned int> *seqDbrAA,
+    DBReader<unsigned int> *seqDbr3Di,
+    DBReader<unsigned int> *seqDbrCA,
+    SubstitutionMatrix &subMatAA,
+    SubstitutionMatrix &subMat3Di
+) {
+    lolAlign lolaln(seqDbrAA->getMaxSeqLen(), false);
+
+    int qLen = seqDbrAA->getSeqLen(mergedId);
+    int tLen = seqDbrAA->getSeqLen(targetId);
+    
+    unsigned int qKey = seqDbrAA->getDbKey(mergedId);
+    size_t qCaId = seqDbrCA->getId(qKey);
+
+    unsigned int tKey = seqDbrAA->getDbKey(targetId);
+    size_t tCaId = seqDbrCA->getId(tKey);
+    
+    Coordinate16 qcoords;
+    char *qcadata = seqDbrCA->getData(qCaId, 0);
+    size_t qCaLength = seqDbrCA->getEntryLen(qCaId);
+    float *qCaData = qcoords.read(qcadata, qLen, qCaLength);
+    char *querySeq = seqDbrAA->getData(mergedId, 0);
+    char *querySeq3Di = seqDbr3Di->getData(qCaId, 0);
+    
+    Coordinate16 tcoords;
+    char *tcadata = seqDbrCA->getData(tCaId, 0);
+    size_t tCaLength = seqDbrCA->getEntryLen(tCaId);
+    float *tCaData = tcoords.read(tcadata, tLen, tCaLength);
+    char *targetSeq = seqDbrAA->getData(targetId, 0);
+    char *targetSeq3Di = seqDbr3Di->getData(tCaId, 0);
+
+    lolaln.initQuery(qCaData, &qCaData[qLen], &qCaData[qLen * 2], querySeq, querySeq3Di, qLen);
+    Matcher::result_t result = lolaln.align(
+        tKey,
+        tCaData,
+        &tCaData[tLen],
+        &tCaData[tLen + tLen],
+        targetSeq,
+        targetSeq3Di,
+        tLen,
+        subMatAA,
+        subMat3Di
+    );
+    char buffer[1024 + 32768];
+    size_t len = Matcher::resultToBuffer(buffer, result, true, false, false);
+    std::string resultstr;
+    resultstr.append(buffer);
+
+    Debug(Debug::INFO) << resultstr << '\n';
+    
+
+    return result;
+}
+
+
 Matcher::result_t pairwiseTMAlign(
     int mergedId,
     int targetId,
@@ -1507,7 +1567,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
             // If neither are profiles, do TM-align as well and take the best alignment
             if (caExist && !queryIsProfile && !targetIsProfile) {
+                Matcher::result_t lolRes = pairwiseLoLalign(mergedId, targetId, &seqDbrAA, &seqDbr3Di, seqDbrCA, subMat_aa, subMat_3di);
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
+                double lddtLoL = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], lolRes, seqDbrCA, thread_idx);
                 double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
                 double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
                 if (lddtTM > lddt3Di) {
