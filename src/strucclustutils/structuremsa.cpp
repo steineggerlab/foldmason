@@ -365,8 +365,8 @@ void balanceTree(std::vector<AlnSimple>& hits, std::vector<size_t>& merges, int 
     }
 }
 
-std::string getHeader(unsigned int& key, IndexReader* hdrDb) {
-    size_t headerId = hdrDb->sequenceReader->getId(key);
+std::string getHeader(unsigned int& headerId, IndexReader* hdrDb) {
+    // size_t headerId = hdrDb->sequenceReader->getId(key);
     return Util::parseFastaHeader(hdrDb->sequenceReader->getData(headerId, 0));
 }
 
@@ -1305,7 +1305,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
         Debug(Debug::INFO) << "Optimising merge order\n";
         balanceTree(hits, merges, sequenceCnt);
-        
+
         std::string nw = makeNewick(hits, sequenceCnt, &qdbrH);
         std::string treeFile = par.filenames[par.filenames.size()-1] + ".nw";
         Debug(Debug::INFO) << "Writing guide tree to: " << treeFile << '\n';
@@ -1391,7 +1391,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
     for (size_t i = 0; i < merges.size(); i++) {
         subMSAs.reserve(merges[i]);
-
 
 #pragma omp for schedule(static, 1)
         for (size_t j = 0; j < merges[i]; j++) {
