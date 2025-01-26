@@ -1073,13 +1073,14 @@ Matcher::result_t pairwiseLoLalign(
 ) {
     lolAlign lolaln(seqDbrAA->getMaxSeqLen(), false);
 
-    int qLen = seqDbrAA->getSeqLen(mergedId);
-    int tLen = seqDbrAA->getSeqLen(targetId);
-    
     unsigned int qKey = seqDbrAA->getDbKey(mergedId);
+    size_t qId = seqDbrAA->getId(qKey);
+    int qLen = seqDbrAA->getSeqLen(qId);
     size_t qCaId = seqDbrCA->getId(qKey);
 
     unsigned int tKey = seqDbrAA->getDbKey(targetId);
+    size_t tId = seqDbrAA->getId(tKey);
+    int tLen = seqDbrAA->getSeqLen(tId);
     size_t tCaId = seqDbrCA->getId(tKey);
     
     Coordinate16 qcoords;
@@ -1108,13 +1109,14 @@ Matcher::result_t pairwiseLoLalign(
         subMatAA,
         subMat3Di
     );
-    char buffer[1024 + 32768];
-    size_t len = Matcher::resultToBuffer(buffer, result, true, false, false);
-    std::string resultstr;
-    resultstr.append(buffer);
-
-    Debug(Debug::INFO) << resultstr << '\n';
     
+    result.qStartPos = 0;
+    result.dbStartPos = 0;
+    result.qEndPos = qLen - 1;
+    result.dbEndPos = tLen - 1;
+    result.qLen = qLen;
+    result.dbLen = tLen;
+    result.alnLength = result.backtrace.length();
 
     return result;
 }
@@ -1570,13 +1572,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 Matcher::result_t lolRes = pairwiseLoLalign(mergedId, targetId, &seqDbrAA, &seqDbr3Di, seqDbrCA, subMat_aa, subMat_3di);
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 double lddtLoL = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], lolRes, seqDbrCA, thread_idx);
-                double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
+                // double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
                 double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
-                if (lddtTM > lddt3Di) {
+                if (lddtLoL > lddt3Di) {
                     qBt.clear();
                     tBt.clear();
-                    getMergeInstructions(tmRes, map1, map2, qBt, tBt);
-                    std::swap(res, tmRes);
+                    getMergeInstructions(lolRes, map1, map2, qBt, tBt);
+                    std::swap(res, lolRes);
                 }
             }
 
