@@ -1109,14 +1109,6 @@ Matcher::result_t pairwiseLoLalign(
         subMatAA,
         subMat3Di
     );
-    
-    result.qStartPos = 0;
-    result.dbStartPos = 0;
-    result.qEndPos = qLen - 1;
-    result.dbEndPos = tLen - 1;
-    result.qLen = qLen;
-    result.dbLen = tLen;
-    result.alnLength = result.backtrace.length();
 
     return result;
 }

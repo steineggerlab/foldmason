@@ -601,19 +601,66 @@ Matcher::result_t lolAlign::align(unsigned int dbKey, float *target_x, float *ta
         
         
     }
-    
-    std::reverse(backtrace.begin(), backtrace.end());
-
-    //free(G);
-    //free(P);
 
     Matcher::result_t result = Matcher::result_t();
     result.score = max_lol_score;
     result.eval = max_lol_score;
     result.dbKey = dbKey;
+    result.qStartPos = 0;
+    result.dbStartPos = 0;
+    result.qEndPos = queryLen - 1;
+    result.dbEndPos = targetLen - 1;
+    result.qLen = queryLen;
+    result.dbLen = targetLen;
+    result.alnLength = backtrace.length();
     result.backtrace = backtrace;
-    //result.backtrace = Matcher::compressAlignment(backtrace);
-    //std::cout << fwbw_time.count() << " " << lol_score_time.count() << std::endl;
+
+    // trim backtrace find the first 'M'
+    size_t firstM = SIZE_T_MAX;
+    int qLeftSkip = 0;
+    int tLeftSkip = 0;
+    for (size_t i = 0; i < backtrace.size(); i++) {
+        if (backtrace[i] == 'M') {
+            firstM = i;
+            break;
+        }
+        if (backtrace[i] == 'I') {
+            qLeftSkip++;
+        } else if (backtrace[i] == 'D') {
+            tLeftSkip++;
+        }
+    }
+    if(firstM == SIZE_T_MAX){
+        Debug(Debug::ERROR) << "No 'M' in backtrace.\n";
+        EXIT(EXIT_FAILURE);
+    }
+    result.qStartPos  += qLeftSkip;
+    result.dbStartPos += tLeftSkip;
+    result.qEndPos = result.qStartPos;
+    result.dbEndPos = result.dbStartPos;
+    for (size_t i = firstM; i < backtrace.size(); i++) {
+        switch (backtrace[i]) {
+            case 'M': // match consumes 1 base in query + 1 base in target
+                result.qEndPos++;
+                result.dbEndPos++;
+                break;
+            case 'I': // insertion consumes 1 base in query
+                result.qEndPos++;
+                break;
+            case 'D': // deletion consumes 1 base in target
+                result.dbEndPos++;
+                break;
+            default:
+                // handle unexpected cigar chars if needed
+                break;
+        }
+    }
+    result.qEndPos--;
+    result.dbEndPos--;
+    result.backtrace = backtrace.substr(firstM);
+    result.alnLength = (int)result.backtrace.size();
+
+
     return result;
 
 }
