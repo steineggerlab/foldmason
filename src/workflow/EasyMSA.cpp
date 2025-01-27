@@ -77,7 +77,7 @@ int easymsa(int argc, const char **argv, const Command &command) {
     cmd.addVariable("LEAVE_INPUT", par.dbOut ? "TRUE" : NULL);
 
     par.spacedKmer = true;
-    par.covThr = 0.95;
+    par.covThr = 0.9;
     par.evalThr = 0.01;
     par.sortByStructureBits = 0;
     par.kmersPerSequence = 300;
