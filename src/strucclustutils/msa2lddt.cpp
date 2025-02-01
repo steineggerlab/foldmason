@@ -186,12 +186,14 @@ double calculate_lddt_pair(
         &targetCaData[result.dbLen * 2]
     );
 
-    double sum = 0.0;
+    return lddtres.avgLddtScore;
+
+    /* double sum = 0.0 ;
     for (int i = 0; i < lddtres.scoreLength; i++) {
         sum += lddtres.perCaLddtScore[i];
     }
 
-    return sum / alnLength;
+    return sum / alnLength; */
 }
 
 double calculate_lddt_pair(
@@ -399,7 +401,8 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     }
     // float lddtScore = sum / static_cast<double>(numPairs);
     // float lddtScore = (scaledSum / perColumnCount.size());  // get mean over all columns
-    float lddtScore = (numCols > 0) ? scaledSum / static_cast<float>(numCols) : 0.0;
+    // float lddtScore = (numCols > 0) ? scaledSum / static_cast<float>(numCols) : 0.0;
+    float lddtScore = sum / numPairs;
     return std::make_tuple(perColumnScore, perColumnCount, lddtScore, numCols);
 }
 

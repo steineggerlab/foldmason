@@ -1072,6 +1072,7 @@ Matcher::result_t pairwiseLoLalign(
     SubstitutionMatrix &subMat3Di
 ) {
     lolAlign lolaln(seqDbrAA->getMaxSeqLen(), false);
+    FwBwAligner fwbwaln(16, -2, -2, 1, 1, 1);
 
     unsigned int qKey = seqDbrAA->getDbKey(mergedId);
     size_t qId = seqDbrAA->getId(qKey);
@@ -1097,6 +1098,7 @@ Matcher::result_t pairwiseLoLalign(
     char *targetSeq = seqDbrAA->getData(targetId, 0);
     char *targetSeq3Di = seqDbr3Di->getData(tCaId, 0);
 
+    fwbwaln.resizeMatrix(qLen, tLen);
     lolaln.initQuery(qCaData, &qCaData[qLen], &qCaData[qLen * 2], querySeq, querySeq3Di, qLen);
     Matcher::result_t result = lolaln.align(
         tKey,
@@ -1107,7 +1109,8 @@ Matcher::result_t pairwiseLoLalign(
         targetSeq3Di,
         tLen,
         subMatAA,
-        subMat3Di
+        subMat3Di,
+        &fwbwaln
     );
 
     return result;
@@ -1564,13 +1567,14 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 Matcher::result_t lolRes = pairwiseLoLalign(mergedId, targetId, &seqDbrAA, &seqDbr3Di, seqDbrCA, subMat_aa, subMat_3di);
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 double lddtLoL = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], lolRes, seqDbrCA, thread_idx);
-                // double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
+                double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
                 double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
+                Debug(Debug::INFO) << "LDDT scores\t" << lddt3Di << '\t' << lddtTM << '\t' << lddtLoL << '\n';
                 if (lddtLoL > lddt3Di) {
                     qBt.clear();
                     tBt.clear();
-                    getMergeInstructions(lolRes, map1, map2, qBt, tBt);
-                    std::swap(res, lolRes);
+                    getMergeInstructions(tmRes, map1, map2, qBt, tBt);
+                    std::swap(res, tmRes);
                 }
             }
 
