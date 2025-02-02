@@ -311,7 +311,7 @@ Matcher::result_t lolAlign::align(unsigned int dbKey, float *target_x, float *ta
 
 
     int* gaps = new int[4]{0, 0, 0, 0};
-    fwbwaln->setParams(lol_go, lol_ge, 1, 16);
+    fwbwaln->setParams(lol_go, lol_ge, 2, 16);
     int sa;
 
     for (int sa_it = 0; sa_it < 3; sa_it++){
