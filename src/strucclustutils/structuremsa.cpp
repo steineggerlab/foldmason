@@ -1072,7 +1072,7 @@ Matcher::result_t pairwiseLoLalign(
     SubstitutionMatrix &subMat3Di
 ) {
     lolAlign lolaln(seqDbrAA->getMaxSeqLen(), false);
-    FwBwAligner fwbwaln(16, -2, -2, 1, 1, 1);
+    FwBwAligner fwbwaln(16, -2, -2, 2, 1, 1);
 
     unsigned int qKey = seqDbrAA->getDbKey(mergedId);
     size_t qId = seqDbrAA->getId(qKey);
@@ -1565,16 +1565,16 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             // If neither are profiles, do TM-align as well and take the best alignment
             if (caExist && !queryIsProfile && !targetIsProfile) {
                 Matcher::result_t lolRes = pairwiseLoLalign(mergedId, targetId, &seqDbrAA, &seqDbr3Di, seqDbrCA, subMat_aa, subMat_3di);
-                Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
+                // Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 double lddtLoL = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], lolRes, seqDbrCA, thread_idx);
-                double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
+                // double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
                 double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
-                Debug(Debug::INFO) << "LDDT scores\t" << lddt3Di << '\t' << lddtTM << '\t' << lddtLoL << '\n';
+                // Debug(Debug::INFO) << "LDDT scores\t" << lddt3Di << '\t' << lddtTM << '\t' << lddtLoL << '\n';
                 if (lddtLoL > lddt3Di) {
                     qBt.clear();
                     tBt.clear();
-                    getMergeInstructions(tmRes, map1, map2, qBt, tBt);
-                    std::swap(res, tmRes);
+                    getMergeInstructions(lolRes, map1, map2, qBt, tBt);
+                    std::swap(res, lolRes);
                 }
             }
 

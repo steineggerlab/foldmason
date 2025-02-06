@@ -6,7 +6,7 @@ set(strucclustutils_source_files
 	strucclustutils/msa2lddt.cpp
 	strucclustutils/Fwbw.cpp
 	strucclustutils/Fwbw.h
-	strucclustutils/LoLalign.cpp
-	strucclustutils/LoLalign.h
+	strucclustutils/LoLAlign.cpp
+	strucclustutils/LoLAlign.h
         PARENT_SCOPE
         )
