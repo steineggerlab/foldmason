@@ -3,6 +3,7 @@
 #include "DBReader.h"
 #include "DBWriter.h"
 #include "Debug.h"
+#include "Fwbw.h"
 #include "IndexReader.h"
 #include "FoldmasonParameters.h"
 #include "Matcher.h"
@@ -168,6 +169,37 @@ Matcher::result_t pairwiseAlignment(
         gapOpen,
         gapExtend
     );
+    
+    size_t length = 16;
+    float go = -5;
+    float ge = 0;
+    float T = 3;
+    int targetLen = target_aa->L;
+    int queryLen = query_aa->L;
+    size_t RowsCapacity = ((targetLen + length - 1) / length) * length;
+    size_t ColsCapacity = ((queryLen + length - 1) / length) * length;
+    float ** G;
+    G = malloc_matrix<float>(queryLen, targetLen);
+    std::cout.precision(1);
+    for (int i = 0; i < targetLen; ++i) {
+        for (int j = 0; j < queryLen; ++j) {
+            G[j][i] = static_cast<float>(
+                (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 2 * 1.4 +
+                (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 2 * 2.1
+            );
+        }
+    }
+    // float** P = fwbw(G, targetLen, queryLen, go, ge, T);
+    FwBwAligner fwbwaln(length, *mat_aa, go, ge, 0.035, T, RowsCapacity, ColsCapacity);
+    int* gaps = new int[4]{0, queryLen, 0, targetLen};
+    fwbwaln.resizeMatrix(ColsCapacity, RowsCapacity);
+    fwbwaln.initScoreMatrix(G, targetLen, queryLen, gaps);
+    fwbwaln.initQueryProfile(target_aa->numSequence, targetLen);
+    fwbwaln.initAlignment(query_aa->numSequence, queryLen);
+    FwBwAligner::s_align aln = fwbwaln.computeAlignment();
+   
+    free(G);
+    // free(P);
 
     for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
         delete[] query_profile_scores_aa[i];
@@ -1061,6 +1093,8 @@ void testSeqLens(std::vector<size_t> &MAYBE_UNUSED(indices), std::vector<std::ve
         assert(lengths[index] == cigarLength(cigars[index], false));
     }
 }
+
+
 
 Matcher::result_t pairwiseLoLalign(
     int mergedId,
