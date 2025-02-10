@@ -4,8 +4,6 @@ set(strucclustutils_source_files
 	strucclustutils/refinemsa.cpp
 	strucclustutils/refinemsa.h
 	strucclustutils/msa2lddt.cpp
-	strucclustutils/Fwbw.cpp
-	strucclustutils/Fwbw.h
 	strucclustutils/LoLAlign.cpp
 	strucclustutils/LoLAlign.h
         PARENT_SCOPE

@@ -176,8 +176,8 @@ Matcher::result_t pairwiseAlignment(
     float T = 3;
     int targetLen = target_aa->L;
     int queryLen = query_aa->L;
-    size_t RowsCapacity = ((targetLen + length - 1) / length) * length;
-    size_t ColsCapacity = ((queryLen + length - 1) / length) * length;
+    size_t RowsCapacity = ((queryLen + length - 1) / length) * length;
+    size_t ColsCapacity = ((targetLen + length - 1) / length) * length;
     float ** G;
     G = malloc_matrix<float>(queryLen, targetLen);
     std::cout.precision(1);
@@ -190,14 +190,26 @@ Matcher::result_t pairwiseAlignment(
         }
     }
     // float** P = fwbw(G, targetLen, queryLen, go, ge, T);
-    FwBwAligner fwbwaln(length, *mat_aa, go, ge, 0.035, T, RowsCapacity, ColsCapacity);
+    FwBwAligner fwbwaln(length,go, ge, T, RowsCapacity, ColsCapacity);
     int* gaps = new int[4]{0, queryLen, 0, targetLen};
-    fwbwaln.resizeMatrix(ColsCapacity, RowsCapacity);
-    fwbwaln.initScoreMatrix(G, targetLen, queryLen, gaps);
-    fwbwaln.initQueryProfile(target_aa->numSequence, targetLen);
-    fwbwaln.initAlignment(query_aa->numSequence, queryLen);
-    FwBwAligner::s_align aln = fwbwaln.computeAlignment();
-   
+    // fwbwaln.resizeMatrix(ColsCapacity, RowsCapacity);
+    fwbwaln.initScoreMatrix(G, gaps);
+    fwbwaln.runFwBw<0,1>();
+    // fwbwaln.initScoreMatrix(G, targetLen, queryLen, gaps);
+    // fwbwaln.initQueryProfile(target_aa->numSequence, targetLen);
+    // fwbwaln.initAlignment(query_aa->numSequence, queryLen);
+    FwBwAligner::s_align aln = fwbwaln.getFwbwAlnResult();
+
+    // Matcher::result_t result = Matcher::result_t();
+    gAlign.qStartPos = aln.qStartPos1;
+    gAlign.qEndPos = aln.qEndPos1;
+    // gAlign.qLen = queryLen;
+    gAlign.dbStartPos =aln.dbStartPos1;
+    gAlign.dbEndPos =aln.dbEndPos1;
+    // gAlign.dbLen = targetLen;
+    gAlign.alnLength = aln.cigar.length();
+    gAlign.backtrace = aln.cigar;
+    std::cout << "backtrace:" << aln.cigar << std::endl;
     free(G);
     // free(P);
 
@@ -1106,7 +1118,7 @@ Matcher::result_t pairwiseLoLalign(
     SubstitutionMatrix &subMat3Di
 ) {
     lolAlign lolaln(seqDbrAA->getMaxSeqLen(), false);
-    FwBwAligner fwbwaln(16, -2, -2, 2, 1, 1);
+    
 
     unsigned int qKey = seqDbrAA->getDbKey(mergedId);
     size_t qId = seqDbrAA->getId(qKey);
@@ -1132,7 +1144,19 @@ Matcher::result_t pairwiseLoLalign(
     char *targetSeq = seqDbrAA->getData(targetId, 0);
     char *targetSeq3Di = seqDbr3Di->getData(tCaId, 0);
 
-    fwbwaln.resizeMatrix(qLen, tLen);
+
+    size_t length = 16;
+    float go = -5;
+    float ge = 0;
+    float T = 3;
+
+
+    size_t RowsCapacity = ((qLen + length - 1) / length) * length;
+    size_t ColsCapacity = ((tLen + length - 1) / length) * length;
+
+    FwBwAligner fwbwaln(length,go, ge, T, RowsCapacity, ColsCapacity);
+
+    // fwbwaln.resizeMatrix(qLen, tLen);
     lolaln.initQuery(qCaData, &qCaData[qLen], &qCaData[qLen * 2], querySeq, querySeq3Di, qLen);
     Matcher::result_t result = lolaln.align(
         tKey,

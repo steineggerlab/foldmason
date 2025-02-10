@@ -1,4 +1,5 @@
-
+#ifndef LOLALIGN_H
+#define LOLALIGN_H
 
 #include "SubstitutionMatrix.h"
 #include "IndexReader.h"
@@ -194,4 +195,4 @@ private:
 };
 
 
-
+#endif
