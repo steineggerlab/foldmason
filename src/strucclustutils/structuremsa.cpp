@@ -173,8 +173,8 @@ Matcher::result_t pairwiseAlignment(
     Matcher::result_t gAlign;
     
     size_t length = 16;
-    float go = -5;
-    float ge = -0;
+    float go = -10;
+    float ge = -1;
     float T = 3;
     int targetLen = target_aa->L;
     int queryLen = query_aa->L;
@@ -186,8 +186,8 @@ Matcher::result_t pairwiseAlignment(
     for (int i = 0; i < targetLen; ++i) {
         for (int j = 0; j < queryLen; ++j) {
             G[j][i] = static_cast<float>(
-                (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 8 * 1.4 +
-                (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 8 * 2.1
+                (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 4 * 1.4 +
+                (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 4 * 2.1
             );
             // std::cout << std::fixed << G[j][i] << '\t';
         }
@@ -200,10 +200,10 @@ Matcher::result_t pairwiseAlignment(
     FwBwAligner::s_align aln = fwbwaln.getFwbwAlnResult();
 
     // Matcher::result_t result = Matcher::result_t();
-    gAlign.qStartPos = aln.dbStartPos1;
+    gAlign.qStartPos = aln.dbStartPos1 - 1;
     gAlign.qEndPos = aln.dbEndPos1;
     gAlign.qLen = queryLen;
-    gAlign.dbStartPos = aln.qStartPos1;
+    gAlign.dbStartPos = aln.qStartPos1 - 1;
     gAlign.dbEndPos = aln.qEndPos1;
     gAlign.dbLen = targetLen;
     gAlign.alnLength = aln.cigar.length();
@@ -212,13 +212,13 @@ Matcher::result_t pairwiseAlignment(
     free(G);
     // free(P);
 
-    for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
+   for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
         delete[] query_profile_scores_aa[i];
         delete[] query_profile_scores_3di[i];
         delete[] target_profile_scores_aa[i];
         delete[] target_profile_scores_3di[i];
     }
-    
+
     delete[] query_profile_scores_aa;
     delete[] query_profile_scores_3di;
     delete[] target_profile_scores_aa;
@@ -1615,6 +1615,15 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 &subMat_3di,
                 par.compBiasCorrection
             );
+            // for (auto member : qMembers) {
+            //     std::cout << expand(msa.cigars_aa[member]) << '\n';
+            // } 
+            // std::cout << res.backtrace << '\n';
+            // for (auto member : tMembers) {
+            //     std::cout << expand(msa.cigars_aa[member]) << '\n';
+            // } 
+            // std::cout << '\n';
+
             std::vector<Instruction> qBt;
             std::vector<Instruction> tBt;
             getMergeInstructions(res, map1, map2, qBt, tBt);

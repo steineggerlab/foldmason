@@ -828,7 +828,7 @@ void FwBwAligner::computeBacktrace() {
 
     // traceback 
     alignResult = {};
-    alignResult.cigar = "";
+    alignResult.cigar = "M";
     alignResult.cigar.reserve(colSeqLen + rowSeqLen);
     alignResult.qEndPos1 = max_j - 1;
     alignResult.dbEndPos1 = max_i - 1;
