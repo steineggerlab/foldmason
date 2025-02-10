@@ -137,6 +137,7 @@ FwBwAligner::FwBwAligner(size_t length, float gapOpen, float gapExtend, float te
     exp_go = simdf32_set(static_cast<float>(exp(gapOpen / temperature))); 
     exp_ge = simdf32_set(static_cast<float>(exp(gapExtend / temperature)));
 
+    mact = 0.0;
 }
 
 
@@ -787,14 +788,13 @@ void FwBwAligner::computeProbabilityMatrix() {
     for (size_t k = 0; k < VECSIZE_FLOAT; ++k) {
         maxP = std::max(maxP, vMaxP[k]);
     }
-
 }
 
 void FwBwAligner::computeBacktrace() {
     if (btMatrix == nullptr) { // Is there more elegant way to assign it in constructor with template backtrace????
        btMatrix = malloc_matrix<uint8_t>(rowsCapacity + 1, colsCapacity + 1);
        S_prev = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
-        S_curr = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
+       S_curr = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
     }
     // MAC algorithm from HH-suite
     uint8_t val;
@@ -802,79 +802,30 @@ void FwBwAligner::computeBacktrace() {
     size_t max_j = 0;
     float term1, term2, term3, term4 = 0.0f;
     float score_MAC = -std::numeric_limits<float>::max();
-
-    size_t colLoopCount = colSeqLen / VECSIZE_FLOAT; 
-    size_t colLoopEndPos = colLoopCount * VECSIZE_FLOAT;
-
     memset(S_prev, 0, (colSeqLen + 1) * sizeof(float));
     memset(S_curr, 0, (colSeqLen + 1) * sizeof(float));
-    
-    simd_float vMact = simdf32_set(mact); 
-    simd_float vhalfMact = simdf32_set(0.5f * mact); 
-    simd_float vStateStop = simdf32_set(0.0f); 
-    simd_float vStateM = simdf32_set(1.0f); 
-    simd_float vStateD = simdf32_set(2.0f); 
-    simd_float vTerm1, vTerm2, vTerm3, vTerm4;
-    simd_float vMax123, vMax1_2;
-    simd_float vStateMask_MS, vStateMask_MSI, vStateTmp, vState;
     for (size_t i = 0; i <= rowSeqLen; ++i) {
         btMatrix[i][0] = States::STOP;
     }
-    for (size_t j = 0; j <= colSeqLen; ++j) {
-        btMatrix[0][j] = States::STOP;
-    }
-
+    memset(btMatrix[0], States::STOP, (colSeqLen + 1) * sizeof(uint8_t));
     for (size_t i = 1; i <= rowSeqLen; ++i) {
-        for (size_t j=1; j <= colLoopEndPos; j+= VECSIZE_FLOAT){
-            vTerm1 = simdf32_sub(simdf32_loadu(&P[i - 1][j - 1]), vMact);
-            vTerm2 = simdf32_add(simdf32_loadu(&S_prev[j - 1]), vTerm1);
-            vTerm3 = simdf32_sub(simdf32_loadu(&S_prev[j]), vhalfMact);
-            vTerm4 = simdf32_loadu(&S_curr[j - 1]);
-            vMax1_2 = simdf32_max(vTerm1, vTerm2);
-            vMax123 = simdf32_max(vMax1_2, vTerm3);
-
-            vStateMask_MS = simdf32_gt(vTerm2, vTerm1); // true if Term1 < Term2
-            vStateMask_MSI = simdf32_gt(vTerm3, vMax1_2); // Max(Term1, Term2) < Term3
-            vStateTmp = simdf32_blendv_ps(vStateStop, vStateM, vStateMask_MS); // Term1 < Term2: choose M
-            vState = simdf32_blendv_ps(vStateTmp, vStateD, vStateMask_MSI);
-
-            term4 = vTerm4[0] - 0.5 * mact;
-            for (size_t k = 0; k < VECSIZE_FLOAT; ++k) {
-                if (term4 > vMax123[k]) {
-                    vMax123[k] = term4;
-                    vState[k] = States::I;  
-                }
-                term4 = vMax123[k] - 0.5 * mact;
-                btMatrix[i][j+k] = vState[k];
-                if (vMax123[k] > score_MAC) {
-                    max_i = i;
-                    max_j = j + k;
-                    score_MAC = vMax123[k];
-                }
-            }
-            // Store the results
-            simdf32_storeu(&S_curr[j], vMax123);
-            // simdf32_storeu(&btMatrix[i][j], vState);
-
-        }
-        for (size_t j = colLoopEndPos+1; j <= colSeqLen; ++j) {
+        for (size_t j = 1; j <= colSeqLen; ++j) {
             term1 = P[i - 1][j - 1] - mact;
             term2 = S_prev[j - 1] + P[i - 1][j - 1] - mact;
             term3 = S_prev[j] - 0.5 * mact;
             term4 = S_curr[j - 1] - 0.5 * mact;
             calculate_max4(S_curr[j], term1, term2, term3, term4, val);
             btMatrix[i][j] = val;
-
-            if (S_curr[j] > score_MAC) {
+            if (i == rowSeqLen && S_curr[j] > score_MAC) {
                 max_i = i;
                 max_j = j;
                 score_MAC = S_curr[j];
             }
         }
+        //switch S_prev and S_curr
         std::swap(S_prev, S_curr);
     }
 
-    
     // traceback 
     alignResult = {};
     alignResult.cigar = "";
@@ -883,21 +834,23 @@ void FwBwAligner::computeBacktrace() {
     alignResult.dbEndPos1 = max_i - 1;
     alignResult.score1 = maxP;
     alignResult.score2 = score_MAC;
-    while (max_i > 0 && max_j > 0) {
+    while (true) {
         uint8_t state = btMatrix[max_i][max_j];
         if (state == States::M) {
-            --max_i;
-            --max_j;
-            // Update start positions to the last match
-            alignResult.qStartPos1 = max_j;
-            alignResult.dbStartPos1 = max_i;
             alignResult.cigar.push_back('M');
-        } else if (state == States::I) {
+            alignResult.qStartPos1 = max_j - 1;
+            alignResult.dbStartPos1 = max_i - 1;
+            if (max_i == 0 || max_j == 0) break;
             --max_i;
-            alignResult.cigar.push_back('I');
-        } else if (state == States::D) {
             --max_j;
+        } else if (state == States::I) {
+            alignResult.cigar.push_back('I');
+            if (max_i == 0) break;
+            --max_i;
+        } else if (state == States::D) {
             alignResult.cigar.push_back('D');
+            if (max_j == 0) break;
+            --max_j;
         } else {
             break;
         }
@@ -905,8 +858,11 @@ void FwBwAligner::computeBacktrace() {
     while (!alignResult.cigar.empty() && alignResult.cigar.back() != 'M') {
         alignResult.cigar.pop_back();
     }
-    alignResult.cigarLen = alignResult.cigar.length();
     std::reverse(alignResult.cigar.begin(), alignResult.cigar.end());
+    while (!alignResult.cigar.empty() && alignResult.cigar.back() != 'M') {
+        alignResult.cigar.pop_back();
+    }
+    alignResult.cigarLen = alignResult.cigar.length();
 }
 
 FwBwAligner::s_align FwBwAligner::getFwbwAlnResult() {

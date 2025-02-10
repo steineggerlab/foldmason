@@ -155,58 +155,57 @@ Matcher::result_t pairwiseAlignment(
     delete[] composition_bias_ss;
     delete[] tmp_composition_bias;
 
-    Matcher::result_t gAlign = aligner.simpleGotoh(
-        target_aa_seq,
-        target_3di_seq,
-        query_profile_scores_aa,
-        query_profile_scores_3di,
-        target_profile_scores_aa,
-        target_profile_scores_3di,
-        0,
-        query_aa->L,
-        0,
-        target_aa->L,
-        gapOpen,
-        gapExtend
-    );
+    // Matcher::result_t gAlign = aligner.simpleGotoh(
+    //     target_aa_seq,
+    //     target_3di_seq,
+    //     query_profile_scores_aa,
+    //     query_profile_scores_3di,
+    //     target_profile_scores_aa,
+    //     target_profile_scores_3di,
+    //     0,
+    //     query_aa->L,
+    //     0,
+    //     target_aa->L,
+    //     gapOpen,
+    //     gapExtend
+    // );
+    
+    Matcher::result_t gAlign;
     
     size_t length = 16;
     float go = -5;
-    float ge = 0;
+    float ge = -0;
     float T = 3;
     int targetLen = target_aa->L;
     int queryLen = query_aa->L;
     size_t RowsCapacity = ((queryLen + length - 1) / length) * length;
     size_t ColsCapacity = ((targetLen + length - 1) / length) * length;
-    float ** G;
+    float** G;
     G = malloc_matrix<float>(queryLen, targetLen);
     std::cout.precision(1);
     for (int i = 0; i < targetLen; ++i) {
         for (int j = 0; j < queryLen; ++j) {
             G[j][i] = static_cast<float>(
-                (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 2 * 1.4 +
-                (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 2 * 2.1
+                (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 8 * 1.4 +
+                (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 8 * 2.1
             );
+            // std::cout << std::fixed << G[j][i] << '\t';
         }
+        // std::cout << '\n';
     }
-    // float** P = fwbw(G, targetLen, queryLen, go, ge, T);
-    FwBwAligner fwbwaln(length,go, ge, T, RowsCapacity, ColsCapacity);
-    int* gaps = new int[4]{0, queryLen, 0, targetLen};
-    // fwbwaln.resizeMatrix(ColsCapacity, RowsCapacity);
+    FwBwAligner fwbwaln(length, go, ge, T, RowsCapacity, ColsCapacity);
+    int* gaps = new int[4]{0, queryLen, 0, targetLen}; //gaps: [rowStart, rowEnd, colStart, colEnd]
     fwbwaln.initScoreMatrix(G, gaps);
     fwbwaln.runFwBw<0,1>();
-    // fwbwaln.initScoreMatrix(G, targetLen, queryLen, gaps);
-    // fwbwaln.initQueryProfile(target_aa->numSequence, targetLen);
-    // fwbwaln.initAlignment(query_aa->numSequence, queryLen);
     FwBwAligner::s_align aln = fwbwaln.getFwbwAlnResult();
 
     // Matcher::result_t result = Matcher::result_t();
-    gAlign.qStartPos = aln.qStartPos1;
-    gAlign.qEndPos = aln.qEndPos1;
-    // gAlign.qLen = queryLen;
-    gAlign.dbStartPos =aln.dbStartPos1;
-    gAlign.dbEndPos =aln.dbEndPos1;
-    // gAlign.dbLen = targetLen;
+    gAlign.qStartPos = aln.dbStartPos1;
+    gAlign.qEndPos = aln.dbEndPos1;
+    gAlign.qLen = queryLen;
+    gAlign.dbStartPos = aln.qStartPos1;
+    gAlign.dbEndPos = aln.qEndPos1;
+    gAlign.dbLen = targetLen;
     gAlign.alnLength = aln.cigar.length();
     gAlign.backtrace = aln.cigar;
     std::cout << "backtrace:" << aln.cigar << std::endl;
