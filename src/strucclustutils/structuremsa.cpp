@@ -59,6 +59,283 @@ GapData getGapData(const Matcher::result_t &res, const std::vector<size_t>& qMap
     return data;
 }
 
+
+
+std::pair<size_t, size_t> hasResidueAtIndex(const std::vector<Instruction>& cigar, const size_t& msaIndex1, const size_t& msaIndex2) {
+    size_t resIndex = 0 ;  // ungapped residue index
+    size_t seqIndex = 0 ;  // position in MSA
+    size_t resIdx1 = SIZE_T_MAX;
+    size_t resIdx2 = SIZE_T_MAX;
+    bool foundFirst = false;
+    for (const Instruction& ins : cigar) {
+        size_t length = ins.length();
+
+        if (!foundFirst && msaIndex1 < seqIndex + length) {
+            if (ins.isSeq()) {
+                resIdx1 = resIndex + (msaIndex1 - seqIndex);
+                foundFirst = true;
+            } else {
+                return {SIZE_MAX, SIZE_MAX};
+            }
+        }
+        
+        if (msaIndex2 < seqIndex + length) {
+            if (ins.isSeq()) {
+                resIdx2 = resIndex + (msaIndex2 - seqIndex);
+                return {resIdx1, resIdx2};
+            } else {
+                return {SIZE_MAX, SIZE_MAX};
+            }
+        }
+        
+        if (ins.isSeq()) {
+            resIndex++;
+        }
+        seqIndex += length;
+    }
+    return {SIZE_MAX, SIZE_MAX};
+}
+
+size_t find_nth_residue(const std::string& str, size_t n) {
+    size_t count = 0;
+    for (size_t i = 0; i < str.length(); ++i) {
+        if (str[i] == '0') count++;
+        if (count == n) return i;
+    }
+    return SIZE_T_MAX;
+}
+
+void print_matrix(float** matrix, size_t m, size_t n) {
+    std::cout.precision(2);
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+            std::cout << std::fixed << matrix[i][j] << '\t';
+        }
+        std::cout << '\n';
+    }
+}
+
+/**
+ * Distances (A) of first residue pairs occurring in two MSA columns
+ *
+ * e.g. 4 structures, 5 columns
+ *
+ * 0 1 2 3 4
+ * A - - A - 
+ * B B B B B
+ * C C - C -
+ * D - - D D
+ * 
+ * 0-1 B-B or C-C
+ * 0-2 B-B
+ * 0-3 A-A or B-B, C-C, D-D
+ * 0-4 B-B or D-D
+ * 1-2 B-B
+ * 1-3 B-B or C-C
+ * 1-4 B-B
+ * 2-3 B-B
+ * 2-4 B-B
+ * 3-4 B-B or D-D
+ * 
+ * Generate 2D distance matrix for LoLalign
+ * 
+ * Too imbalanced if all B-B?
+ */
+float compute_residue_distance(
+    DBReader<unsigned int> *seqDbrAA,
+    DBReader<unsigned int> *seqDbrCA,
+    size_t id,
+    size_t i,
+    size_t j
+) {    
+    unsigned int dbKey = seqDbrAA->getDbKey(id);
+    size_t aaId = seqDbrAA->getId(dbKey);
+    size_t caId = seqDbrCA->getId(dbKey);
+    int len = seqDbrAA->getSeqLen(aaId);
+
+    Coordinate16 coords;
+    char *qcadata = seqDbrCA->getData(caId, 0);
+    size_t qCaLength = seqDbrCA->getEntryLen(caId);
+    float *qCaData = coords.read(qcadata, len, qCaLength);
+
+    float dx = qCaData[i] - qCaData[j];
+    float dy = qCaData[len + i] - qCaData[len + j];
+    float dz = qCaData[len * 2 + i] - qCaData[len * 2 + j];
+    float dist_sq = dx * dx + dy * dy + dz * dz;
+
+    const float cutoff_distance = 15.0f;
+    const float cutoff_sq = cutoff_distance * cutoff_distance;
+
+    return (dist_sq > cutoff_sq) ? 0.0f : std::sqrt(dist_sq);
+}
+
+// Profile version
+// Takes distances of first found structure with residues in column pairs
+void fill_distance_matrix(
+    DBReader<unsigned int> *seqDbrAA,
+    DBReader<unsigned int> *seqDbrCA,
+    float** matrix,
+    const std::vector<std::vector<Instruction> >& cigars,
+    const std::vector<size_t> members,
+    const std::string& mask,
+    size_t n
+) {
+    // restructure maybe:
+    // iterate all members, iterate i/j
+    // if cell at i,j has value, skip
+    // otherwise compute distance
+    // re-use coords for query
+    size_t i_maskIdx, j_maskIdx;
+    for (size_t i = 0; i < n; ++i) {
+        i_maskIdx = find_nth_residue(mask, i + 1); 
+        for (size_t j = i + 1; j < n; ++j) {
+            j_maskIdx = find_nth_residue(mask, j + 1); 
+            for (size_t m : members) {
+                const std::vector<Instruction>& cigar = cigars[m];
+                const std::pair<size_t, size_t> respair = hasResidueAtIndex(cigar, i_maskIdx, j_maskIdx);
+                if (respair.first != SIZE_T_MAX && respair.second != SIZE_T_MAX) {
+                    float dist = compute_residue_distance(seqDbrAA, seqDbrCA, m, respair.first, respair.second);
+                    matrix[i][j] = dist;
+                    matrix[j][i] = dist;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void fill_distance_matrix(
+    DBReader<unsigned int> *seqDbrAA,
+    DBReader<unsigned int> *seqDbrCA,
+    float** matrix,
+    size_t dbId,
+    size_t n
+) {
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = i + 1; j < n; ++j) {
+            float dist = compute_residue_distance(seqDbrAA, seqDbrCA, dbId, i, j);
+            matrix[i][j] = dist;
+            matrix[j][i] = dist;
+        }
+    }
+}
+
+void fill_score_matrix(
+    float** G,
+    Sequence *query_aa,
+    Sequence *query_3di,
+    Sequence *target_aa,
+    Sequence *target_3di,
+    SubstitutionMatrix *mat_aa,
+    SubstitutionMatrix *mat_3di,
+    int compBiasCorrection
+) {
+    bool targetIsProfile = (Parameters::isEqualDbtype(target_aa->getSeqType(), Parameters::DBTYPE_HMM_PROFILE));
+    bool queryIsProfile = (Parameters::isEqualDbtype(query_aa->getSeqType(), Parameters::DBTYPE_HMM_PROFILE));
+
+    unsigned char * query_aa_seq = query_aa->numSequence;
+    unsigned char * query_3di_seq = query_3di->numSequence;
+    unsigned char * target_aa_seq = target_aa->numSequence;
+    unsigned char * target_3di_seq = target_3di->numSequence;
+
+    if (queryIsProfile) {
+        query_aa_seq = query_aa->numConsensusSequence;
+        query_3di_seq = query_3di->numConsensusSequence;
+    }
+    if (targetIsProfile) {
+        target_aa_seq = target_aa->numConsensusSequence;
+        target_3di_seq = target_3di->numConsensusSequence;
+    }
+
+    float *composition_bias_aa  = new float[query_aa->L];
+    float *composition_bias_ss  = new float[query_aa->L];
+    float *tmp_composition_bias = new float[query_aa->L];
+    if (compBiasCorrection) {
+        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_aa, query_aa->numSequence, query_aa->L, tmp_composition_bias, 1.0);
+        for (int i =0; i < query_aa->L; i++) {
+            composition_bias_aa[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
+        }
+        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_3di, query_3di->numSequence, query_3di->L, tmp_composition_bias, 1.0);
+        for (int i =0; i < query_aa->L; i++) {
+            composition_bias_ss[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
+        }
+    } else {
+        memset(composition_bias_aa, 0, query_aa->L * sizeof(int8_t));
+        memset(composition_bias_ss, 0, query_aa->L * sizeof(int8_t));
+    }
+
+    short **query_profile_scores_aa = new short * [mat_aa->alphabetSize];
+    short **query_profile_scores_3di = new short * [mat_aa->alphabetSize];
+    for (int32_t j = 0; j < mat_aa->alphabetSize; j++) {
+        query_profile_scores_aa[j] = new short [query_aa->L];
+        query_profile_scores_3di[j] = new short [query_aa->L];
+    }
+    if (queryIsProfile) {
+        for (unsigned int i = 0; i < query_aa->L; i++) {
+            for (int32_t j = 0; j < mat_aa->alphabetSize; j++) {
+                query_profile_scores_aa[j][i]  = query_aa->profile_for_alignment[j * query_aa->L + i];
+                query_profile_scores_3di[j][i] = query_3di->profile_for_alignment[j * query_aa->L + i];
+            }
+        }
+    } else {
+        for (unsigned int i = 0; i < query_aa->L; i++) {
+            for (int32_t j = 0; j < mat_aa->alphabetSize; j++) {
+                query_profile_scores_aa[j][i]  = mat_aa->subMatrix[j][query_aa_seq[i]]   + composition_bias_aa[i];
+                query_profile_scores_3di[j][i] = mat_3di->subMatrix[j][query_3di_seq[i]] + composition_bias_ss[i];
+            }
+        }
+    }
+   
+    short **target_profile_scores_aa = new short * [mat_aa->alphabetSize];
+    short **target_profile_scores_3di = new short * [mat_aa->alphabetSize];
+    for (int32_t j = 0; j < mat_aa->alphabetSize; j++) {
+        target_profile_scores_aa[j]  = new short [target_aa->L];
+        target_profile_scores_3di[j] = new short [target_aa->L];
+    }
+    if (targetIsProfile) {
+        for (int i = 0; i < target_aa->L; i++) {
+            for (int32_t j = 0; j < mat_aa->alphabetSize; j++) {
+                target_profile_scores_aa[j][i]  = target_aa->profile_for_alignment[j * target_aa->L + i];
+                target_profile_scores_3di[j][i] = target_3di->profile_for_alignment[j * target_aa->L + i];
+            }
+        }
+    } else {
+        for (int i = 0; i < target_aa->L; i++) {
+            for (int32_t j = 0; j < mat_aa->alphabetSize; j++) {
+                target_profile_scores_aa[j][i]  = mat_aa->subMatrix[j][target_aa_seq[i]];
+                target_profile_scores_3di[j][i] = mat_3di->subMatrix[j][target_3di_seq[i]];
+            }
+        }
+    }
+
+    delete[] composition_bias_aa;
+    delete[] composition_bias_ss;
+    delete[] tmp_composition_bias;
+   
+    for (int i = 0; i < target_aa->L; ++i) {
+        for (int j = 0; j < query_aa->L; ++j) {
+            G[j][i] = static_cast<float>(
+                (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 4 * 1.4 +
+                (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 4 * 2.1
+            );
+        }
+    }
+    
+    for (int32_t i = 0; i < mat_aa->alphabetSize; i++) {
+        delete[] query_profile_scores_aa[i];
+        delete[] query_profile_scores_3di[i];
+        delete[] target_profile_scores_aa[i];
+        delete[] target_profile_scores_3di[i];
+    }
+
+    delete[] query_profile_scores_aa;
+    delete[] query_profile_scores_3di;
+    delete[] target_profile_scores_aa;
+    delete[] target_profile_scores_3di;
+ 
+}
+
+
 Matcher::result_t pairwiseAlignment(
     StructureSmithWaterman & aligner,
     unsigned int querySeqLen,
@@ -208,7 +485,7 @@ Matcher::result_t pairwiseAlignment(
     gAlign.dbLen = targetLen;
     gAlign.alnLength = aln.cigar.length();
     gAlign.backtrace = aln.cigar;
-    std::cout << "backtrace:" << aln.cigar << std::endl;
+    // std::cout << "backtrace:" << aln.cigar << std::endl;
     free(G);
     // free(P);
 
@@ -1107,6 +1384,8 @@ void testSeqLens(std::vector<size_t> &MAYBE_UNUSED(indices), std::vector<std::ve
 
 
 
+
+
 Matcher::result_t pairwiseLoLalign(
     int mergedId,
     int targetId,
@@ -1143,12 +1422,10 @@ Matcher::result_t pairwiseLoLalign(
     char *targetSeq = seqDbrAA->getData(targetId, 0);
     char *targetSeq3Di = seqDbr3Di->getData(tCaId, 0);
 
-
     size_t length = 16;
     float go = -5;
     float ge = 0;
     float T = 3;
-
 
     size_t RowsCapacity = ((qLen + length - 1) / length) * length;
     size_t ColsCapacity = ((tLen + length - 1) / length) * length;
@@ -1481,6 +1758,12 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     , par.gapOpen.values.aminoacid(), par.gapPseudoCount
 #endif
     );
+    
+    size_t length = 16;
+    size_t RowsCapacity = ((seqDbrAA.getMaxSeqLen() + length - 1) / length) * length;
+    size_t ColsCapacity = ((seqDbrAA.getMaxSeqLen() + length - 1) / length) * length;
+    lolAlign lolaln(seqDbrAA.getMaxSeqLen(), false);
+    FwBwAligner fwbwaln(length, -par.fwbw_gapopen, -par.fwbw_gapextend, par.temperature, RowsCapacity, ColsCapacity);
 
     // Add four seq objects per alignee per thread
     // Amino acid profile/sequence, 3Di profile/sequence
@@ -1600,36 +1883,89 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 toRemove.push_back(targetSubMSA);
             }
 
-            // Do alignment
-            structureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
-            Matcher::result_t res = pairwiseAlignment(
-                structureSmithWaterman,
+            // TODO
+            // do this also for target if profile
+            // how do we do profile vs sequence?
+            //            
+            // flow
+            // Preallocate float** distance matrix
+            // 1. for a msa profile, iterate all column index pairs (i, j)
+            // 2. map (i, j) to real sequence indices using mask, (i_m, j_m)
+            // 3. iterate msa sequences, find first with residues at (i_m, j_m)
+            // 4. compute distance (angstrom) within structure of residue pair (i_m, j_m) and fill cell in distance matrix
+            // 5. break
+            
+            lolaln.initQuery_foldmason(reinterpret_cast<char*>(seqMergedAa->numSequence), reinterpret_cast<char*>(seqMergedSs->numSequence), seqMergedAa->L);
+            lolaln.reallocate_target(seqTargetAa->L);
+            size_t newRow = ((seqMergedAa->L + 15) / 16) * 16;
+            size_t newCol = ((seqTargetAa->L + 15) / 16) * 16;
+            fwbwaln.resizeMatrix(newRow, newCol);
+            std::cout << "Debug point 1\n";
+            if (queryIsProfile) {
+                fill_distance_matrix(&seqDbrAA, seqDbrCA, lolaln.d_ij, msa.cigars_aa, qMembers, msa[querySubMSA].mask, seqMergedAa->L);
+            } else {
+                fill_distance_matrix(&seqDbrAA, seqDbrCA, lolaln.d_ij, mergedId, seqMergedAa->L);
+            }
+            std::cout << "Debug point 2\n";
+            if (targetIsProfile) {
+                fill_distance_matrix(&seqDbrAA, seqDbrCA, lolaln.d_kl, msa.cigars_aa, tMembers, msa[targetSubMSA].mask, seqTargetAa->L);
+            } else {
+                fill_distance_matrix(&seqDbrAA, seqDbrCA, lolaln.d_kl, targetId, seqTargetAa->L);
+            }
+            std::cout << "Debug point 3\n";
+            fill_score_matrix(lolaln.G, seqMergedAa, seqMergedSs, seqTargetAa, seqTargetSs, &subMat_aa, &subMat_3di, par.compBiasCorrection);
+            std::cout << "Debug point 4\n";
+            Matcher::result_t res = lolaln.align_foldmason(
                 seqMergedAa->L,
-                seqMergedAa,
-                seqMergedSs, 
-                seqTargetAa,
-                seqTargetSs,
-                par.gapOpen.values.aminoacid(),
-                par.gapExtend.values.aminoacid(),
-                &subMat_aa,
-                &subMat_3di,
-                par.compBiasCorrection
+                seqTargetAa->L,
+                lolaln.G,
+                lolaln.d_ij,
+                lolaln.d_kl,
+                &fwbwaln
             );
-            // for (auto member : qMembers) {
-            //     std::cout << expand(msa.cigars_aa[member]) << '\n';
-            // } 
-            // std::cout << res.backtrace << '\n';
-            // for (auto member : tMembers) {
-            //     std::cout << expand(msa.cigars_aa[member]) << '\n';
-            // } 
-            // std::cout << '\n';
+            std::cout << "Debug point 5\n";
+            
+            // std::cout.precision(2);
+            // std::cout << "## START QUERY MATRIX\n";
+            // for (size_t m : qMembers)
+            //     std::cout << expand(msa.cigars_aa[m]) << '\n';
+            // if (queryIsProfile)
+            //     std::cout << msa[querySubMSA].mask << '\n';
+            // print_matrix(lolaln.d_ij, seqMergedAa->L, seqMergedAa->L);
+            // std::cout << "## END QUERY MATRIX\n\n";
+            // std::cout << "## START TARGET MATRIX\n";
+            // for (size_t m : tMembers)
+            //     std::cout << expand(msa.cigars_aa[m]) << '\n';
+            // if (targetIsProfile)
+            //     std::cout << msa[targetSubMSA].mask << '\n';
+            // print_matrix(lolaln.d_kl, seqTargetAa->L, seqTargetAa->L);
+            // std::cout << "## END TARGET MATRIX\n";
+            // std::cout << "## START SCORE MATRIX\n";
+            // print_matrix(lolaln.G, seqTargetAa->L, seqMergedAa->L);
+            // std::cout << "## END SCORE MATRIX\n";
+            
+            // Do alignment
+            // structureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
+            // res = pairwiseAlignment(
+            //     structureSmithWaterman,
+            //     seqMergedAa->L,
+            //     seqMergedAa,
+            //     seqMergedSs, 
+            //     seqTargetAa,
+            //     seqTargetSs,
+            //     par.gapOpen.values.aminoacid(),
+            //     par.gapExtend.values.aminoacid(),
+            //     &subMat_aa,
+            //     &subMat_3di,
+            //     par.compBiasCorrection
+            // );
 
             std::vector<Instruction> qBt;
             std::vector<Instruction> tBt;
             getMergeInstructions(res, map1, map2, qBt, tBt);
 
             // If neither are profiles, do TM-align as well and take the best alignment
-            if (caExist && !queryIsProfile && !targetIsProfile) {
+            if (false && caExist && !queryIsProfile && !targetIsProfile) {
                 Matcher::result_t lolRes = pairwiseLoLalign(mergedId, targetId, &seqDbrAA, &seqDbr3Di, seqDbrCA, subMat_aa, subMat_3di);
                 // Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 double lddtLoL = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], lolRes, seqDbrCA, thread_idx);
@@ -1645,6 +1981,17 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             }
 
             updateCIGARs(res, map1, map2, msa.cigars_aa, msa.cigars_ss, qMembers, tMembers, qBt, tBt);
+            
+            for (auto member : qMembers) {
+                std::cout << expand(msa.cigars_ss[member]) << '\n';
+            } 
+            // std::cout << res.backtrace << '\n';
+            for (auto member : tMembers) {
+                std::cout << expand(msa.cigars_ss[member]) << '\n';
+            } 
+            std::cout << '\n';
+
+
 
             SubMSA *newSubMSA;
             if (queryIsProfile) {

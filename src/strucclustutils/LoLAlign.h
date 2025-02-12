@@ -64,6 +64,7 @@ public:
 
 
     void initQuery(float *x, float *y, float *z, char * querySeq, char* query3diSeq, unsigned int queryLen);
+    void initQuery_foldmason(char *querySeq, char *query3diSeq, unsigned int queryLen);
     
     TMscoreResult computeTMscore(float *x, float *y, float *z,
                                  unsigned int targetLen, int qStartPos,
@@ -72,6 +73,14 @@ public:
 
     Matcher::result_t align(unsigned int dbKey, float *target_x, float *target_y, float *target_z,
                             char * targetSeq, char* target3diSeq, unsigned int targetLen, SubstitutionMatrix &subMatAA, SubstitutionMatrix &subMat3Di, FwBwAligner* fwbwaln);
+    Matcher::result_t align_foldmason(
+        size_t queryLen,
+        size_t targetLen,
+        float** G,
+        float** d_ij,
+        float** d_kl,
+        FwBwAligner* fwbwaln
+    );
     float maxSubArray(float* nums, int numsSize);
 
     void align_startAnchors(int * anchor_query, int * anchor_target, int max_query, int max_target, int * anchor_length, float** P, float** G);
@@ -106,7 +115,18 @@ public:
         int* final_anchor_target,
         SubstitutionMatrix &subMatAA,
         SubstitutionMatrix &subMat3Di,
-        float *scoreForward);
+        float *scoreForward
+    );
+    void computeDi_score_foldmason(
+        int anchorLen,
+        int* final_anchor_query,
+        int* final_anchor_target,
+        float *scoreForward
+    );
+
+    float ** d_ij;
+    float ** d_kl;
+    float ** G;
 
 private:
 
@@ -121,9 +141,6 @@ private:
     float * target_z;
     float ** scoreForward;
     float ** P;
-    float ** d_ij;
-    float ** d_kl;
-    float ** G;
     int ** anchor_query;
     int ** anchor_target;
     float start_anchor_go = -6.0;

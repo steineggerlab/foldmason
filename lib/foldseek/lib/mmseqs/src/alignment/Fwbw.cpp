@@ -206,6 +206,9 @@ void FwBwAligner::resizeMatrix(size_t newRowsCapacity, size_t newColsCapacity) {
     free(S_prev); S_prev = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
     free(S_curr); S_curr = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
     free(btMatrix); btMatrix = malloc_matrix<uint8_t>(rowsCapacity + 1, colsCapacity + 1);
+    
+    free(scoreForward);
+    scoreForward = malloc_matrix<float>(rowsCapacity, colsCapacity);
 }
 
 void FwBwAligner::resetParams(float newGapOpen, float newGapExtend, float newTemperature) {
@@ -312,7 +315,7 @@ void FwBwAligner::forward() {
         memset(zmBlockPrev, 0, (length + 1) * sizeof(float));
         memset(zeBlock, 0, (length + 1) * sizeof(float));
         memset(zfBlock, 0, (length + 1) * sizeof(float));
-            
+
         memcpy(zmFirst + 1, zInit[0], rowSeqLen * sizeof(float));
         memcpy(zeFirst + 1, zInit[1], rowSeqLen * sizeof(float));
         memcpy(zfFirst + 1, zInit[2], rowSeqLen * sizeof(float));
@@ -387,7 +390,7 @@ void FwBwAligner::forward() {
                 vZmCurr = simdf32_add(simdf32_log(vZmCurr), simdf32_set(current_max));
                 vMax_zm = simdf32_max(vMax_zm, vZmCurr);
                 simdf32_store(&zm[i - 1][start + j-1], vZmCurr);
-            }     
+            }
 
             #if defined(AVX512)
                 simd_float vNextZinit = _mm512_set_ps(

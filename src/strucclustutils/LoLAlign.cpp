@@ -161,7 +161,318 @@ void lolAlign::index_sort(float* nums, int* index, int numsSize) {
     std::sort(index, index + numsSize, [&nums](int i1, int i2) { return nums[i1] < nums[i2]; });
 }
 
+// remove coordinate info since we precompute distance matrices
+Matcher::result_t lolAlign::align_foldmason(
+    size_t queryLen,
+    size_t targetLen,
+    float** G,
+    float** d_ij,
+    float** d_kl,
+    FwBwAligner* fwbwaln
+) {
+    int maxIndexX = 0;
+    int maxIndexY = 0;
+    
+    for(int i = 0; i < num_sa; i++){
+        sa_index[i] = i;
+        sa_scores[i] = 0;
+    }
+    for(int sa = 0; sa < 10; sa++){
+        anchor_length[sa] = 0;
+        new_anchor_length[sa] = 0;
+        for (unsigned int i = 0; i < queryLen; i++) {
+            anchor_query[sa][i] = 0;
+        }
+        for (unsigned int i = 0; i < targetLen; i++) {
+            anchor_target[sa][i] = 0;
+        }
+    }
 
+    gaps[0] = 0;
+    gaps[1] = queryLen;
+    gaps[2] = 0;
+    gaps[3] = targetLen;
+
+    fwbwaln->resetParams(start_anchor_go, start_anchor_ge, start_anchor_T);
+    fwbwaln->initScoreMatrix(G, gaps);
+    
+    fwbwaln->runFwBw<0,0>(); //profile=false, backtrace=false
+
+    for(int sa = 0; sa < 10; sa++){
+        maxIndexX = 0;
+        maxIndexY = 0;
+        float maxScore = 0;
+        for (int i = this->start_anchor_length; i < static_cast<int>(queryLen) - this->start_anchor_length ; ++i) {
+            for (int j = this->start_anchor_length; j < static_cast<int>(targetLen) - this->start_anchor_length ; ++j) {
+                if (fwbwaln->P[i][j] >= maxScore) {
+                    maxScore = fwbwaln->P[i][j];
+                    maxIndexX = i;
+                    maxIndexY = j;
+                }
+            }
+        }
+        int start_row = maxIndexX - std::min(maxIndexX, maxIndexY);
+        int start_col = maxIndexY - std::min(maxIndexX, maxIndexY);
+        int diag_length = std::min(queryLen - start_row, targetLen - start_col);
+        for(int i = 0; i < diag_length; i++){
+            lol_score_vec[i] = G[start_row + i][start_col + i];
+        }
+        lol_score_vec[std::min(maxIndexX, maxIndexY)] += 200;
+
+        for (int i = -start_anchor_length; i < start_anchor_length; i++) {
+            for (int j = 0; j < diag_length; j++) {
+                if (d_ij[maxIndexX  +i][start_row + j] > 0) {
+                    lol_dist[j] = std::abs(d_ij[maxIndexX + i][start_row + j] - d_kl[maxIndexY  +i][start_col + j]);
+                    lol_seq_dist[j] =  std::copysign(1.0f, (maxIndexX + i - start_row + j)) * std::log(1 + std::abs((float)(maxIndexX + i - start_row + j)));
+                } else {
+                    lol_dist[j] = -1;
+                    lol_seq_dist[j] = -1;
+                }
+            }
+            lolscore(lol_dist, lol_seq_dist, lol_score_vec, diag_length, hidden_layer);
+        }
+        sa_scores[sa] = maxSubArray(lol_score_vec, diag_length);
+        align_startAnchors(anchor_query[sa], anchor_target[sa], maxIndexX, maxIndexY, &new_anchor_length[sa], fwbwaln->P, G);
+        anchor_length[sa] = new_anchor_length[sa];
+    }
+    for (size_t i = 0; i < queryLen; ++i) {
+        std::memset(G[i], 0, targetLen * sizeof(G[0][0]));
+    }
+    index_sort(sa_scores, sa_index, 10);
+
+    gaps[0] = 0;
+    gaps[1] = 0;
+    gaps[2] = 0;
+    gaps[3] = 0;
+
+    fwbwaln->resetParams(lol_go, lol_ge, lol_T);
+    // fwbwaln->resetParams(-5.0, -0.0, lol_T);
+    int sa;
+
+    for (int sa_it = 0; sa_it < SeedNumber; sa_it++){
+        sa = sa_index[9 - sa_it];
+        for (int iteration = 0; iteration < 1000; iteration++) {
+            gaps[0] = 0;
+            gaps[1] = 0;
+            gaps[2] = 0;
+            gaps[3] = 0;
+            while ((gaps[1] < queryLen && gaps[3] < targetLen)) {
+                calc_gap(anchor_query[sa], anchor_target[sa], gaps, queryLen, targetLen);
+                if (gaps[0] != -1) {
+                    lolmatrix(anchor_query[sa], anchor_target[sa], new_anchor_length[sa], gaps, d_ij, d_kl, G, queryLen, targetLen, hidden_layer, lol_dist);
+                } else {
+                    break;
+                }
+            }
+            for (unsigned int i = 0; i < queryLen; i++) {
+                if (anchor_query[sa][i] == 2) {
+                    anchor_query[sa][i] = 1;
+                }
+            }
+            for (unsigned int i = 0; i <targetLen; i++) {
+                if (anchor_target[sa][i] == 2) {
+                    anchor_target[sa][i] = 1;
+                }
+            }
+            new_anchor_length[0] = 0;
+
+            gaps[0] = 0;
+            gaps[1] = 0;
+            gaps[2] = 0;
+            gaps[3] = 0;
+            float maxP = 0.5;
+
+            while ((gaps[1] < queryLen && gaps[3] < targetLen)) {
+                calc_gap(anchor_query[sa], anchor_target[sa], gaps, queryLen, targetLen);
+                if (gaps[0] != -1) {
+                    fwbwaln->initScoreMatrix(G, gaps);
+                    fwbwaln->runFwBw<0,0>();
+                    maxP = std::max(maxP, fwbwaln->maxP);
+                    if (fwbwaln->maxP == 0) {
+                        fwbwaln->temperature += 1;
+                        gaps[0] = 0;
+                        gaps[1] = 0;
+                        gaps[2] = 0;
+                        gaps[3] = 0;
+                        continue; 
+                    }
+                    for (size_t i = 0; i < gaps[1] -gaps[0]; ++i) {
+                        std::copy(&fwbwaln->P[i][0], &fwbwaln->P[i][(gaps[3] - gaps[2])], &P[i + gaps[0]][gaps[2]]);
+                    }
+                } else {
+                    break;
+                } 
+            }
+            fwbwaln->temperature = lol_T;
+            new_anchor_length[sa] = 0;
+
+            gaps[0] = 0;
+            gaps[1] = 0;
+            gaps[2] = 0;
+            gaps[3] = 0;
+
+            while ((gaps[1] < queryLen && gaps[3] < targetLen)) {
+                calc_gap(anchor_query[sa], anchor_target[sa], gaps, queryLen, targetLen);
+                if (gaps[0] != -1) {
+                    for (int i = gaps[0]; i < gaps[1]; i++) {
+                        for (int j = gaps[2]; j < gaps[3]; j++) {
+                            if (P[i][j] > maxP -0.1) {
+                                if (anchor_query[sa][i] == 0 && anchor_target[sa][j] == 0) {
+                                    anchor_query[sa][i] = 2;
+                                    anchor_target[sa][j] = 2;
+                                    anchor_length[sa] += 1;
+                                    new_anchor_length[sa] += 1;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    break;
+                }
+            }
+            if (new_anchor_length[sa] == 0){
+                break;
+            }
+        }
+        for (size_t i = 0; i < queryLen; ++i) {
+            std::memset(G[i], 0, targetLen * sizeof(G[0][0]));
+        }
+    }
+
+    float max_lol_score = 0.0;
+    int max_lol_idx = 0;
+
+    for (int sa_it = 0; sa_it < SeedNumber; sa_it++) {
+        sa = sa_index[9 - sa_it];
+        int sa_idx = 0;
+        for (unsigned int i = 0; i < queryLen; i++) {
+            if (anchor_query[sa][i] != 0) {
+                final_anchor_query[sa_idx] = i;
+                sa_idx++;
+            }
+        }
+        sa_idx = 0;
+        for (unsigned int i = 0; i < targetLen; i++) {
+            if (anchor_target[sa][i] != 0) {
+                final_anchor_target[sa_idx] = i;
+                sa_idx++;
+            }
+        }
+        computeDi_score_foldmason(
+            anchor_length[sa],
+            final_anchor_query,
+            final_anchor_target,
+            lol_score_vec
+        );
+        for (int i = 0; i < anchor_length[sa]; i++) {
+            for (int j = 0;j < anchor_length[sa]; j++) {
+                if (d_ij[final_anchor_query[i]][final_anchor_query[j]] > 0.0) {
+                    lol_dist[j] = std::abs(d_ij[final_anchor_query[i]][final_anchor_query[j]] - d_kl[final_anchor_target[i]][final_anchor_target[j]]);
+                    //anchor_dist_target[j] = d_kl[final_anchor_target[i]][final_anchor_target[j]];
+                    lol_seq_dist[j] = std::copysign(1.0f, (final_anchor_query[i]-final_anchor_query[j])) * std::log(1 + std::abs((float)(final_anchor_query[i]-final_anchor_query[j])));
+                } else {
+                    lol_dist[j] = -1;
+                    lol_seq_dist[j] = -1;
+                }
+            }
+            lolscore(lol_dist, lol_seq_dist, lol_score_vec, anchor_length[sa], hidden_layer);
+        }
+
+        float total_lol_score = 0.0;
+        for (int i = 0; i < anchor_length[sa]; i++) {
+            total_lol_score += lol_score_vec[i];
+
+        }
+        total_lol_score = total_lol_score / std::sqrt((float)(queryLen * targetLen));
+        
+        if (total_lol_score > max_lol_score){
+            max_lol_score = total_lol_score;
+            max_lol_idx = sa;
+        }
+    }
+
+    std::string backtrace = "";
+    int matches = 0;
+    int q_count = 0;
+    int t_count = 0;
+
+    while (matches < anchor_length[max_lol_idx]) {
+        if (anchor_query[max_lol_idx][q_count] != 0 && anchor_target[max_lol_idx][t_count] != 0) {
+            backtrace.append(1, 'M');
+            matches++;
+            q_count++;
+            t_count++;
+        } else if (anchor_query[max_lol_idx][q_count] != 0 && anchor_target[max_lol_idx][t_count] == 0) {
+            backtrace.append(1, 'D');
+            t_count++;
+        } else if (anchor_query[max_lol_idx][q_count] == 0 && anchor_target[max_lol_idx][t_count] != 0) {
+            backtrace.append(1, 'I');
+            q_count++;
+        } else if (anchor_query[max_lol_idx][q_count] == 0 && anchor_target[max_lol_idx][t_count] == 0) {
+            backtrace.append(1, 'D');
+            backtrace.append(1, 'I');
+            q_count++;
+            t_count++;
+        }
+    }
+
+    Matcher::result_t result = Matcher::result_t();
+    result.score = max_lol_score; 
+    result.eval = max_lol_score;
+    result.qStartPos = 0;
+    result.dbStartPos = 0;
+    result.qEndPos = queryLen - 1;
+    result.dbEndPos = targetLen - 1;
+    result.qLen = queryLen;
+    result.dbLen = targetLen;
+    result.alnLength = backtrace.length();
+    result.backtrace = backtrace;
+
+    // trim backtrace find the first 'M'
+    size_t firstM = targetLen;
+    int qLeftSkip = 0;
+    int tLeftSkip = 0;
+    for (size_t i = 0; i < backtrace.size(); i++) {
+        if (backtrace[i] == 'M') {
+            firstM = i;
+            break;
+        }
+        if (backtrace[i] == 'I') {
+            qLeftSkip++;
+        } else if (backtrace[i] == 'D') {
+            tLeftSkip++;
+        }
+    }
+    result.qStartPos  += qLeftSkip;
+    result.dbStartPos += tLeftSkip;
+    result.qEndPos = result.qStartPos;
+    result.dbEndPos = result.dbStartPos;
+    for (size_t i = firstM; i < backtrace.size(); i++) {
+        switch (backtrace[i]) {
+            case 'M': // match consumes 1 base in query + 1 base in target
+                result.qEndPos++;
+                result.dbEndPos++;
+                break;
+            case 'I': // insertion consumes 1 base in query
+                result.qEndPos++;
+                break;
+            case 'D': // deletion consumes 1 base in target
+                result.dbEndPos++;
+                break;
+            default:
+                // handle unexpected cigar chars if needed
+                break;
+        }
+    }
+
+    result.qEndPos--;
+    result.dbEndPos--;
+    result.backtrace = backtrace.substr(firstM);
+    result.alnLength = (int)result.backtrace.size();
+    
+    return result;
+}
 
 
 Matcher::result_t lolAlign::align(unsigned int dbKey, float *target_x, float *target_y, float *target_z,
@@ -657,9 +968,39 @@ void lolAlign::computeDi_score(
     free(targetNum3Di);
 }
 
+void lolAlign::computeDi_score_foldmason(
+        int anchorLen,
+        int* final_anchor_query,
+        int* final_anchor_target,
+        float *scoreForward)
+{
+    for (int i = 0; i < anchorLen; ++i) {
+        int q = final_anchor_query[i];
+        int t = final_anchor_target[i];
+        scoreForward[i] = G[q][t];
+    }
+}
 
-
-
+void lolAlign::initQuery_foldmason(char *querySeq, char *query3diSeq, unsigned int queryLen)
+{
+    this->queryLen = queryLen;
+    this->querySeq = querySeq;
+    this->query3diSeq = query3diSeq;
+    anchor_query = malloc_matrix<int>(num_sa, queryLen);
+    G = malloc_matrix<float>(queryLen*2, queryLen*2);
+    P = malloc_matrix<float>(queryLen*2, queryLen*2);
+    free(d_ij);
+    d_ij = malloc_matrix<float>(queryLen, queryLen);
+    hidden_layer = malloc_matrix<float>(queryLen*2, 3);
+    anchor_query = malloc_matrix<int>(num_sa, queryLen);
+    anchor_target = malloc_matrix<int>(num_sa, queryLen*2);
+    lol_dist = (float *)mem_align(ALIGN_FLOAT, queryLen*2 * sizeof(float));
+    lol_seq_dist = (float *)mem_align(ALIGN_FLOAT, queryLen*2 * sizeof(float));
+    lol_score_vec = (float *)mem_align(ALIGN_FLOAT, queryLen*2 * sizeof(float));
+    final_anchor_query = new int[queryLen*2];
+    final_anchor_target = new int[queryLen*2];
+    return;
+}
 
 
 void lolAlign::initQuery(float *x, float *y, float *z, char *querySeq, char *query3diSeq, unsigned int queryLen)
