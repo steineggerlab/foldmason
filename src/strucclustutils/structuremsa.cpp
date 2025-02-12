@@ -187,6 +187,10 @@ void fill_distance_matrix(
     // re-use coords for query
     size_t i_maskIdx, j_maskIdx;
     for (size_t i = 0; i < n; ++i) {
+        memset(matrix[i], 0.0f, n * sizeof(float));
+    }
+    for (size_t i = 0; i < n; ++i) {
+        matrix[i][i] = 0.0f;
         i_maskIdx = find_nth_residue(mask, i + 1); 
         for (size_t j = i + 1; j < n; ++j) {
             j_maskIdx = find_nth_residue(mask, j + 1); 
@@ -212,6 +216,11 @@ void fill_distance_matrix(
     size_t n
 ) {
     for (size_t i = 0; i < n; ++i) {
+        memset(matrix[i], 0.0f, n * sizeof(float));
+    }
+    for (size_t i = 0; i < n; ++i) {
+        matrix[i][i] = 0.0f;
+        // memset(matrix[i], 0.0f, n * sizeof(float));
         for (size_t j = i + 1; j < n; ++j) {
             float dist = compute_residue_distance(seqDbrAA, seqDbrCA, dbId, i, j);
             matrix[i][j] = dist;
