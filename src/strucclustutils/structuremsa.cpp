@@ -45,6 +45,10 @@
 #include <omp.h>
 #endif
 
+#ifndef SIZE_T_MAX
+#define SIZE_T_MAX ((size_t) -1)
+#endif
+
 KSEQ_INIT(kseq_buffer_t*, kseq_buffer_reader)
 
 #define	EXIT_FAILURE	1
