@@ -177,7 +177,7 @@ Matcher::result_t lolAlign::align_foldmason(
         sa_index[i] = i;
         sa_scores[i] = 0;
     }
-    for(int sa = 0; sa < 10; sa++){
+    for(int sa = 0; sa < num_sa; sa++){
         anchor_length[sa] = 0;
         new_anchor_length[sa] = 0;
         for (unsigned int i = 0; i < queryLen; i++) {
@@ -198,7 +198,7 @@ Matcher::result_t lolAlign::align_foldmason(
     
     fwbwaln->runFwBw<0,0>(); //profile=false, backtrace=false
 
-    for(int sa = 0; sa < 10; sa++){
+    for(int sa = 0; sa < num_sa; sa++){
         maxIndexX = 0;
         maxIndexY = 0;
         float maxScore = 0;
@@ -238,7 +238,7 @@ Matcher::result_t lolAlign::align_foldmason(
     for (size_t i = 0; i < queryLen; ++i) {
         std::memset(G[i], 0, targetLen * sizeof(G[0][0]));
     }
-    index_sort(sa_scores, sa_index, 10);
+    index_sort(sa_scores, sa_index, num_sa);
 
     gaps[0] = 0;
     gaps[1] = 0;
@@ -246,11 +246,11 @@ Matcher::result_t lolAlign::align_foldmason(
     gaps[3] = 0;
 
     fwbwaln->resetParams(lol_go, lol_ge, lol_T);
-    // fwbwaln->resetParams(-5.0, -0.0, lol_T);
+    // fwbwaln->resetParams(-6.0, -1.0, 3.0);
     int sa;
 
     for (int sa_it = 0; sa_it < SeedNumber; sa_it++){
-        sa = sa_index[9 - sa_it];
+        sa = sa_index[num_sa - sa_it - 1];
         for (int iteration = 0; iteration < 1000; iteration++) {
             gaps[0] = 0;
             gaps[1] = 0;
@@ -288,7 +288,11 @@ Matcher::result_t lolAlign::align_foldmason(
                     fwbwaln->initScoreMatrix(G, gaps);
                     fwbwaln->runFwBw<0,0>();
                     maxP = std::max(maxP, fwbwaln->maxP);
+                    // FIXME should update temperature in fwbw when += 1
                     if (fwbwaln->maxP == 0) {
+                        if (fwbwaln->temperature > 10) {
+                            break;
+                        }
                         fwbwaln->temperature += 1;
                         gaps[0] = 0;
                         gaps[1] = 0;
@@ -340,11 +344,11 @@ Matcher::result_t lolAlign::align_foldmason(
         }
     }
 
-    float max_lol_score = 0.0;
+    float max_lol_score = -10000.0;
     int max_lol_idx = 0;
 
     for (int sa_it = 0; sa_it < SeedNumber; sa_it++) {
-        sa = sa_index[9 - sa_it];
+        sa = sa_index[num_sa - sa_it - 1];
         int sa_idx = 0;
         for (unsigned int i = 0; i < queryLen; i++) {
             if (anchor_query[sa][i] != 0) {
@@ -384,7 +388,7 @@ Matcher::result_t lolAlign::align_foldmason(
             total_lol_score += lol_score_vec[i];
 
         }
-        total_lol_score = total_lol_score / std::sqrt((float)(queryLen * targetLen));
+        // total_lol_score = total_lol_score / std::sqrt((float)(queryLen * targetLen));
         
         if (total_lol_score > max_lol_score){
             max_lol_score = total_lol_score;
@@ -1062,14 +1066,16 @@ void lolAlign::lolmatrix(int *anchor_query, int *anchor_target, int anchor_lengt
 
         for (int j = gap0_start; j < gap0_end; j++)
         {
+            float dq = d_ij[anchor_q][j];
 
-            if (d_ij[anchor_q][j] > 0)
+            if (dq > 0)
             {
-
+                min_lolmat_idx = std::min(min_lolmat_idx, j);
+                max_lolmat_idx = std::max(max_lolmat_idx, j+1); 
                 seq_dist = std::copysign(1.0f, (anchor_q-j)) * std::log(1 + std::abs((float)(anchor_q-j)));
                 for(int l = gap1_start; l < gap1_end; l++)
                 {
-                    d_dist[l - gap1_start] = std::abs(d_ij[anchor_q][j] - d_kl[anchor_t][l]);
+                    d_dist[l - gap1_start] = std::abs(dq- d_kl[anchor_t][l]);
 
                     //seq_dist[l - gap1_start] = std::copysign(1.0f, (anchor_q-j)) * std::log(1 + std::abs((float)(anchor_q-j)));
                 }

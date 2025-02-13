@@ -165,9 +165,6 @@ private:
     int SeedNumber = 3;
 
 
-
-    
-
     float w1[2][3] = {
         {-1.3584513e-04,7.6149112e-01,-8.1348085e-01 },
         {9.9329501e-01 , 5.7029408e-01, 6.0702705e-01}
@@ -175,7 +172,7 @@ private:
     float b1[3] = {0.7043129 , 0.374659  , 0.39905924};
 
     float w2[3] = {-0.776632  ,  0.61055756, 0.5823986};
-    float b2 = -0.11200039;
+    float b2 = -0.11200039 + 1;
 
     // Load weights and biases into SIMD registers
     simd_float w1_0 = simdf32_set(w1[0][0]); // Broadcast w1[0][0] to all 8 elements
@@ -197,6 +194,8 @@ private:
     simd_float b2_vec = simdf32_set(b2); // Broadcast b2 to all 8 elements
 
     simd_float zero = simdf32_setzero();
+    int min_lolmat_idx;
+    int max_lolmat_idx;
 
     unsigned int queryLen;
     char * querySeq;

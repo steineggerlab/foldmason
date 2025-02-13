@@ -162,10 +162,9 @@ float compute_residue_distance(
     float dy = qCaData[len + i] - qCaData[len + j];
     float dz = qCaData[len * 2 + i] - qCaData[len * 2 + j];
     float dist_sq = dx * dx + dy * dy + dz * dz;
-
+    
     const float cutoff_distance = 15.0f;
     const float cutoff_sq = cutoff_distance * cutoff_distance;
-
     return (dist_sq > cutoff_sq) ? 0.0f : std::sqrt(dist_sq);
 }
 
@@ -194,16 +193,22 @@ void fill_distance_matrix(
         i_maskIdx = find_nth_residue(mask, i + 1); 
         for (size_t j = i + 1; j < n; ++j) {
             j_maskIdx = find_nth_residue(mask, j + 1); 
+            float count = 0.0f;
+            float sum = 0.0f;
             for (size_t m : members) {
                 const std::vector<Instruction>& cigar = cigars[m];
                 const std::pair<size_t, size_t> respair = hasResidueAtIndex(cigar, i_maskIdx, j_maskIdx);
                 if (respair.first != SIZE_T_MAX && respair.second != SIZE_T_MAX) {
                     float dist = compute_residue_distance(seqDbrAA, seqDbrCA, m, respair.first, respair.second);
-                    matrix[i][j] = dist;
-                    matrix[j][i] = dist;
-                    break;
+                    sum += dist;
+                    // matrix[i][j] = dist;
+                    // matrix[j][i] = dist;
+                    ++count;
+                    // break;
                 }
             }
+            matrix[i][j] = matrix[j][i] = (sum == 0.0f || count == 0.0f) ? 0.0f : sum / count;
+            // std::cout << i << ' ' << j << ' ' << sum << ' ' << count << ' ' << matrix[i][j] << '\n';
         }
     }
 }
@@ -324,8 +329,8 @@ void fill_score_matrix(
     for (int i = 0; i < target_aa->L; ++i) {
         for (int j = 0; j < query_aa->L; ++j) {
             G[j][i] = static_cast<float>(
-                (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 4 * 1.4 +
-                (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 4 * 2.1
+                (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 2 * 1.4 +
+                (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 2 * 2.1
             );
         }
     }
@@ -1909,30 +1914,18 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             size_t newRow = ((seqMergedAa->L + 15) / 16) * 16;
             size_t newCol = ((seqTargetAa->L + 15) / 16) * 16;
             fwbwaln.resizeMatrix(newRow, newCol);
-            std::cout << "Debug point 1\n";
             if (queryIsProfile) {
                 fill_distance_matrix(&seqDbrAA, seqDbrCA, lolaln.d_ij, msa.cigars_aa, qMembers, msa[querySubMSA].mask, seqMergedAa->L);
             } else {
                 fill_distance_matrix(&seqDbrAA, seqDbrCA, lolaln.d_ij, mergedId, seqMergedAa->L);
             }
-            std::cout << "Debug point 2\n";
             if (targetIsProfile) {
                 fill_distance_matrix(&seqDbrAA, seqDbrCA, lolaln.d_kl, msa.cigars_aa, tMembers, msa[targetSubMSA].mask, seqTargetAa->L);
             } else {
                 fill_distance_matrix(&seqDbrAA, seqDbrCA, lolaln.d_kl, targetId, seqTargetAa->L);
             }
-            std::cout << "Debug point 3\n";
             fill_score_matrix(lolaln.G, seqMergedAa, seqMergedSs, seqTargetAa, seqTargetSs, &subMat_aa, &subMat_3di, par.compBiasCorrection);
-            std::cout << "Debug point 4\n";
-            Matcher::result_t res = lolaln.align_foldmason(
-                seqMergedAa->L,
-                seqTargetAa->L,
-                lolaln.G,
-                lolaln.d_ij,
-                lolaln.d_kl,
-                &fwbwaln
-            );
-            std::cout << "Debug point 5\n";
+            Matcher::result_t res = lolaln.align_foldmason(seqMergedAa->L, seqTargetAa->L, lolaln.G, lolaln.d_ij, lolaln.d_kl, &fwbwaln);
             
             // std::cout.precision(2);
             // std::cout << "## START QUERY MATRIX\n";
@@ -1991,16 +1984,14 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
             updateCIGARs(res, map1, map2, msa.cigars_aa, msa.cigars_ss, qMembers, tMembers, qBt, tBt);
             
-            for (auto member : qMembers) {
-                std::cout << expand(msa.cigars_ss[member]) << '\n';
-            } 
-            // std::cout << res.backtrace << '\n';
-            for (auto member : tMembers) {
-                std::cout << expand(msa.cigars_ss[member]) << '\n';
-            } 
-            std::cout << '\n';
-
-
+            // for (auto member : qMembers) {
+            //     std::cout << expand(msa.cigars_ss[member]) << '\n';
+            // } 
+            // // std::cout << res.backtrace << '\n';
+            // for (auto member : tMembers) {
+            //     std::cout << expand(msa.cigars_ss[member]) << '\n';
+            // } 
+            // std::cout << '\n';
 
             SubMSA *newSubMSA;
             if (queryIsProfile) {
