@@ -40,6 +40,7 @@
 #include "MSA.h"
 
 #include "LoLAlign.h"
+#include "simd.h"
 
 #ifdef OPENMP
 #include <omp.h>
@@ -61,52 +62,6 @@ GapData getGapData(const Matcher::result_t &res, const std::vector<size_t>& qMap
     data.endSequence = qMap.back() - qMap[res.qEndPos];
     data.endGaps     = tMap.back() - tMap[res.dbEndPos];
     return data;
-}
-
-
-
-std::pair<size_t, size_t> hasResidueAtIndex(const std::vector<Instruction>& cigar, const size_t& msaIndex1, const size_t& msaIndex2) {
-    size_t resIndex = 0 ;  // ungapped residue index
-    size_t seqIndex = 0 ;  // position in MSA
-    size_t resIdx1 = SIZE_T_MAX;
-    size_t resIdx2 = SIZE_T_MAX;
-    bool foundFirst = false;
-    for (const Instruction& ins : cigar) {
-        size_t length = ins.length();
-
-        if (!foundFirst && msaIndex1 < seqIndex + length) {
-            if (ins.isSeq()) {
-                resIdx1 = resIndex + (msaIndex1 - seqIndex);
-                foundFirst = true;
-            } else {
-                return {SIZE_MAX, SIZE_MAX};
-            }
-        }
-        
-        if (msaIndex2 < seqIndex + length) {
-            if (ins.isSeq()) {
-                resIdx2 = resIndex + (msaIndex2 - seqIndex);
-                return {resIdx1, resIdx2};
-            } else {
-                return {SIZE_MAX, SIZE_MAX};
-            }
-        }
-        
-        if (ins.isSeq()) {
-            resIndex++;
-        }
-        seqIndex += length;
-    }
-    return {SIZE_MAX, SIZE_MAX};
-}
-
-size_t find_nth_residue(const std::string& str, size_t n) {
-    size_t count = 0;
-    for (size_t i = 0; i < str.length(); ++i) {
-        if (str[i] == '0') count++;
-        if (count == n) return i;
-    }
-    return SIZE_T_MAX;
 }
 
 std::vector<size_t> map_mask_indices(const std::string& mask, size_t n) {
@@ -131,65 +86,26 @@ void print_matrix(float** matrix, size_t m, size_t n) {
     }
 }
 
-/**
- * Distances (A) of first residue pairs occurring in two MSA columns
- *
- * e.g. 4 structures, 5 columns
- *
- * 0 1 2 3 4
- * A - - A - 
- * B B B B B
- * C C - C -
- * D - - D D
- * 
- * 0-1 B-B or C-C
- * 0-2 B-B
- * 0-3 A-A or B-B, C-C, D-D
- * 0-4 B-B or D-D
- * 1-2 B-B
- * 1-3 B-B or C-C
- * 1-4 B-B
- * 2-3 B-B
- * 2-4 B-B
- * 3-4 B-B or D-D
- * 
- * Generate 2D distance matrix for LoLalign
- * 
- * Too imbalanced if all B-B?
- */
-float compute_residue_distance(
-    DBReader<unsigned int> *seqDbrAA,
-    DBReader<unsigned int> *seqDbrCA,
-    size_t id,
-    size_t i,
-    size_t j
-) {    
-    unsigned int dbKey = seqDbrAA->getDbKey(id);
-    size_t aaId = seqDbrAA->getId(dbKey);
-    size_t caId = seqDbrCA->getId(dbKey);
-    int len = seqDbrAA->getSeqLen(aaId);
-
-    Coordinate16 coords;
-    char *qcadata = seqDbrCA->getData(caId, 0);
-    size_t qCaLength = seqDbrCA->getEntryLen(caId);
-    float *qCaData = coords.read(qcadata, len, qCaLength);
-
-    float dx = qCaData[i] - qCaData[j];
-    float dy = qCaData[len + i] - qCaData[len + j];
-    float dz = qCaData[len * 2 + i] - qCaData[len * 2 + j];
-    float dist_sq = dx * dx + dy * dy + dz * dz;
-    
-    const float cutoff_distance = 15.0f;
-    const float cutoff_sq = cutoff_distance * cutoff_distance;
-    return (dist_sq > cutoff_sq) ? 0.0f : std::sqrt(dist_sq);
-}
 
 inline size_t upper_triangle_index(size_t i, size_t j, size_t n) {
     return (i * (2 * n - i - 1)) / 2 + (j - i - 1);
 }
 
-// Profile version
-// Takes distances of first found structure with residues in column pairs
+// Generates 2D distance matrix for LoLalign from profile
+// For each pair of MSA columns, takes inter-residue distances within structures
+// with residues (non-gap) in both columns, e.g. 4 structures, 5 columns:
+//
+// MSA           Structure residue pairs for D[i][j]
+// 0 1 2 3 4     0-1 B-B or C-C
+// A - - A -     0-2 B-B
+// B B B B B     0-3 A-A or B-B, C-C, D-D
+// C C - C -     0-4 B-B or D-D
+// D - - D D     1-2 B-B
+//               1-3 B-B or C-C
+//               1-4 B-B
+//               2-3 B-B
+//               2-4 B-B
+//               3-4 B-B or D-D
 void fill_distance_matrix(
     DBReader<unsigned int> *seqDbrAA,
     DBReader<unsigned int> *seqDbrCA,
@@ -239,34 +155,34 @@ void fill_distance_matrix(
         size_t qCaLength = seqDbrCA->getEntryLen(caId);
         float *qCaData = coords.read(qcadata, len, qCaLength);
 
-        size_t i_m, a, j_m, b;
-        float dx, dy, dz, dist_sq;
+#pragma omp parallel for schedule(dynamic)
         for (size_t i = 0; i < n; ++i) {
-            i_m = mask_indices[i];
-            a = has_residue[i_m];
+            size_t i_m = mask_indices[i];
+            size_t a = has_residue[i_m];
             if (a == SIZE_T_MAX) continue;
+            float ax = qCaData[a];
+            float ay = qCaData[a + len];
+            float az = qCaData[a + len * 2];
             for (size_t j = i + 1; j < n; ++j) {
-                j_m = mask_indices[j];
-                b = has_residue[j_m];
+                size_t j_m = mask_indices[j];
+                size_t b = has_residue[j_m];
                 if (b == SIZE_T_MAX) continue;
-                dx = qCaData[a] - qCaData[b];
-                dy = qCaData[len + a] - qCaData[len + b];
-                dz = qCaData[len * 2 + a] - qCaData[len * 2 + b];
-                dist_sq = dx * dx + dy * dy + dz * dz;
+                float dx = ax - qCaData[b];
+                float dy = ay - qCaData[b + len];
+                float dz = az - qCaData[b + len * 2];
+                float dist_sq = dx * dx + dy * dy + dz * dz;
                 matrix[i][j] += (dist_sq > cutoff_sq) ? 0.0f : std::sqrt(dist_sq);
-                matrix[j][i] = matrix[i][j];
-                size_t idx = upper_triangle_index(i, j, n);
-                residue_count[idx]++;
+                residue_count[upper_triangle_index(i, j, n)]++;
             }
         }
     }
     
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < n; ++i) {
         for (size_t j = i + 1; j < n; ++j) {
             size_t idx = upper_triangle_index(i, j, n);
             if (residue_count[idx] > 0) {
-                matrix[i][j] = matrix[i][j] / static_cast<float>(residue_count[idx]);
+                matrix[i][j] /= static_cast<float>(residue_count[idx]);
                 matrix[j][i] = matrix[i][j];
             }
         }
@@ -2007,43 +1923,43 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             // std::cout << "## END SCORE MATRIX\n";
             
             // Do alignment
-            structureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
-            Matcher::result_t res = pairwiseAlignment(
-                structureSmithWaterman,
-                seqMergedAa->L,
-                seqMergedAa,
-                seqMergedSs, 
-                seqTargetAa,
-                seqTargetSs,
-                par.gapOpen.values.aminoacid(),
-                par.gapExtend.values.aminoacid(),
-                &subMat_aa,
-                &subMat_3di,
-                par.compBiasCorrection
-            );
+            // structureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
+            // Matcher::result_t res = pairwiseAlignment(
+            //     structureSmithWaterman,
+            //     seqMergedAa->L,
+            //     seqMergedAa,
+            //     seqMergedSs, 
+            //     seqTargetAa,
+            //     seqTargetSs,
+            //     par.gapOpen.values.aminoacid(),
+            //     par.gapExtend.values.aminoacid(),
+            //     &subMat_aa,
+            //     &subMat_3di,
+            //     par.compBiasCorrection
+            // );
 
             std::vector<Instruction> qBt;
             std::vector<Instruction> tBt;
-            getMergeInstructions(res, map1, map2, qBt, tBt);
+            getMergeInstructions(lolRes, map1, map2, qBt, tBt);
 
             // If neither are profiles, do TM-align as well and take the best alignment
-            if (caExist) {
-                // Matcher::result_t lolRes = pairwiseLoLalign(mergedId, targetId, &seqDbrAA, &seqDbr3Di, seqDbrCA, subMat_aa, subMat_3di);
-                // Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
-                double lddtLoL = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], lolRes, seqDbrCA, thread_idx);
-                // double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
-                double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
-                // Debug(Debug::INFO) << "LDDT scores\t" << lddt3Di << '\t' << lddtLoL << '\n';
-                if (lddtLoL > lddt3Di) {
-                    // Debug(Debug::INFO) << "Using LoLalign " << lddtLoL << ' ' << lddt3Di << '\n';
-                    qBt.clear();
-                    tBt.clear();
-                    getMergeInstructions(lolRes, map1, map2, qBt, tBt);
-                    std::swap(res, lolRes);
-                }
-            }
+            // if (caExist) {
+            //     // Matcher::result_t lolRes = pairwiseLoLalign(mergedId, targetId, &seqDbrAA, &seqDbr3Di, seqDbrCA, subMat_aa, subMat_3di);
+            //     // Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
+            //     double lddtLoL = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], lolRes, seqDbrCA, thread_idx);
+            //     // double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
+            //     double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
+            //     // Debug(Debug::INFO) << "LDDT scores\t" << lddt3Di << '\t' << lddtLoL << '\n';
+            //     if (lddtLoL > lddt3Di) {
+            //         // Debug(Debug::INFO) << "Using LoLalign " << lddtLoL << ' ' << lddt3Di << '\n';
+            //         qBt.clear();
+            //         tBt.clear();
+            //         getMergeInstructions(lolRes, map1, map2, qBt, tBt);
+            //         std::swap(res, lolRes);
+            //     }
+            // }
 
-            updateCIGARs(res, map1, map2, msa.cigars_aa, msa.cigars_ss, qMembers, tMembers, qBt, tBt);
+            updateCIGARs(lolRes, map1, map2, msa.cigars_aa, msa.cigars_ss, qMembers, tMembers, qBt, tBt);
             
             // for (auto member : qMembers) {
             //     std::cout << expand(msa.cigars_ss[member]) << '\n';
