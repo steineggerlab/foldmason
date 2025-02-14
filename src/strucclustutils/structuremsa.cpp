@@ -199,13 +199,33 @@ void fill_distance_matrix(
     for (size_t i = 0; i < n; ++i) {
         memset(matrix[i], 0.0f, n * sizeof(float));
     }
+
+    const float cutoff_distance = 15.0f;
+    const float cutoff_sq = cutoff_distance * cutoff_distance;
+
+    unsigned int dbKey = seqDbrAA->getDbKey(dbId);
+    size_t aaId = seqDbrAA->getId(dbKey);
+    size_t caId = seqDbrCA->getId(dbKey);
+    int len = seqDbrAA->getSeqLen(aaId);
+
+    Coordinate16 coords;
+    char *qcadata = seqDbrCA->getData(caId, 0);
+    size_t qCaLength = seqDbrCA->getEntryLen(caId);
+    float *qCaData = coords.read(qcadata, len, qCaLength);
+
+#pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < n; ++i) {
         matrix[i][i] = 0.0f;
-        // memset(matrix[i], 0.0f, n * sizeof(float));
+        float ax = qCaData[i];
+        float ay = qCaData[i + len];
+        float az = qCaData[i + len * 2];
         for (size_t j = i + 1; j < n; ++j) {
-            float dist = compute_residue_distance(seqDbrAA, seqDbrCA, dbId, i, j);
-            matrix[i][j] = dist;
-            matrix[j][i] = dist;
+            float dx = ax - qCaData[j];
+            float dy = ay - qCaData[j + len];
+            float dz = az - qCaData[j + len * 2];
+            float dist_sq = dx * dx + dy * dy + dz * dz;
+            matrix[i][j] += (dist_sq > cutoff_sq) ? 0.0f : std::sqrt(dist_sq);
+            matrix[j][i] = matrix[i][j];
         }
     }
 }
