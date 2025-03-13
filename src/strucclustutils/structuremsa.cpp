@@ -345,8 +345,133 @@ void fill_score_matrix(
  
 }
 
-
 Matcher::result_t pairwiseAlignment(
+    StructureSmithWaterman & aligner,
+    unsigned int querySeqLen,
+    Sequence *query_aa,
+    Sequence *query_3di,
+    Sequence *target_aa,
+    Sequence *target_3di,
+    int gapOpen,
+    int gapExtend,
+    SubstitutionMatrix *mat_aa,
+    SubstitutionMatrix *mat_3di,
+    int compBiasCorrection
+) {
+    std::string backtrace;
+
+    bool targetIsProfile = (Parameters::isEqualDbtype(target_aa->getSeqType(), Parameters::DBTYPE_HMM_PROFILE));
+    bool queryIsProfile = (Parameters::isEqualDbtype(query_aa->getSeqType(), Parameters::DBTYPE_HMM_PROFILE));
+
+    unsigned char * query_aa_seq = query_aa->numSequence;
+    unsigned char * query_3di_seq = query_3di->numSequence;
+    unsigned char * target_aa_seq = target_aa->numSequence;
+    unsigned char * target_3di_seq = target_3di->numSequence;
+    if (queryIsProfile) {
+        query_aa_seq = query_aa->numConsensusSequence;
+        query_3di_seq = query_3di->numConsensusSequence;
+    }
+    if (targetIsProfile) {
+        target_aa_seq = target_aa->numConsensusSequence;
+        target_3di_seq = target_3di->numConsensusSequence;
+    }
+
+    float *composition_bias_aa  = new float[query_aa->L];
+    float *composition_bias_ss  = new float[query_aa->L];
+    float *tmp_composition_bias = new float[query_aa->L];
+    if (compBiasCorrection) {
+        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_aa, query_aa->numSequence, query_aa->L, tmp_composition_bias, 1.0);
+        for (int i =0; i < query_aa->L; i++) {
+            composition_bias_aa[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
+        }
+        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_3di, query_3di->numSequence, query_3di->L, tmp_composition_bias, 1.0);
+        for (int i =0; i < query_aa->L; i++) {
+            composition_bias_ss[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
+        }
+    } else {
+        memset(composition_bias_aa, 0, query_aa->L * sizeof(int8_t));
+        memset(composition_bias_ss, 0, query_aa->L * sizeof(int8_t));
+    }
+
+    short **query_profile_scores_aa = new short * [aligner.get_profile()->alphabetSize];
+    short **query_profile_scores_3di = new short * [aligner.get_profile()->alphabetSize];
+    for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+        query_profile_scores_aa[j] = new short [querySeqLen];
+        query_profile_scores_3di[j] = new short [querySeqLen];
+    }
+    if (queryIsProfile) {
+        for (unsigned int i = 0; i < querySeqLen; i++) {
+            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+                query_profile_scores_aa[j][i]  = query_aa->profile_for_alignment[j * querySeqLen + i];
+                query_profile_scores_3di[j][i] = query_3di->profile_for_alignment[j * querySeqLen + i];
+            }
+        }
+    } else {
+        for (unsigned int i = 0; i < querySeqLen; i++) {
+            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+                query_profile_scores_aa[j][i]  = mat_aa->subMatrix[j][query_aa_seq[i]]   + composition_bias_aa[i];
+                query_profile_scores_3di[j][i] = mat_3di->subMatrix[j][query_3di_seq[i]] + composition_bias_ss[i];
+            }
+        }
+    }
+   
+    short **target_profile_scores_aa = new short * [aligner.get_profile()->alphabetSize];
+    short **target_profile_scores_3di = new short * [aligner.get_profile()->alphabetSize];
+    for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+        target_profile_scores_aa[j]  = new short [target_aa->L];
+        target_profile_scores_3di[j] = new short [target_aa->L];
+    }
+    if (targetIsProfile) {
+        for (int i = 0; i < target_aa->L; i++) {
+            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+                target_profile_scores_aa[j][i]  = target_aa->profile_for_alignment[j * target_aa->L + i];
+                target_profile_scores_3di[j][i] = target_3di->profile_for_alignment[j * target_aa->L + i];
+            }
+        }
+    } else {
+        for (int i = 0; i < target_aa->L; i++) {
+            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+                target_profile_scores_aa[j][i]  = mat_aa->subMatrix[j][target_aa_seq[i]];
+                target_profile_scores_3di[j][i] = mat_3di->subMatrix[j][target_3di_seq[i]];
+            }
+        }
+    }
+
+    delete[] composition_bias_aa;
+    delete[] composition_bias_ss;
+    delete[] tmp_composition_bias;
+    
+    Matcher::result_t gAlign = aligner.simpleGotoh(
+        target_aa_seq,
+        target_3di_seq,
+        query_profile_scores_aa,
+        query_profile_scores_3di,
+        target_profile_scores_aa,
+        target_profile_scores_3di,
+        0,
+        query_aa->L,
+        0,
+        target_aa->L,
+        gapOpen,
+        gapExtend
+    );
+    
+   for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
+        delete[] query_profile_scores_aa[i];
+        delete[] query_profile_scores_3di[i];
+        delete[] target_profile_scores_aa[i];
+        delete[] target_profile_scores_3di[i];
+    }
+
+    delete[] query_profile_scores_aa;
+    delete[] query_profile_scores_3di;
+    delete[] target_profile_scores_aa;
+    delete[] target_profile_scores_3di;
+   
+    return gAlign;
+}
+
+Matcher::result_t pairwiseAlignment2(
     StructureSmithWaterman & aligner,
     unsigned int querySeqLen,
     Sequence *query_aa,
@@ -458,7 +583,6 @@ Matcher::result_t pairwiseAlignment(
     // );
     
     Matcher::result_t gAlign;
-    
     size_t length = 16;
     float go = -10;
     float ge = -1;
@@ -473,8 +597,8 @@ Matcher::result_t pairwiseAlignment(
     for (int i = 0; i < targetLen; ++i) {
         for (int j = 0; j < queryLen; ++j) {
             G[j][i] = static_cast<float>(
-                (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 4 * 1.4 +
-                (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 4 * 2.1
+                (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 2 +
+                (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 2
             );
             // std::cout << std::fixed << G[j][i] << '\t';
         }
@@ -1921,46 +2045,26 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 fill_distance_matrix(&seqDbrAA, seqDbrCA, lolaln.d_kl, targetId, seqTargetAa->L);
             }
             fill_score_matrix(lolaln.G, seqMergedAa, seqMergedSs, seqTargetAa, seqTargetSs, &subMat_aa, &subMat_3di, par.compBiasCorrection);
-            Matcher::result_t lolRes = lolaln.align_foldmason(seqMergedAa->L, seqTargetAa->L, lolaln.G, lolaln.d_ij, lolaln.d_kl, &fwbwaln);
-            
-            // std::cout.precision(2);
-            // std::cout << "## START QUERY MATRIX\n";
-            // for (size_t m : qMembers)
-            //     std::cout << expand(msa.cigars_aa[m]) << '\n';
-            // if (queryIsProfile)
-            //     std::cout << msa[querySubMSA].mask << '\n';
-            // print_matrix(lolaln.d_ij, seqMergedAa->L, seqMergedAa->L);
-            // std::cout << "## END QUERY MATRIX\n\n";
-            // std::cout << "## START TARGET MATRIX\n";
-            // for (size_t m : tMembers)
-            //     std::cout << expand(msa.cigars_aa[m]) << '\n';
-            // if (targetIsProfile)
-            //     std::cout << msa[targetSubMSA].mask << '\n';
-            // print_matrix(lolaln.d_kl, seqTargetAa->L, seqTargetAa->L);
-            // std::cout << "## END TARGET MATRIX\n";
-            // std::cout << "## START SCORE MATRIX\n";
-            // print_matrix(lolaln.G, seqTargetAa->L, seqMergedAa->L);
-            // std::cout << "## END SCORE MATRIX\n";
-            
-            // Do alignment
-            // structureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
-            // Matcher::result_t res = pairwiseAlignment(
-            //     structureSmithWaterman,
-            //     seqMergedAa->L,
-            //     seqMergedAa,
-            //     seqMergedSs, 
-            //     seqTargetAa,
-            //     seqTargetSs,
-            //     par.gapOpen.values.aminoacid(),
-            //     par.gapExtend.values.aminoacid(),
-            //     &subMat_aa,
-            //     &subMat_3di,
-            //     par.compBiasCorrection
-            // );
+            // Matcher::result_t lolRes = lolaln.align_foldmason(seqMergedAa->L, seqTargetAa->L, lolaln.G, lolaln.d_ij, lolaln.d_kl, &fwbwaln);
+           
+            structureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
+            Matcher::result_t res = pairwiseAlignment2(
+                structureSmithWaterman,
+                seqMergedAa->L,
+                seqMergedAa,
+                seqMergedSs, 
+                seqTargetAa,
+                seqTargetSs,
+                par.gapOpen.values.aminoacid(),
+                par.gapExtend.values.aminoacid(),
+                &subMat_aa,
+                &subMat_3di,
+                par.compBiasCorrection
+            );
 
             std::vector<Instruction> qBt;
             std::vector<Instruction> tBt;
-            getMergeInstructions(lolRes, map1, map2, qBt, tBt);
+            getMergeInstructions(res, map1, map2, qBt, tBt);
 
             // If neither are profiles, do TM-align as well and take the best alignment
             // if (caExist) {
@@ -1979,8 +2083,72 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             //     }
             // }
 
-            updateCIGARs(lolRes, map1, map2, msa.cigars_aa, msa.cigars_ss, qMembers, tMembers, qBt, tBt);
+            updateCIGARs(res, map1, map2, msa.cigars_aa, msa.cigars_ss, qMembers, tMembers, qBt, tBt);
             
+            // d_ij and d_kl
+            // want: for each residue i, distances to all residues j 
+            // 
+
+
+            // TODO 
+            // size_t alnLength = cigarLength(msa.cigars_aa[qMembers[0]], true);
+
+            // GapData g = getGapData(lolRes, map1, map2); 
+            // size_t preCigar = g.preGaps + g.preSequence;
+            // size_t endCigar = preCigar + lolRes.backtrace.length();
+            // size_t postCigar = endCigar + g.endSequence;
+            
+            // // Map new alignment to query/target profile indices
+            // // Will need to map these to original structure indices
+            // std::vector<size_t> qMap(alnLength, SIZE_T_MAX);
+            // std::vector<size_t> tMap(alnLength, SIZE_T_MAX);
+            // std::iota(tMap.begin(), tMap.begin() + lolRes.dbStartPos, 0);
+            // std::iota(qMap.begin() + lolRes.qStartPos, qMap.begin() + lolRes.qStartPos + lolRes.dbStartPos, 0);
+            // size_t qIdx = g.preSequence;
+            // size_t tIdx = g.preGaps;
+            // size_t mIdx = preCigar;
+            // for (size_t i = 0; i < lolRes.backtrace.length(); i++) {
+            //     switch (lolRes.backtrace[i]) {
+            //         case 'M': {
+            //             qMap[mIdx] = qIdx++; 
+            //             tMap[mIdx] = tIdx++; 
+            //             mIdx++;
+            //             break;
+            //         }
+            //         case 'I': {
+            //             qMap[mIdx] = qIdx++; 
+            //             mIdx++;
+            //             break;
+            //         }
+            //         case 'D': {
+            //             tMap[mIdx] = tIdx++; 
+            //             mIdx++;
+            //             break;
+            //         }
+            //         default:
+            //             break;
+            //     }
+            // }
+            // std::iota(qMap.begin() + endCigar, qMap.begin() + postCigar, qIdx);
+            // std::iota(tMap.begin() + postCigar, tMap.end(), tIdx);
+
+            // // std::vector<float> mergedDistances(alnLength * (alnLength + 1) / 2, 0.0f);
+            // std::vector<std::vector<float>> mergedDistances(alnLength, std::vector<float>(alnLength, 0.0f));
+            // for (size_t i = 0; i < lolRes.alnLength; i++) {
+            //     size_t qi = qMap[i];
+            //     size_t ti = tMap[i];
+            //     for (size_t j = i + 1; j < lolRes.alnLength; j++) {
+            //         size_t qj = qMap[j];
+            //         size_t tj = tMap[j];
+            //         float q_dist = (qi != SIZE_T_MAX && qj != SIZE_T_MAX) ? lolaln.d_ij[qi][qj] : SIZE_T_MAX;
+            //         float t_dist = (ti != SIZE_T_MAX && tj != SIZE_T_MAX) ? lolaln.d_kl[ti][tj] : SIZE_T_MAX;
+            //         // size_t idx = upper_triangle_index(i, j, alnLength);
+            //         mergedDistances[i][j] = (q_dist != SIZE_T_MAX && t_dist != SIZE_T_MAX)
+            //             ? ((q_dist + t_dist) / 2)
+            //             : (q_dist != SIZE_T_MAX) ? q_dist : t_dist;
+            //     }
+            // }
+
             // for (auto member : qMembers) {
             //     std::cout << expand(msa.cigars_ss[member]) << '\n';
             // } 
@@ -2001,6 +2169,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 newSubMSA->concat(qMembers);
                 newSubMSA->concat(tMembers);
             }
+            
+            // newSubMSA->distances.assign(mergedDistances.begin(), mergedDistances.end());
 
             // Don't need to make profiles on final alignment
             if (!(i == merges.size() - 1 && j == merges[i] - 1)) {

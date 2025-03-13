@@ -132,7 +132,7 @@ private:
 
 
     std::string backtrace;
-    int num_sa = 10;
+    int num_sa = 5;
     float * query_x;
     float * query_y;
     float * query_z;
@@ -150,7 +150,7 @@ private:
     float lol_go = -5.0;
     float lol_ge = -0.0;
     float lol_min_p = 0.4;
-    float lol_T = 3;
+    float lol_T = 3.0;
     float** hidden_layer;
     int* sa_index = new int[num_sa];
     float* sa_scores = new float[num_sa];
@@ -172,7 +172,7 @@ private:
     float b1[3] = {0.7043129 , 0.374659  , 0.39905924};
 
     float w2[3] = {-0.776632  ,  0.61055756, 0.5823986};
-    float b2 = -0.11200039 + 1;
+    float b2 = -0.11200039 + 0.8;
 
     // Load weights and biases into SIMD registers
     simd_float w1_0 = simdf32_set(w1[0][0]); // Broadcast w1[0][0] to all 8 elements

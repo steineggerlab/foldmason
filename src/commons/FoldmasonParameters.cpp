@@ -56,6 +56,9 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_NO_COMP_BIAS_CORR);
     structuremsa.push_back(&PARAM_V);
     structuremsa.push_back(&PARAM_REFINE_SEED);
+    structuremsa.push_back(&PARAM_FWBW_GAPOPEN);
+    structuremsa.push_back(&PARAM_FWBW_GAPEXTEND);
+    structuremsa.push_back(&PARAM_TEMPERATURE);
 
     structuremsacluster = combineList(structuremsacluster, structuremsa);
 
@@ -83,7 +86,7 @@ FoldmasonParameters::FoldmasonParameters() :
     mact = 0.035;
     fwbw_gapopen = 10;
     fwbw_gapextend = 2;
-    temperature = 1; 
+    temperature = 2; 
 
     pcaAa = 1.1;
     pcbAa = 4.1;
