@@ -1,5 +1,5 @@
-#ifndef FWBW_H
-#define FWBW_H
+#ifndef FWBW
+#define FWBW
 
 #include "SubstitutionMatrix.h"
 #include "IndexReader.h"
@@ -10,7 +10,6 @@
 #include <cstdio>
 #include <string>
 
-// template<bool profile, bool backtrace>
 class FwBwAligner {
 public:
     typedef struct {
@@ -31,8 +30,8 @@ public:
     } s_align;
 
 
-    FwBwAligner(size_t length, SubstitutionMatrix &subMat, float gapOpen, float gapExtend, float mact, float temperature, size_t rowsCapacity, size_t colsCapacity);
-    FwBwAligner(size_t length,  float gapOpen, float gapExtend, float temperature, size_t rowsCapacity, size_t colsCapacity);
+    FwBwAligner(SubstitutionMatrix &subMat, float gapOpen, float gapExtend, float temperature, float mact, size_t rowsCapacity = 320, size_t colsCapacity = 320, size_t length = 16, int backtrace = 0);
+    FwBwAligner(float gapOpen, float gapExtend, float temperature, float mact, size_t rowsCapacity = 320, size_t colsCapacity = 320, size_t length = 16,  int backtrace = 0);
 
     ~FwBwAligner();
 
@@ -43,31 +42,32 @@ public:
     
     //Reallocation & Resizing
     void reallocateProfile(size_t newColsCapacity);
+    template<bool profile, int backtrace>
     void resizeMatrix(size_t newRowsCapacity, size_t newColsCapacity);
     void resetParams(float newGapOpen, float newGapExtend, float newTemperature);
     
     //Initilization
     void initProfile(unsigned char* colAANum, size_t colAALen);
     void initAlignment(unsigned char* targetNum, size_t targetLen);
-    void initScoreMatrix(float** inputScoreMatrix, int * gaps);
+    void initScoreMatrix(float** inputScoreMatrix, size_t* gaps);
 
     unsigned char* colSeqAANum = nullptr;
     unsigned char* rowSeqAANum = nullptr;
 
-    template<bool profile, bool backtrace>
+    template<bool profile, int backtrace>
     void runFwBw();
 
     s_align getFwbwAlnResult();
     float** getProbabiltiyMatrix();
-    float** P; //temporary pulbic
+
     float maxP; //temporary pulbic
     float temperature;
 
-
-
 private:
-    float** zm;
 
+    size_t length;
+    float** zm;
+    float** P;
     float* zmFirst;
     float* zeFirst;
     float* zfFirst;
@@ -79,7 +79,6 @@ private:
     float** scoreBackwardProfile_exp = nullptr; // profile true
 
     float** scoreForward = nullptr; // profile false
-
     //backtrace
     uint8_t** btMatrix = nullptr; // backtrace true
 
@@ -92,11 +91,11 @@ private:
     float* wj;
     float* exp_ge_arr;
 
-    size_t length;
     // const SubstitutionMatrix & subMat;
     float gapOpen;
     float gapExtend;
     float mact; // backtrace true
+
     // float temperature;
     size_t rowsCapacity;
     size_t colsCapacity;
@@ -106,7 +105,7 @@ private:
     size_t colSeqLen;
     size_t rowSeqLen;
 
-    float** blosum = nullptr; // Profile true
+    float** blosum= nullptr; // Profile true
     float* S_prev = nullptr; // backtrace true
     float* S_curr = nullptr; // backtrace true
     simd_float exp_go;
@@ -130,7 +129,12 @@ private:
     template<bool profile>
     void computeProbabilityMatrix();
 
+    template<int backtrace>
+    void initBacktraceMatrix();
+
+    template<int backtrace>
     void computeBacktrace();
 };
 
-#endif
+
+#endif //FWBW_H

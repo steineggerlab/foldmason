@@ -6,7 +6,6 @@
 #include "SubstitutionMatrix.h"
 #include "Matcher.h"
 #include "Util.h"
-#include "Parameters.h"
 #include "simd.h"
 #include "Sequence.h"
 #include "Timer.h"
@@ -36,9 +35,8 @@ struct FWBWState {
 };
 
 inline void calculate_max4(float& max, float& term1, float& term2, float& term3, float& term4, uint8_t& state) {
-    max = term1;
-    state = States::STOP;
-    if (term2 > max) { max = term2; state = States::M; }
+    if (term1 > term2) { max = term1; state = States::STOP; } //gyuri
+    else { max = term2; state = States::M; }
     if (term3 > max) { max = term3; state = States::I; }
     if (term4 > max) { max = term4; state = States::D; }
 }
@@ -53,8 +51,8 @@ inline simd_float simdf32_prefixsum(simd_float a) {
     return a;
 }
 
-FwBwAligner::FwBwAligner(size_t length, SubstitutionMatrix &subMat, float gapOpen, float gapExtend, float mact, float temperature, size_t rowsCapacity, size_t colsCapacity)
-                : length(length), gapOpen(gapOpen), gapExtend(gapExtend), mact(mact), temperature(temperature), rowsCapacity(rowsCapacity), colsCapacity(colsCapacity) {    
+FwBwAligner::FwBwAligner(SubstitutionMatrix &subMat, float gapOpen, float gapExtend, float temperature, float mact, size_t rowsCapacity, size_t colsCapacity, size_t length, int backtrace)
+                : temperature(temperature), length(length), gapOpen(gapOpen), gapExtend(gapExtend), mact(mact), rowsCapacity(rowsCapacity), colsCapacity(colsCapacity) {    
     blockCapacity = colsCapacity / length;
     // ZM
     zm = malloc_matrix<float>(rowsCapacity, colsCapacity);
@@ -72,10 +70,6 @@ FwBwAligner::FwBwAligner(size_t length, SubstitutionMatrix &subMat, float gapOpe
     scoreForwardProfile = malloc_matrix<float>(21, colsCapacity);
     scoreForwardProfile_exp = malloc_matrix<float>(21, colsCapacity);
     scoreBackwardProfile_exp = malloc_matrix<float>(21, colsCapacity);
-
-    // // btMatrix 
-    // S_prev = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
-    // S_curr = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
     
     // V,J,exp_ge_arr for ZE
     vj = (float *) malloc_simd_float(length * sizeof(float));
@@ -99,11 +93,16 @@ FwBwAligner::FwBwAligner(size_t length, SubstitutionMatrix &subMat, float gapOpe
             blosum[i][j] = static_cast<float>(subMat.subMatrix[i][j]);
         }
     }
+    if (backtrace) {
+        btMatrix = malloc_matrix<uint8_t>(rowsCapacity + 1, colsCapacity + 1);
+        S_prev = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
+        S_curr = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
+    }
 }
 
 // FwBwAligner for ScoreMatrix (not profile)
-FwBwAligner::FwBwAligner(size_t length, float gapOpen, float gapExtend, float temperature, size_t rowsCapacity, size_t colsCapacity)
-                    : length(length), gapOpen(gapOpen), gapExtend(gapExtend), temperature(temperature), rowsCapacity(rowsCapacity), colsCapacity(colsCapacity) {
+FwBwAligner::FwBwAligner(float gapOpen, float gapExtend, float temperature, float mact, size_t rowsCapacity, size_t colsCapacity, size_t length, int backtrace)
+                    : temperature(temperature), length(length), gapOpen(gapOpen), gapExtend(gapExtend), mact(mact), rowsCapacity(rowsCapacity), colsCapacity(colsCapacity) {
     
     // scoreForward
     scoreForward = malloc_matrix<float>(rowsCapacity, colsCapacity);
@@ -137,7 +136,12 @@ FwBwAligner::FwBwAligner(size_t length, float gapOpen, float gapExtend, float te
     exp_go = simdf32_set(static_cast<float>(exp(gapOpen / temperature))); 
     exp_ge = simdf32_set(static_cast<float>(exp(gapExtend / temperature)));
 
-    mact = 0.0;
+    if (backtrace != 0) {
+        blosum = nullptr;
+        btMatrix = malloc_matrix<uint8_t>(rowsCapacity + 1, colsCapacity + 1);
+        S_prev = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
+        S_curr = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
+    }
 }
 
 
@@ -192,24 +196,77 @@ void FwBwAligner::reallocateProfile(size_t newColsCapacity) { // reallocate prof
     free(scoreBackwardProfile_exp); scoreBackwardProfile_exp = malloc_matrix<float>(21, newColsCapacity);
 }
 
-void FwBwAligner::resizeMatrix(size_t newRowsCapacity, size_t newColsCapacity) {
+template<>
+void FwBwAligner::resizeMatrix<true,true>(size_t newRowsCapacity, size_t newColsCapacity) {
+    //profile = true(scoreForwardProfile, scoreForwardProfile_exp, scoreBackwardProfile_exp)
+    //backtrace = true(btMatrix, S_prev, S_curr)
     rowsCapacity = newRowsCapacity;
     colsCapacity = newColsCapacity;
     blockCapacity = newColsCapacity / length;
-
     free(zm); zm = malloc_matrix<float>(rowsCapacity, colsCapacity);    
     free(zmFirst); zmFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
     free(zeFirst); zeFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
     free(zfFirst); zfFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
-
     free(zInit); zInit = malloc_matrix<float>(3, rowsCapacity);
+    //backtrace
     free(S_prev); S_prev = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
     free(S_curr); S_curr = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
     free(btMatrix); btMatrix = malloc_matrix<uint8_t>(rowsCapacity + 1, colsCapacity + 1);
-    
-    free(scoreForward);
-    scoreForward = malloc_matrix<float>(rowsCapacity, colsCapacity);
 }
+template<>
+void FwBwAligner::resizeMatrix<true,false>(size_t newRowsCapacity, size_t newColsCapacity) {
+    //profile = true(scoreForwardProfile, scoreForwardProfile_exp, scoreBackwardProfile_exp)
+    rowsCapacity = newRowsCapacity;
+    colsCapacity = newColsCapacity;
+    blockCapacity = newColsCapacity / length;
+    free(zm); zm = malloc_matrix<float>(rowsCapacity, colsCapacity);    
+    free(zmFirst); zmFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
+    free(zeFirst); zeFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
+    free(zfFirst); zfFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
+    free(zInit); zInit = malloc_matrix<float>(3, rowsCapacity);
+}
+
+template<>
+void FwBwAligner::resizeMatrix<false,true>(size_t newRowsCapacity, size_t newColsCapacity) {
+    //profile = false(scoreForward)
+    //backtrace = true(btMatrix, S_prev, S_curr)
+    rowsCapacity = newRowsCapacity;
+    colsCapacity = newColsCapacity;
+    blockCapacity = newColsCapacity / length;
+    free(zm); zm = malloc_matrix<float>(rowsCapacity, colsCapacity);    
+    free(zmFirst); zmFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
+    free(zeFirst); zeFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
+    free(zfFirst); zfFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
+    free(zInit); zInit = malloc_matrix<float>(3, rowsCapacity);
+    //profile
+    free(scoreForward); scoreForward = malloc_matrix<float>(rowsCapacity, colsCapacity);
+    //backtrace
+    free(S_prev); S_prev = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
+    free(S_curr); S_curr = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
+    free(btMatrix); btMatrix = malloc_matrix<uint8_t>(rowsCapacity + 1, colsCapacity + 1);
+}
+
+template<>
+void FwBwAligner::resizeMatrix<false,false>(size_t newRowsCapacity, size_t newColsCapacity) {
+    //profile = false(scoreForward)
+    //backtrace = false
+    rowsCapacity = newRowsCapacity;
+    colsCapacity = newColsCapacity;
+    blockCapacity = newColsCapacity / length;
+    free(zm); zm = malloc_matrix<float>(rowsCapacity, colsCapacity);    
+    free(zmFirst); zmFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
+    free(zeFirst); zeFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
+    free(zfFirst); zfFirst = (float *) malloc_simd_float((rowsCapacity+1) * sizeof(float));
+    free(zInit); zInit = malloc_matrix<float>(3, rowsCapacity);
+    //profile
+    free(scoreForward); scoreForward = malloc_matrix<float>(rowsCapacity, colsCapacity);
+}
+
+
+template void FwBwAligner::resizeMatrix<true, true>(size_t newRowsCapacity, size_t newColsCapacity); 
+template void FwBwAligner::resizeMatrix<true, false>(size_t newRowsCapacity, size_t newColsCapacity);
+template void FwBwAligner::resizeMatrix<false, true>(size_t newRowsCapacity, size_t newColsCapacity);
+template void FwBwAligner::resizeMatrix<false, false>(size_t newRowsCapacity, size_t newColsCapacity); 
 
 void FwBwAligner::resetParams(float newGapOpen, float newGapExtend, float newTemperature) {
     gapOpen = newGapOpen;
@@ -232,7 +289,7 @@ void FwBwAligner::initAlignment(unsigned char* rowAANum, size_t rowAALen) {
     rowSeqAANum = rowAANum; rowSeqLen = rowAALen;
 }
 
-void FwBwAligner::initScoreMatrix(float** inputScoreMatrix, int * gaps) {
+void FwBwAligner::initScoreMatrix(float** inputScoreMatrix, size_t* gaps) {
     //gaps: [rowStart, rowEnd, colStart, colEnd]
     rowSeqLen = gaps[1]-gaps[0]; colSeqLen = gaps[3]-gaps[2]; //row=tlen, col=qlen
     colSeqLen_padding = ((colSeqLen + VECSIZE_FLOAT - 1) / VECSIZE_FLOAT) * VECSIZE_FLOAT; //colpadding
@@ -315,7 +372,7 @@ void FwBwAligner::forward() {
         memset(zmBlockPrev, 0, (length + 1) * sizeof(float));
         memset(zeBlock, 0, (length + 1) * sizeof(float));
         memset(zfBlock, 0, (length + 1) * sizeof(float));
-
+            
         memcpy(zmFirst + 1, zInit[0], rowSeqLen * sizeof(float));
         memcpy(zeFirst + 1, zInit[1], rowSeqLen * sizeof(float));
         memcpy(zfFirst + 1, zInit[2], rowSeqLen * sizeof(float));
@@ -383,14 +440,15 @@ void FwBwAligner::forward() {
 
             log_zmMax = log(zmMaxRowBlock);
             current_max += log_zmMax;
+            simd_float vCurrMax = simdf32_set(current_max);
             for (size_t j = 1; j <= cols; j += VECSIZE_FLOAT){
                 simd_float vZmCurr = simdf32_loadu(&zmBlockCurr[j]);
                 vZmCurr = simdf32_div(vZmCurr, vZmMaxRowBlock);
                 simdf32_storeu(&zmBlockCurr[j], vZmCurr);
-                vZmCurr = simdf32_add(simdf32_log(vZmCurr), simdf32_set(current_max));
+                vZmCurr = simdf32_add(simdf32_log(vZmCurr), vCurrMax);
                 vMax_zm = simdf32_max(vMax_zm, vZmCurr);
                 simdf32_store(&zm[i - 1][start + j-1], vZmCurr);
-            }
+            }     
 
             #if defined(AVX512)
                 simd_float vNextZinit = _mm512_set_ps(
@@ -418,7 +476,7 @@ void FwBwAligner::forward() {
 
 
             vNextZinit = simdf32_log(vNextZinit);
-            vNextZinit = simdf32_add(vNextZinit, simdf32_set(current_max));
+            vNextZinit = simdf32_add(vNextZinit, vCurrMax);
 
             zInit[0][i-1] = vNextZinit[0]; zInit[1][i-1] = vNextZinit[1]; zInit[2][i-1] = vNextZinit[2];
             std::swap(zmBlockCurr, zmBlockPrev);
@@ -600,13 +658,14 @@ void FwBwAligner::backward()  {
             current_max += log_zmMax;
             size_t adjusted_memcpycols = memcpy_cols - memcpy_cols % VECSIZE_FLOAT;
             size_t forwardBlockStart = colSeqLen - start;
+            simd_float vCurrMax = simdf32_set(current_max);
             for (size_t j = 1; j <= adjusted_memcpycols; j += VECSIZE_FLOAT) {
                 forwardBlockStart -= vecsize_float;
                 size_t simd_index = forwardBlockStart;
                 simd_float vZmCurr = simdf32_loadu(&zmBlockCurr[j]);
                 vZmCurr = simdf32_div(vZmCurr, vZmMaxRowBlock);
                 simdf32_storeu(&zmBlockCurr[j], vZmCurr);
-                vZmCurr = simdf32_add(simdf32_log(vZmCurr), simdf32_set(current_max));
+                vZmCurr = simdf32_add(simdf32_log(vZmCurr), vCurrMax);
 
                 simd_float vZmForward = simdf32_loadu(&zm[rowSeqLen - i][simd_index]);
 
@@ -653,7 +712,7 @@ void FwBwAligner::backward()  {
 #endif
 
             vNextZinit = simdf32_log(vNextZinit);
-            vNextZinit = simdf32_add(vNextZinit, simdf32_set(current_max));
+            vNextZinit = simdf32_add(vNextZinit, vCurrMax);
 
             zInit[0][i-1] = vNextZinit[0]; zInit[1][i-1] = vNextZinit[1]; zInit[2][i-1] = vNextZinit[2];
             std::swap(zmBlockCurr, zmBlockPrev);
@@ -714,45 +773,86 @@ void FwBwAligner::backward()  {
 }
 
 template<>
-void FwBwAligner::runFwBw<true, true>() {
-    forward<true>();
-    backward<true>();
-    computeProbabilityMatrix<true>();
-    computeBacktrace();
-}
-
-template<>
-void FwBwAligner::runFwBw<true, false>() {
+// profile: true for profile, false for query*target matrix
+// backtrace: 0 for no backtrace, 1 for local alignment, 2 for semi-global alignment, 3 for global alignment. Default: <true, 1>
+void FwBwAligner::runFwBw<true, 0>() {
     forward<true>();
     backward<true>();
     computeProbabilityMatrix<true>();
 }
 
 template<>
-void FwBwAligner::runFwBw<false, true>() {
+void FwBwAligner::runFwBw<false, 0>() {
     forward<false>();
     backward<false>();
     computeProbabilityMatrix<false>();
-    computeBacktrace();
 }
 
 template<>
-void FwBwAligner::runFwBw<false, false>() {
+void FwBwAligner::runFwBw<true, 1>() {
+    forward<true>();
+    backward<true>();
+    computeProbabilityMatrix<true>();
+    computeBacktrace<1>();
+}
+
+template<>
+void FwBwAligner::runFwBw<false, 1>() {
     forward<false>();
     backward<false>();
     computeProbabilityMatrix<false>();
+    computeBacktrace<1>();
 }
 
-template void FwBwAligner::runFwBw<true, true>(); // General cases
-template void FwBwAligner::runFwBw<true, false>();
-template void FwBwAligner::runFwBw<false, true>();
-template void FwBwAligner::runFwBw<false, false>(); // lasse's case(lolalign only needs probability matrix)
+template<>
+void FwBwAligner::runFwBw<true, 2>() {
+    forward<true>();
+    backward<true>();
+    computeProbabilityMatrix<true>();
+    computeBacktrace<2>();
+}
+
+template<>
+void FwBwAligner::runFwBw<false, 2>() {
+    forward<false>();
+    backward<false>();
+    computeProbabilityMatrix<false>();
+    computeBacktrace<2>();
+}
+
+template<>
+void FwBwAligner::runFwBw<true, 3>() {
+    forward<true>();
+    backward<true>();
+    computeProbabilityMatrix<true>();
+    computeBacktrace<3>();
+}
+
+template<>
+void FwBwAligner::runFwBw<false, 3>() {
+    forward<false>();
+    backward<false>();
+    computeProbabilityMatrix<false>();
+    computeBacktrace<3>();
+}
+template void FwBwAligner::runFwBw<true, 0>(); // Use query profile & No backtrace
+template void FwBwAligner::runFwBw<false, 0>(); // Use query*target matrix & No backtrace
+
+template void FwBwAligner::runFwBw<true, 1>(); // Use query profile & local alignment traceback  // General
+template void FwBwAligner::runFwBw<false, 1>(); // Use query*target matrix & local alignment traceback
+
+template void FwBwAligner::runFwBw<true, 2>(); // Use query profile & semi-global alignment traceback 
+template void FwBwAligner::runFwBw<false, 2>(); // Use query*target matrix & semi-global alignment traceback
+
+template void FwBwAligner::runFwBw<true, 3>(); // Use query profile & global alignment traceback 
+template void FwBwAligner::runFwBw<false, 3>(); // Use query*target matrix & global alignment traceback
 
 
 
 template<bool profile>
 void FwBwAligner::computeProbabilityMatrix() {
     float logsumexp_zm = max_zm + log(sum_exp);
+
     simd_float vLogsumexp_zm = simdf32_set(logsumexp_zm);
     size_t colLoopCount = colSeqLen / VECSIZE_FLOAT; 
     size_t colLoopEndPos = colLoopCount * VECSIZE_FLOAT;
@@ -791,229 +891,239 @@ void FwBwAligner::computeProbabilityMatrix() {
     for (size_t k = 0; k < VECSIZE_FLOAT; ++k) {
         maxP = std::max(maxP, vMaxP[k]);
     }
+
 }
 
+// template<int backtrace>
+// void FwBwAligner::initBacktraceMatrix() {
+//     if (backtrace == 1) {
+
+//     }
+// }
+template<int backtrace>
 void FwBwAligner::computeBacktrace() {
-    if (btMatrix == nullptr) { // Is there more elegant way to assign it in constructor with template backtrace????
-       btMatrix = malloc_matrix<uint8_t>(rowsCapacity + 1, colsCapacity + 1);
-       S_prev = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
-       S_curr = (float *) malloc_simd_float((colsCapacity+1) * sizeof(float));
-    }
     // MAC algorithm from HH-suite
     uint8_t val;
     size_t max_i = 0;
     size_t max_j = 0;
     float term1, term2, term3, term4 = 0.0f;
     float score_MAC = -std::numeric_limits<float>::max();
-    memset(S_prev, 0, (colSeqLen + 1) * sizeof(float));
+
+    size_t colLoopCount = colSeqLen / VECSIZE_FLOAT; 
+    size_t colLoopEndPos = colLoopCount * VECSIZE_FLOAT;
+
+    simd_float vMact = simdf32_set(mact); 
+    simd_float vhalfMact = simdf32_set(0.5f * mact); 
+    simd_float vStateStop = simdf32_set(States::STOP); 
+    simd_float vStateM = simdf32_set(States::M); 
+    simd_float vStateD = simdf32_set(States::D); 
+    simd_float vStateI = simdf32_set(States::I);
+    simd_float vTerm1, vTerm2, vTerm3, vTerm4; // STOP, M, I, D
+    simd_float vMax1234, vMax12, vMax123, vMax124;
+    simd_float vStateMask_MS, vStateMask_MSI, vStateMask_MSID;
+    simd_float vState_MS, vState_MSI, vState;
+
     memset(S_curr, 0, (colSeqLen + 1) * sizeof(float));
+
+    switch (backtrace) {
+        case 1: // local
+            memset(S_prev, 0, (colSeqLen + 1) * sizeof(float));
+            break;
+        case 2: // semiglobal
+            memset(S_prev, 0, (colSeqLen + 1) * sizeof(float));
+            break;
+        case 3: // global
+            std::fill(S_prev, S_prev + colSeqLen + 1, -std::numeric_limits<float>::max());
+            S_prev[0] = 0.0;
+            S_curr[0] = -std::numeric_limits<float>::max();
+            break;
+    }
+
+
     for (size_t i = 0; i <= rowSeqLen; ++i) {
         btMatrix[i][0] = States::STOP;
     }
-    memset(btMatrix[0], States::STOP, (colSeqLen + 1) * sizeof(uint8_t));
-    for (size_t i = 1; i <= rowSeqLen; ++i) {
-        for (size_t j = 1; j <= colSeqLen; ++j) {
-            term1 = P[i - 1][j - 1] - mact;
-            term2 = S_prev[j - 1] + P[i - 1][j - 1] - mact;
-            term3 = S_prev[j] - 0.5 * mact;
-            term4 = S_curr[j - 1] - 0.5 * mact;
-            calculate_max4(S_curr[j], term1, term2, term3, term4, val);
-            btMatrix[i][j] = val;
-            if (i == rowSeqLen && S_curr[j] > score_MAC) {
-                max_i = i;
-                max_j = j;
-                score_MAC = S_curr[j];
-            }
-        }
-        //switch S_prev and S_curr
-        std::swap(S_prev, S_curr);
+    for (size_t j = 0; j <= colSeqLen; ++j) {
+        btMatrix[0][j] = States::STOP;
     }
 
-    // traceback 
-    alignResult = {};
-    alignResult.cigar = "M";
-    alignResult.cigar.reserve(colSeqLen + rowSeqLen);
-    alignResult.qEndPos1 = max_j - 1;
-    alignResult.dbEndPos1 = max_i - 1;
-    alignResult.score1 = maxP;
-    alignResult.score2 = score_MAC;
-    while (true) {
-        uint8_t state = btMatrix[max_i][max_j];
-        if (state == States::M) {
-            alignResult.cigar.push_back('M');
-            alignResult.qStartPos1 = max_j - 1;
-            alignResult.dbStartPos1 = max_i - 1;
-            if (max_i == 0 || max_j == 0) break;
-            --max_i;
-            --max_j;
-        } else if (state == States::I) {
-            alignResult.cigar.push_back('I');
-            if (max_i == 0) break;
-            --max_i;
-        } else if (state == States::D) {
-            alignResult.cigar.push_back('D');
-            if (max_j == 0) break;
-            --max_j;
-        } else {
-            break;
+    // initializeBacktraceMatrix<backtrace>();
+
+    for (size_t i = 1; i <= rowSeqLen; ++i) {
+        // for (size_t j = 1; j <= colLoopEndPos; j += VECSIZE_FLOAT){
+        //     vTerm1 = simdf32_sub(simdf32_loadu(&P[i - 1][j - 1]), vMact);
+        //     vTerm2 = simdf32_add(simdf32_loadu(&S_prev[j - 1]), vTerm1);
+        //     vTerm4 = simdf32_sub(simdf32_loadu(&S_prev[j]), vhalfMact); // D
+        //     vTerm3 = simdf32_set(-std::numeric_limits<float>::max());
+        //     vMax12 = simdf32_max(vTerm1, vTerm2);
+        //     vMax124 = simdf32_max(vMax12, vTerm4);
+        //     vMax1234 = simdf32_max(vMax12, vTerm4);
+        //     term3 = S_curr[j - 1] - 0.5 * mact;
+        //     for (size_t k = 0; k < VECSIZE_FLOAT; ++k) {
+        //         if (term3 > vMax124[k]) {
+        //             vMax1234[k] = term3;
+        //         }
+        //         vTerm3[k] = term3;
+        //         term3 = vMax1234[k] - 0.5 * mact;
+        //     }
+        //     vMax123 = simdf32_max(vMax12, vTerm3);
+
+        //     // vStateMask_MS = simdf32_gt(vTerm2, vTerm1); // true if Term1 < Term2
+        //     vStateMask_MS = simdf32_gt(vTerm1, vTerm1); // true if Term1 > Term2
+        //     vState_MS = simdf32_blendv_ps(vStateM, vStateStop, vStateMask_MS); // Term1 > Term2: choose Stop
+        //     vStateMask_MSI = simdf32_gt(vTerm3, vMax12); // true if Max(Term1, Term2) < Term3
+        //     vState_MSI = simdf32_blendv_ps(vState_MS, vStateI, vStateMask_MSI); // Max(Term1, Term2) < Term3: choose I
+        //     vStateMask_MSID = simdf32_gt(vTerm4, vMax123); // Max(Term1, Term2, Term3) < Term4
+        //     vState = simdf32_blendv_ps(vState_MSI, vStateD, vStateMask_MSID); // Max(Term1, Term2, Term3) < Term4: choose D
+
+        //     switch (backtrace) {
+        //         case 1: // local
+        //             // Fill in btMatrix: TODO: optimize
+        //             for (size_t k = 0; k < VECSIZE_FLOAT; ++k) {
+        //                 btMatrix[i][j + k] = vState[k];
+        //             }
+        //             for (size_t k = 0; k < VECSIZE_FLOAT; ++k) {
+        //                 if (vMax1234[k] > score_MAC) {
+        //                     max_i = i;
+        //                     max_j = j + k;
+        //                     score_MAC = vMax1234[k];
+        //                 }
+        //             }
+        //             break;
+        //         case 2: // semiglobal
+        //             for (size_t k = 0; k < VECSIZE_FLOAT; ++k) {
+        //                 btMatrix[i][j + k] = vState[k];
+        //             }
+        //             if ((colLoopEndPos == colSeqLen) && (vMax1234[VECSIZE_FLOAT - 1] > score_MAC)) { // only calculate for last column if colLoopEndPos is last column
+        //                 max_i = i;
+        //                 max_j = j + VECSIZE_FLOAT - 1;
+        //                 score_MAC = vMax1234[VECSIZE_FLOAT - 1];
+        //             }
+        //             break;
+        //         case 3: // global
+        //             for (size_t k = 0; k < VECSIZE_FLOAT; ++k) {
+        //                 btMatrix[i][j + k] = vState[k];
+        //             }
+        //             break;
+        //     }
+
+        //     // Store the results
+        //     // simdf32_store(&btMatrix[i][j], vState);
+        //     simdf32_storeu(&S_curr[j], vMax1234);
+        // }
+        // Handle remainder
+        // for (size_t j = colLoopEndPos+1; j <= colSeqLen; ++j) {
+        for (size_t j = 1; j <= colSeqLen; ++j) {
+
+            term1 = P[i - 1][j - 1] - mact; // STOP
+            term2 = S_prev[j - 1] + P[i - 1][j - 1] - mact; // M
+            term4 = S_prev[j] - 0.5 * mact; // D
+            term3 = S_curr[j - 1] - 0.5 * mact; // I
+            calculate_max4(S_curr[j], term1, term2, term3, term4, val);
+            btMatrix[i][j] = val;
+            
+            switch (backtrace) {
+                case 1: // local
+                    if (S_curr[j] > score_MAC) {
+                        max_i = i;
+                        max_j = j;
+                        score_MAC = S_curr[j];
+                    }
+                    break;
+                case 2: // semiglobal
+                    if ((i == rowSeqLen || j == colSeqLen) && S_curr[j] > score_MAC) { // only calculate for last column if j is last column
+                        max_i = i;
+                        max_j = j;
+                        score_MAC = S_curr[j];
+                    }
+                    break;
+                case 3: // global
+                    break;
+            }
+        }
+        std::swap(S_prev, S_curr);
+        if (backtrace == 3 && i==1) { //gyuri
+            S_prev[0] = -std::numeric_limits<float>::max();
+            // S_curr[0] = -std::numeric_limits<float>::max();
         }
     }
-    while (!alignResult.cigar.empty() && alignResult.cigar.back() != 'M') {
-        alignResult.cigar.pop_back();
+    // Set max_i and max_j for global alignment
+    if (backtrace == 3) {
+        max_i = rowSeqLen;
+        max_j = colSeqLen;
+        score_MAC = S_curr[colSeqLen];
     }
-    std::reverse(alignResult.cigar.begin(), alignResult.cigar.end());
+    // traceback 
+    alignResult = {};
+    alignResult.cigar = "";
+    alignResult.cigar.reserve(colSeqLen + rowSeqLen);
+    alignResult.score1 = maxP;
+    alignResult.score2 = score_MAC;
+    
+    alignResult.qEndPos1 = max_j - 1;
+    alignResult.dbEndPos1 = max_i - 1;
+
+    bool exitLoop = false;
+    while (max_i > 0 && max_j > 0 && !exitLoop) {
+        uint8_t state = btMatrix[max_i][max_j];
+        switch (state) {
+            case States::M:
+                --max_i;
+                --max_j;
+                alignResult.qStartPos1 = max_j;
+                alignResult.dbStartPos1 = max_i;
+                alignResult.cigar.push_back('M');
+                break;
+
+            case States::I:
+                --max_j;
+                alignResult.cigar.push_back('I');
+                break;
+
+            case States::D:
+                --max_i;
+                alignResult.cigar.push_back('D');
+                break;
+
+            default:
+                exitLoop = true;  // Flag to break the loop
+                break;
+        }
+    }
+    // Debug: print btMatrix
+    // for (size_t i = 0; i <= rowSeqLen; ++i) {
+    //     for (size_t j = 0; j <= colSeqLen; ++j) {
+    //         if (btMatrix[i][j] == States::STOP) {
+    //             std::cout << "STOP ";
+    //         } else if (btMatrix[i][j] == States::M) {
+    //             std::cout << "M ";
+    //         } else if (btMatrix[i][j] == States::I) {
+    //             std::cout << "I ";
+    //         } else if (btMatrix[i][j] == States::D) {
+    //             std::cout << "D ";
+    //         }
+    //     }
+    //     std::cout << std::endl;
+    // }
+    // std::cout << std::endl;
+
+
     while (!alignResult.cigar.empty() && alignResult.cigar.back() != 'M') {
         alignResult.cigar.pop_back();
     }
     alignResult.cigarLen = alignResult.cigar.length();
+    std::reverse(alignResult.cigar.begin(), alignResult.cigar.end());
 }
 
 FwBwAligner::s_align FwBwAligner::getFwbwAlnResult() {
     return alignResult;
 }
 
+float** FwBwAligner::getProbabiltiyMatrix() {
+    return P;
+}
+
 template void FwBwAligner::runFwBw<1, 1>();
 template void FwBwAligner::runFwBw<1, 0>();
 template void FwBwAligner::runFwBw<0, 1>();
 template void FwBwAligner::runFwBw<0, 0>();
-
-int fwbw(int argc, const char **argv, const Command &command) {
-    //Prepare the parameters & DB
-    Parameters &par = Parameters::getInstance();
-    par.parseParameters(argc, argv, command, true, 0, MMseqsParameter::COMMAND_ALIGN);
-    DBReader<unsigned int> qdbr(par.db1.c_str(), par.db1Index.c_str(), par.threads, DBReader<unsigned int>::USE_DATA | DBReader<unsigned int>::USE_INDEX);
-    qdbr.open(DBReader<unsigned int>::NOSORT);
-    DBReader<unsigned int> tdbr(par.db2.c_str(), par.db2Index.c_str(), par.threads, DBReader<unsigned int>::USE_DATA | DBReader<unsigned int>::USE_INDEX);
-    tdbr.open(DBReader<unsigned int>::NOSORT);
-    DBReader<unsigned int> alnRes (par.db3.c_str(), par.db3Index.c_str(), par.threads, DBReader<unsigned int>::USE_DATA | DBReader<unsigned int>::USE_INDEX);
-    alnRes.open(DBReader<unsigned int>::LINEAR_ACCCESS);
-
-    DBWriter fwbwAlnWriter(par.db4.c_str(), par.db4Index.c_str(), par.threads, par.compressed, Parameters::DBTYPE_ALIGNMENT_RES);
-    fwbwAlnWriter.open();
-    const int querySeqType = qdbr.getDbtype();
-    if (Parameters::isEqualDbtype(querySeqType, Parameters::DBTYPE_NUCLEOTIDES)) {
-        Debug(Debug::ERROR) << "Invalid datatype. Nucleotide.\n";
-        EXIT(EXIT_FAILURE);
-    } 
-    SubstitutionMatrix subMat = SubstitutionMatrix(par.scoringMatrixFile.values.aminoacid().c_str(), 2.0, par.scoreBias); // Check : par.scoreBias = 0.0
-
-    const size_t flushSize = 100000000;
-    size_t iterations = static_cast<int>(ceil(static_cast<double>(alnRes.getSize()) / static_cast<double>(flushSize)));
-    Debug(Debug::INFO) << "Processing " << iterations << " iterations\n";
-    for (size_t i = 0; i < iterations; i++) {
-        size_t start = (i * flushSize);
-        size_t bucketSize = std::min(alnRes.getSize() - (i * flushSize), flushSize);
-        // Debug::Progress progress(bucketSize);
-    
-
-    size_t length_fwbw = 16;
-    float gapOpen_fwbw = -2.0;
-    float gapExtend_fwbw = -2.0;
-    float temperature_fwbw = 1;
-    float mact_fwbw = 0.035;
-
-#pragma omp parallel
-        {
-            unsigned int thread_idx = 0;
-#ifdef OPENMP
-            thread_idx = (unsigned int) omp_get_thread_num();
-#endif
-            // size_t length = par.blocklen; 
-            size_t length = length_fwbw;
-            Sequence qSeq(par.maxSeqLen, qdbr.getDbtype(), &subMat, 0, false, false);
-            Sequence dbSeq(par.maxSeqLen, tdbr.getDbtype(), &subMat, 0, false, false);
-            
-            const size_t assignSeqLen = VECSIZE_FLOAT * sizeof(float) * 20; 
-            // FwBwAligner fwbwaligner(length, subMat, -par.fwbw_gapopen, -par.fwbw_gapextend, par.mact, par.temperature, assignSeqLen, assignSeqLen);
-            FwBwAligner fwbwaligner(length, subMat, gapOpen_fwbw, gapExtend_fwbw, mact_fwbw, temperature_fwbw, assignSeqLen, assignSeqLen);
-            const char *entry[255];
-            std::string alnResultsOutString;
-            char buffer[1024 + 32768*4];
-            std::vector<Matcher::result_t> localFwbwResults;
-#pragma omp for schedule(dynamic,1)
-            for (size_t id = start; id < (start + bucketSize); id++) {
-                // progress.updateProgress();
-                unsigned int key = alnRes.getDbKey(id);
-                const size_t queryId = qdbr.getId(key);
-                char *alnData = alnRes.getData(id, thread_idx);
-                localFwbwResults.clear();
-
-                const char* querySeq = qdbr.getData(queryId, thread_idx);
-                size_t queryLen = qdbr.getSeqLen(queryId);
-
-                qSeq.mapSequence(queryId, key, querySeq, queryLen);
-                fwbwaligner.initProfile(qSeq.numSequence, queryLen);
-                fwbwAlnWriter.writeStart(thread_idx);
-                // fwbwaligner.initProfile(qSeq.numSequence);
-                while (*alnData != '\0'){
-                    Matcher::result_t res;
-                    const size_t columns = Util::getWordsOfLine(alnData, entry, 255);
-                    if (columns >= Matcher::ALN_RES_WITHOUT_BT_COL_CNT) {
-                        res = Matcher::parseAlignmentRecord(alnData, true);                        
-                    } else {
-                        Debug(Debug::ERROR) << "Invalid input result format ("<<columns<<" columns).\n";
-                        EXIT(EXIT_FAILURE);
-                    }
-                    alnData = Util::skipLine(alnData);
-                    unsigned int targetKey = res.dbKey;
-                    const size_t targetId = tdbr.getId(targetKey);
-                    const char* targetSeq = tdbr.getData(targetId, thread_idx);
-                    size_t targetLen = tdbr.getSeqLen(targetId);
-
-                    dbSeq.mapSequence(targetId, targetKey, targetSeq, targetLen);
-                    //Resizing
-                    if (targetLen > fwbwaligner.getRowsCapacity() && queryLen > fwbwaligner.getColsCapacity()) {
-                        size_t newRowsCapacity = ((targetLen + fwbwaligner.getBlockLength()-1)/fwbwaligner.getBlockLength())* fwbwaligner.getBlockLength();
-                        size_t newColsCapacity = ((queryLen + fwbwaligner.getBlockLength()-1)/fwbwaligner.getBlockLength())* fwbwaligner.getBlockLength();
-                        fwbwaligner.resizeMatrix(newRowsCapacity, newColsCapacity);
-                    }else if (targetLen > fwbwaligner.getRowsCapacity()) {
-                        size_t newRowsCapacity = ((targetLen + fwbwaligner.getBlockLength()-1)/fwbwaligner.getBlockLength())* fwbwaligner.getBlockLength();
-                        fwbwaligner.resizeMatrix(newRowsCapacity, fwbwaligner.getColsCapacity());
-                    }else if (queryLen > fwbwaligner.getColsCapacity()) {
-                        size_t newColsCapacity = ((queryLen + fwbwaligner.getBlockLength()-1)/fwbwaligner.getBlockLength())* fwbwaligner.getBlockLength();
-                        fwbwaligner.resizeMatrix(fwbwaligner.getRowsCapacity(), newColsCapacity);
-                    }
-                    fwbwaligner.initAlignment(dbSeq.numSequence,targetLen); // or directly pass dbSeq.numSequence and targetLen to .align()
-                    fwbwaligner.runFwBw<1,1>();
-                    FwBwAligner::s_align fwbwAlignment = fwbwaligner.getFwbwAlnResult();
-                    float qcov = 0.0;
-                    float dbcov = 0.0;
-                    float seqId = 0.0;
-                    // float evalue = 1.0f - fwbwAlignment.score1;
-                    float evalue = 1.0f / (1.0f + std::exp(fwbwAlignment.score2));
-                    const unsigned int alnLength = fwbwAlignment.cigarLen;
-                    const int score = 0;
-                    const unsigned int qStartPos = fwbwAlignment.qStartPos1;
-                    const unsigned int dbStartPos = fwbwAlignment.dbStartPos1;
-                    const unsigned int qEndPos = fwbwAlignment.qEndPos1;
-                    const unsigned int dbEndPos = fwbwAlignment.dbEndPos1;
-                    std::string backtrace = fwbwAlignment.cigar;
-                    Debug(Debug::INFO) << queryId << "\t" << targetId <<"\t" << fwbwAlignment.score2 << '\t' << backtrace << '\n';
-                    // EXIT(EXIT_FAILURE);
-                    // Map s_align values to result_t
-                    // EXIT(EXIT_FAILURE);
-                    localFwbwResults.emplace_back(targetKey, score, qcov, dbcov, seqId, evalue, alnLength, qStartPos, qEndPos, queryLen, dbStartPos, dbEndPos, targetLen, backtrace);
-                }
-
-                // sort local results. They will currently be sorted by first fwbwscore, then targetlen, then by targetkey.
-                SORT_SERIAL(localFwbwResults.begin(), localFwbwResults.end(), Matcher::compareHits);
-                for (size_t result = 0; result < localFwbwResults.size(); result++) {
-                    size_t len = Matcher::resultToBuffer(buffer, localFwbwResults[result], true, true);
-                    alnResultsOutString.append(buffer, len);
-                }
-                fwbwAlnWriter.writeData(alnResultsOutString.c_str(), alnResultsOutString.length(), alnRes.getDbKey(id), thread_idx);
-                alnResultsOutString.clear();
-                localFwbwResults.clear();            
-            }
-        }
-        Debug(Debug::INFO) << "All Done\n";
-        alnRes.remapData();
-        
-    }
-    fwbwAlnWriter.close();
-    alnRes.close();
-    qdbr.close();
-    tdbr.close();
-    return EXIT_SUCCESS;
-
-}

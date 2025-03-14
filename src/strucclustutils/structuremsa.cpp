@@ -314,44 +314,39 @@ Matcher::result_t pairwiseAlignment2(
     
     Matcher::result_t result;
     size_t length = 16;
-    float go = -10;
-    float ge = -1;
-    float T = 3;
+    // float go = 15;
+    // float ge = 3;
+    float T = 1;
     int targetLen = target_aa->L;
     int queryLen = query_aa->L;
-    size_t RowsCapacity = ((queryLen + length - 1) / length) * length;
-    size_t ColsCapacity = ((targetLen + length - 1) / length) * length;
+    size_t ColsCapacity = ((queryLen + length - 1) / length) * length;
+    size_t RowsCapacity = ((targetLen + length - 1) / length) * length;
     float** G;
-    G = malloc_matrix<float>(queryLen, targetLen);
-    // std::cout.precision(1);
+    G = malloc_matrix<float>(targetLen, queryLen);
     for (int i = 0; i < targetLen; ++i) {
         for (int j = 0; j < queryLen; ++j) {
-            G[j][i] = static_cast<float>(
+            G[i][j] = static_cast<float>(
                 (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 2 +
                 (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 2
             );
-            // std::cout << std::fixed << G[j][i] << '\t';
         }
-        // std::cout << '\n';
     }
-    FwBwAligner fwbwaln(length, go, ge, T, RowsCapacity, ColsCapacity);
-    int* gaps = new int[4]{0, queryLen, 0, targetLen}; //gaps: [rowStart, rowEnd, colStart, colEnd]
+    FwBwAligner fwbwaln(-gapOpen, -gapExtend, T, 0.0f, RowsCapacity, ColsCapacity, length, 2);
+    size_t* gaps = new size_t[4]{ 0, static_cast<size_t>(targetLen), 0, static_cast<size_t>(queryLen) }; //gaps: [rowStart, rowEnd, colStart, colEnd]
     fwbwaln.initScoreMatrix(G, gaps);
-    fwbwaln.runFwBw<0,1>();
+    fwbwaln.runFwBw<false, 2>();
     FwBwAligner::s_align aln = fwbwaln.getFwbwAlnResult();
 
-    // Matcher::result_t result = Matcher::result_t();
-    result.qStartPos = aln.dbStartPos1 - 1;
-    result.qEndPos = aln.dbEndPos1;
+    result.qStartPos = aln.qStartPos1;
+    result.qEndPos = aln.qEndPos1;
     result.qLen = queryLen;
-    result.dbStartPos = aln.qStartPos1 - 1;
-    result.dbEndPos = aln.qEndPos1;
+    result.dbStartPos = aln.dbStartPos1;
+    result.dbEndPos = aln.dbEndPos1;
     result.dbLen = targetLen;
-    result.alnLength = aln.cigar.length();
+    result.alnLength = aln.cigarLen;
     result.backtrace = aln.cigar;
-    // std::cout << "backtrace:" << aln.cigar << std::endl;
+
     free(G);
-    // free(P);
 
    for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
         delete[] query_profile_scores_aa[i];
@@ -1557,7 +1552,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     size_t length = 16;
     size_t RowsCapacity = ((seqDbrAA.getMaxSeqLen() + length - 1) / length) * length;
     size_t ColsCapacity = ((seqDbrAA.getMaxSeqLen() + length - 1) / length) * length;
-    FwBwAligner fwbwaln(length, -par.fwbw_gapopen, -par.fwbw_gapextend, par.temperature, RowsCapacity, ColsCapacity);
+    // FwBwAligner fwbwaln(length, -par.fwbw_gapopen, -par.fwbw_gapextend, par.temperature, RowsCapacity, ColsCapacity);
 
     // Add four seq objects per alignee per thread
     // Amino acid profile/sequence, 3Di profile/sequence
@@ -1689,9 +1684,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             // 4. compute distance (angstrom) within structure of residue pair (i_m, j_m) and fill cell in distance matrix
             // 5. break
             
-            size_t newRow = ((seqMergedAa->L + 15) / 16) * 16;
-            size_t newCol = ((seqTargetAa->L + 15) / 16) * 16;
-            fwbwaln.resizeMatrix(newRow, newCol);
+            // size_t newRow = ((seqMergedAa->L + 15) / 16) * 16;
+            // size_t newCol = ((seqTargetAa->L + 15) / 16) * 16;
+            // fwbwaln.resizeMatrix(newRow, newCol);
 
             structureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
             Matcher::result_t res = pairwiseAlignment2(
@@ -1707,10 +1702,26 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 &subMat_3di,
                 par.compBiasCorrection
             );
+            
+            // std::cout << "# Before\t" << res.qStartPos << '-' << res.qEndPos << '\t' << res.dbStartPos << '-' << res.dbEndPos << '\n';
+            // for (auto member : qMembers) {
+            //     std::cout << expand(msa.cigars_ss[member]) << '\n';
+            // } 
+            // std::cout << res.backtrace << '\n';
+            // for (auto member : tMembers) {
+            //     std::cout << expand(msa.cigars_ss[member]) << '\n';
+            // } 
+            // std::cout << '\n';
 
             std::vector<Instruction> qBt;
             std::vector<Instruction> tBt;
             getMergeInstructions(res, map1, map2, qBt, tBt);
+            
+            // res.dbKey = targetId;
+            // res.queryOrfStartPos = -1;
+            // res.queryOrfEndPos = -1;
+            // res.dbOrfStartPos = -1;
+            // res.dbOrfEndPos = -1;
 
             // If neither are profiles, do TM-align as well and take the best alignment
             // if (caExist) {
@@ -1726,79 +1737,17 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             // }
 
             updateCIGARs(res, map1, map2, msa.cigars_aa, msa.cigars_ss, qMembers, tMembers, qBt, tBt);
-            
-            // d_ij and d_kl
-            // want: for each residue i, distances to all residues j 
-            // 
 
-
-            // TODO 
-            // size_t alnLength = cigarLength(msa.cigars_aa[qMembers[0]], true);
-
-            // GapData g = getGapData(lolRes, map1, map2); 
-            // size_t preCigar = g.preGaps + g.preSequence;
-            // size_t endCigar = preCigar + lolRes.backtrace.length();
-            // size_t postCigar = endCigar + g.endSequence;
-            
-            // // Map new alignment to query/target profile indices
-            // // Will need to map these to original structure indices
-            // std::vector<size_t> qMap(alnLength, SIZE_T_MAX);
-            // std::vector<size_t> tMap(alnLength, SIZE_T_MAX);
-            // std::iota(tMap.begin(), tMap.begin() + lolRes.dbStartPos, 0);
-            // std::iota(qMap.begin() + lolRes.qStartPos, qMap.begin() + lolRes.qStartPos + lolRes.dbStartPos, 0);
-            // size_t qIdx = g.preSequence;
-            // size_t tIdx = g.preGaps;
-            // size_t mIdx = preCigar;
-            // for (size_t i = 0; i < lolRes.backtrace.length(); i++) {
-            //     switch (lolRes.backtrace[i]) {
-            //         case 'M': {
-            //             qMap[mIdx] = qIdx++; 
-            //             tMap[mIdx] = tIdx++; 
-            //             mIdx++;
-            //             break;
-            //         }
-            //         case 'I': {
-            //             qMap[mIdx] = qIdx++; 
-            //             mIdx++;
-            //             break;
-            //         }
-            //         case 'D': {
-            //             tMap[mIdx] = tIdx++; 
-            //             mIdx++;
-            //             break;
-            //         }
-            //         default:
-            //             break;
-            //     }
-            // }
-            // std::iota(qMap.begin() + endCigar, qMap.begin() + postCigar, qIdx);
-            // std::iota(tMap.begin() + postCigar, tMap.end(), tIdx);
-
-            // // std::vector<float> mergedDistances(alnLength * (alnLength + 1) / 2, 0.0f);
-            // std::vector<std::vector<float>> mergedDistances(alnLength, std::vector<float>(alnLength, 0.0f));
-            // for (size_t i = 0; i < lolRes.alnLength; i++) {
-            //     size_t qi = qMap[i];
-            //     size_t ti = tMap[i];
-            //     for (size_t j = i + 1; j < lolRes.alnLength; j++) {
-            //         size_t qj = qMap[j];
-            //         size_t tj = tMap[j];
-            //         float q_dist = (qi != SIZE_T_MAX && qj != SIZE_T_MAX) ? lolaln.d_ij[qi][qj] : SIZE_T_MAX;
-            //         float t_dist = (ti != SIZE_T_MAX && tj != SIZE_T_MAX) ? lolaln.d_kl[ti][tj] : SIZE_T_MAX;
-            //         // size_t idx = upper_triangle_index(i, j, alnLength);
-            //         mergedDistances[i][j] = (q_dist != SIZE_T_MAX && t_dist != SIZE_T_MAX)
-            //             ? ((q_dist + t_dist) / 2)
-            //             : (q_dist != SIZE_T_MAX) ? q_dist : t_dist;
-            //     }
-            // }
-
+            // std::cout << "# After\n";
             // for (auto member : qMembers) {
             //     std::cout << expand(msa.cigars_ss[member]) << '\n';
             // } 
-            // // std::cout << res.backtrace << '\n';
+            // std::cout << res.backtrace << '\n';
             // for (auto member : tMembers) {
             //     std::cout << expand(msa.cigars_ss[member]) << '\n';
             // } 
             // std::cout << '\n';
+
 
             SubMSA *newSubMSA;
             if (queryIsProfile) {
