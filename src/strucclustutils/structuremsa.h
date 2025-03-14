@@ -8,6 +8,7 @@
 #include "MsaFilter.h"
 #include "SubstitutionMatrix.h"
 #include "StructureSmithWaterman.h"
+#include "Fwbw.h"
 #include "Sequence.h"
 
 enum State {
@@ -96,13 +97,12 @@ Matcher::result_t pairwiseAlignment(
 );
 
 Matcher::result_t pairwiseAlignment2(
-    StructureSmithWaterman & aligner,
+    FwBwAligner& fwbwaln,
     unsigned int querySeqLen,
     Sequence *query_aa,
     Sequence *query_3di,
     Sequence *target_aa,
     Sequence *target_3di,
-    int gapOpen, int gapExtend,
     SubstitutionMatrix *mat_aa,
     SubstitutionMatrix *mat_3di,
     int compBiasCorrection

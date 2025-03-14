@@ -31,7 +31,6 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_PCB);
     structuremsa.push_back(&PARAM_GUIDE_TREE);
     structuremsa.push_back(&PARAM_RECOMPUTE_SCORES);
-    structuremsa.push_back(&PARAM_REGRESSIVE);
     structuremsa.push_back(&PARAM_SUB_MAT);
     structuremsa.push_back(&PARAM_THREADS);
     structuremsa.push_back(&PARAM_MAX_SEQ_LEN);
@@ -67,10 +66,10 @@ FoldmasonParameters::FoldmasonParameters() :
     easymsaworkflow.push_back(&PARAM_REPORT_MODE);
     
     // fwbw
-    temperature = 2; 
+    temperature = 1; 
 
-    bitFactorAa = 1.1;
-    bitFactor3Di = 2.1;
+    bitFactorAa = 1.1f;
+    bitFactor3Di = 2.1f;
     scoreBias = 0.6f;
     matchRatio = 0.5f;
     guideTree = "";
