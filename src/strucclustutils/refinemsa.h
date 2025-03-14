@@ -1,6 +1,8 @@
 #ifndef REFINEMSA_H
 #define REFINEMSA_H
 
+#include "Fwbw.h"
+
 void refineMany(
     int8_t * tinySubMatAA,
     int8_t * tinySubMat3Di,
@@ -13,7 +15,7 @@ void refineMany(
     PSSMCalculator &calculator_3di,
     MsaFilter &filter_3di,
     SubstitutionMatrix &subMat_3di,
-    StructureSmithWaterman & structureSmithWaterman,
+    FwBwAligner& fwbwaln,
     int iterations,
     bool compBiasCorrection,
     bool wg,
