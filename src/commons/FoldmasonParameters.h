@@ -31,15 +31,8 @@ public:
     std::vector<MMseqsParameter *> refinemsa;
     std::vector<MMseqsParameter *> easymsaworkflow;
 
-    PARAMETER(PARAM_PCA_AA)
-    PARAMETER(PARAM_PCB_AA)
-    PARAMETER(PARAM_PCA_3DI)
-    PARAMETER(PARAM_PCB_3DI)
-    PARAMETER(PARAM_SCORE_BIAS_AA)
-    PARAMETER(PARAM_SCORE_BIAS_3DI)
     PARAMETER(PARAM_GUIDE_TREE)
     PARAMETER(PARAM_RECOMPUTE_SCORES)
-    PARAMETER(PARAM_REGRESSIVE)
     PARAMETER(PARAM_PRECLUSTER)
     PARAMETER(PARAM_REFINE_ITERS)
     PARAMETER(PARAM_BITFACTOR_AA)
@@ -50,20 +43,10 @@ public:
     PARAMETER(PARAM_REFINE_SEED)
     
     //fwbw
-    PARAMETER(PARAM_MACT)
-    PARAMETER(PARAM_FWBW_GAPOPEN)
-    PARAMETER(PARAM_FWBW_GAPEXTEND)
     PARAMETER(PARAM_TEMPERATURE) 
 
-    MultiParam<PseudoCounts> pcaAa;
-    MultiParam<PseudoCounts> pcbAa;
-    MultiParam<PseudoCounts> pca3di;
-    MultiParam<PseudoCounts> pcb3di;
-    float scoreBiasAa;
-    float scoreBias3di;
     std::string guideTree;
     bool recomputeScores;
-    bool regressive;
     bool precluster;
     int refineIters;
     float bitFactorAa;
@@ -74,9 +57,6 @@ public:
     int refinementSeed;
     
     // fwbw
-    float mact;
-    float fwbw_gapopen;
-    float fwbw_gapextend;
     float temperature;
 };
 #endif

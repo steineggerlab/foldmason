@@ -1328,7 +1328,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     
     Debug(Debug::INFO) << "Got databases\n";
     
-    SubstitutionMatrix subMat_3di(par.scoringMatrixFile.values.aminoacid().c_str(), par.bitFactor3Di, par.scoreBias3di);
+    SubstitutionMatrix subMat_3di(par.scoringMatrixFile.values.aminoacid().c_str(), par.bitFactor3Di, par.scoreBias);
     std::string blosum;
     for (size_t i = 0; i < par.substitutionMatrices.size(); i++) {
         if (par.substitutionMatrices[i].name == "blosum62.out") {
@@ -1340,7 +1340,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         }
     }
 
-    SubstitutionMatrix subMat_aa(blosum.c_str(), par.bitFactorAa, par.scoreBiasAa);
+    SubstitutionMatrix subMat_aa(blosum.c_str(), par.bitFactorAa, par.scoreBias);
 
     Debug(Debug::INFO) << "Got substitution matrices\n";
 
@@ -1538,17 +1538,17 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     StructureSmithWaterman structureSmithWaterman(par.maxSeqLen, subMat_3di.alphabetSize, par.compBiasCorrection, par.compBiasCorrectionScale, &subMat_aa, &subMat_3di);
     MsaFilter filter_aa(maxSeqLength + 1, sequenceCnt + 1, &subMat_aa, par.gapOpen.values.aminoacid(), par.gapExtend.values.aminoacid());
     MsaFilter filter_3di(maxSeqLength + 1, sequenceCnt + 1, &subMat_3di, par.gapOpen.values.aminoacid(), par.gapExtend.values.aminoacid()); 
-    PSSMCalculator calculator_aa(&subMat_aa, maxSeqLength + 1, sequenceCnt + 1, par.pcmode, par.pcaAa, par.pcbAa
+    PSSMCalculator calculator_aa(&subMat_aa, maxSeqLength + 1, sequenceCnt + 1, par.pcmode, par.pca, par.pcb
 #ifdef GAP_POS_SCORING
     , par.gapOpen.values.aminoacid(), par.gapPseudoCount
 #endif
     );
-    PSSMCalculator calculator_3di(&subMat_3di, maxSeqLength + 1, sequenceCnt + 1, par.pcmode, par.pca3di, par.pcb3di
+    PSSMCalculator calculator_3di(&subMat_3di, maxSeqLength + 1, sequenceCnt + 1, par.pcmode, par.pca, par.pcb
 #ifdef GAP_POS_SCORING
     , par.gapOpen.values.aminoacid(), par.gapPseudoCount
 #endif
     );
-    
+
     size_t length = 16;
     size_t RowsCapacity = ((seqDbrAA.getMaxSeqLen() + length - 1) / length) * length;
     size_t ColsCapacity = ((seqDbrAA.getMaxSeqLen() + length - 1) / length) * length;

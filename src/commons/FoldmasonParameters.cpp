@@ -4,15 +4,8 @@
 
 FoldmasonParameters::FoldmasonParameters() :
         LocalParameters(),
-        PARAM_PCA_AA(PARAM_PCA_AA_ID, "--pca-aa", "AA alignment PCA", "", typeid(float), (void *) &pcaAa, "^([0-9]*\\.[0-9]*)$"),
-        PARAM_PCB_AA(PARAM_PCB_AA_ID, "--pcb-aa", "AA alignment PCB", "", typeid(float), (void *) &pcbAa, "^([0-9]*\\.[0-9]*)$"),
-        PARAM_PCA_3DI(PARAM_PCA_3DI_ID, "--pca-3di", "3Di alignment PCA", "", typeid(float), (void *) &pca3di, "^([0-9]*\\.[0-9]*)$"),
-        PARAM_PCB_3DI(PARAM_PCB_3DI_ID, "--pcb-3di", "3Di alignment PCB", "", typeid(float), (void *) &pcb3di, "^([0-9]*\\.[0-9]*)$"),
-        PARAM_SCORE_BIAS_AA(PARAM_SCORE_BIAS_AA_ID, "--score-bias-aa", "AA alignment score bias", "", typeid(float), (void *) &scoreBiasAa, "^([0-9]*\\.[0-9]*)$"),
-        PARAM_SCORE_BIAS_3DI(PARAM_SCORE_BIAS_3DI_ID, "--score-bias-3di", "3Di alignment score bias", "", typeid(float), (void *) &scoreBias3di, "^([0-9]*\\.[0-9]*)$"),
         PARAM_GUIDE_TREE(PARAM_GUIDE_TREE_ID, "--guide-tree", "Input Newick guide tree", "Guide tree in Newick format", typeid(std::string), (void *) &guideTree, ".*\\.nw"),
         PARAM_RECOMPUTE_SCORES(PARAM_RECOMPUTE_SCORES_ID, "--recompute-scores", "Recompute scores", "Recompute all-vs-all alignment scores every iteration", typeid(bool), (void *) &recomputeScores, ""),
-        PARAM_REGRESSIVE(PARAM_REGRESSIVE_ID, "--regressive", "Regressive alignment", "Align sequences root-to-leaf", typeid(bool), (void *) &regressive, ""),
         PARAM_PRECLUSTER(PARAM_PRECLUSTER_ID, "--precluster", "Pre-cluster structures", "Pre-cluster structures before constructing MSA", typeid(bool), (void *) &precluster, ""),
         PARAM_REFINE_ITERS(PARAM_REFINE_ITERS_ID, "--refine-iters", "Total refinement iterations", "Number of alignment refinement iterations", typeid(int), (void *) &refineIters, "[0-9]{1}[0-9]*$"),
         PARAM_BITFACTOR_AA(PARAM_BITFACTOR_AA_ID, "--bitfactor-aa", "AA matrix bit factor", "AA matrix bit factor", typeid(float), (void *) &bitFactorAa, "^([0-9]*\\.[0-9]*)$"),
@@ -21,15 +14,12 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_REPORT_COMMAND(PARAM_REPORT_COMMAND_ID, "--report-command", "", "", typeid(std::string), (void *) &reportCommand, ""),
         PARAM_REPORT_PATHS(PARAM_REPORT_PATHS_ID, "--report-paths", "", "", typeid(bool), (void *) &reportPaths, ""),
         PARAM_REFINE_SEED(PARAM_REFINE_SEED_ID, "--refine-seed", "Random number generator seed", "Random number generator seed", typeid(int), (void *) &refinementSeed, "^([-]?[0-9]*)$"),
-        // fwbw
-        PARAM_MACT(PARAM_MACT_ID, "--mact", "MAC threshold", "Maximum accuracy threshold", typeid(float), (void *) &mact, "^0(\\.[0-9]+)?|^1(\\.0+)?$"),
-        PARAM_FWBW_GAPOPEN(PARAM_FWBW_GAPOPEN_ID, "--fwbw-gapopen", "fwbw-gapopen", "gap open penalty for fwbw", typeid(float), (void *) &fwbw_gapopen, "^([0-9]+(\\.[0-9]+)?)|(\\.[0-9]+)$"),
-        PARAM_FWBW_GAPEXTEND(PARAM_FWBW_GAPEXTEND_ID, "--fwbw-gapextend", "fwbw-gapextend", "gap extension penalty for fwbw", typeid(float), (void *) &fwbw_gapextend, "^([0-9]+(\\.[0-9]+)?)|(\\.[0-9]+)$"),
         PARAM_TEMPERATURE(PARAM_TEMPERATURE_ID, "--temperature", "Temperature", "Temperature for forward-backward", typeid(float), (void *) &temperature, "^(0\\.[0-9]+|[1-9][0-9]*\\.?[0-9]*)$")
 {
     // structuremsa
     structuremsa.push_back(&PARAM_WG);
     structuremsa.push_back(&PARAM_MATCH_RATIO);
+    structuremsa.push_back(&PARAM_SCORE_BIAS);
     structuremsa.push_back(&PARAM_FILTER_MSA);
     structuremsa.push_back(&PARAM_FILTER_NDIFF);
     structuremsa.push_back(&PARAM_FILTER_QSC);
@@ -37,12 +27,8 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_GAP_EXTEND);
     structuremsa.push_back(&PARAM_MASK_PROFILE);
     structuremsa.push_back(&PARAM_PC_MODE);
-    structuremsa.push_back(&PARAM_PCA_AA);
-    structuremsa.push_back(&PARAM_PCB_AA);
-    structuremsa.push_back(&PARAM_PCA_3DI);
-    structuremsa.push_back(&PARAM_PCB_3DI);
-    structuremsa.push_back(&PARAM_SCORE_BIAS_AA);
-    structuremsa.push_back(&PARAM_SCORE_BIAS_3DI);
+    structuremsa.push_back(&PARAM_PCA);
+    structuremsa.push_back(&PARAM_PCB);
     structuremsa.push_back(&PARAM_GUIDE_TREE);
     structuremsa.push_back(&PARAM_RECOMPUTE_SCORES);
     structuremsa.push_back(&PARAM_REGRESSIVE);
@@ -56,8 +42,6 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_NO_COMP_BIAS_CORR);
     structuremsa.push_back(&PARAM_V);
     structuremsa.push_back(&PARAM_REFINE_SEED);
-    structuremsa.push_back(&PARAM_FWBW_GAPOPEN);
-    structuremsa.push_back(&PARAM_FWBW_GAPEXTEND);
     structuremsa.push_back(&PARAM_TEMPERATURE);
 
     structuremsacluster = combineList(structuremsacluster, structuremsa);
@@ -83,27 +67,18 @@ FoldmasonParameters::FoldmasonParameters() :
     easymsaworkflow.push_back(&PARAM_REPORT_MODE);
     
     // fwbw
-    mact = 0.035;
-    fwbw_gapopen = 10;
-    fwbw_gapextend = 2;
     temperature = 2; 
 
-    pcaAa = 1.1;
-    pcbAa = 4.1;
-    pca3di = 1.4;
-    pcb3di = 1.5;
-    scoreBiasAa = 0.6;
-    scoreBias3di = 0.6;
-    matchRatio = 0.51;
+    bitFactorAa = 1.1;
+    bitFactor3Di = 2.1;
+    scoreBias = 0.6f;
+    matchRatio = 0.5f;
     guideTree = "";
     reportCommand = "";
     reportPaths = true;
     recomputeScores = false;
-    regressive = false;
     precluster = false;
     refineIters = 0;
-    bitFactorAa = 1.1;
-    bitFactor3Di = 2.1;
     pairThreshold = 0.0;
     wg = true;
     refinementSeed = -1;
