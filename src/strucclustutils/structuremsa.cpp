@@ -1672,18 +1672,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 toRemove.push_back(targetSubMSA);
             }
 
-            // TODO
-            // do this also for target if profile
-            // how do we do profile vs sequence?
-            //            
-            // flow
-            // Preallocate float** distance matrix
-            // 1. for a msa profile, iterate all column index pairs (i, j)
-            // 2. map (i, j) to real sequence indices using mask, (i_m, j_m)
-            // 3. iterate msa sequences, find first with residues at (i_m, j_m)
-            // 4. compute distance (angstrom) within structure of residue pair (i_m, j_m) and fill cell in distance matrix
-            // 5. break
-            
             // size_t newRow = ((seqMergedAa->L + 15) / 16) * 16;
             // size_t newCol = ((seqTargetAa->L + 15) / 16) * 16;
             // fwbwaln.resizeMatrix(newRow, newCol);
@@ -1717,16 +1705,12 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             std::vector<Instruction> tBt;
             getMergeInstructions(res, map1, map2, qBt, tBt);
             
-            // res.dbKey = targetId;
-            // res.queryOrfStartPos = -1;
-            // res.queryOrfEndPos = -1;
-            // res.dbOrfStartPos = -1;
-            // res.dbOrfEndPos = -1;
-
+            // NOTE this seems to degrade performance
+            //
             // If neither are profiles, do TM-align as well and take the best alignment
-            // if (caExist) {
-            //     // Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
-            //     // double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
+            // if (!queryIsProfile && !targetIsProfile && caExist) {
+            //     Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
+            //     double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
             //     double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
             //     if (lddtTM > lddt3Di) {
             //         qBt.clear();
