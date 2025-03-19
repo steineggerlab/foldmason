@@ -4,6 +4,10 @@ fail() {
     exit 1
 }
 
+exists() {
+	[ -f "$1" ]
+}
+
 notExists() {
 	[ ! -f "$1" ]
 }
@@ -26,6 +30,15 @@ if notExists "${TARGET}.dbtype"; then
             || fail "target createdb died"
     fi
     TARGET="${TMP_PATH}/target"
+
+    if [ -n "${GPU}" ]; then
+        if notExists "${TMP_PATH}/target_pad"; then
+            # shellcheck disable=SC2086
+            "$MMSEQS" makepaddedseqdb "${TMP_PATH}/target" "${TMP_PATH}/target_pad" ${MAKEPADDEDSEQDB_PAR} \
+                || fail "makepaddedseqdb died"
+        fi
+        TARGET="${TMP_PATH}/target_pad"
+    fi
 fi
 
 
@@ -53,7 +66,7 @@ fi
 
 if [ -n "${TAXONOMY}" ]; then
     # shellcheck disable=SC2086
-    "$MMSEQS" taxonomyreport "${TARGET}${INDEXEXT}" "${INTERMEDIATE}" "${RESULTS}_report" ${TAXONOMYREPORT_PAR} \
+    "$MMSEQS" taxonomyreport "${TARGET}" "${INTERMEDIATE}" "${RESULTS}_report" ${TAXONOMYREPORT_PAR} \
         || fail "taxonomyreport died"
 fi
 
@@ -70,18 +83,36 @@ if [ -n "${REMOVE_TMP}" ]; then
             "$MMSEQS" rmdb "${TMP_PATH}/target" ${VERBOSITY}
             # shellcheck disable=SC2086
             "$MMSEQS" rmdb "${TMP_PATH}/target_h" ${VERBOSITY}
-            # shellcheck disable=SC2086
-            "$MMSEQS" rmdb "${TMP_PATH}/target_ca" ${VERBOSITY}
+            if exists "${TMP_PATH}/target_ca.dbtype"; then
+                # shellcheck disable=SC2086
+                "$MMSEQS" rmdb "${TMP_PATH}/target_ca" ${VERBOSITY}
+            fi
             # shellcheck disable=SC2086
             "$MMSEQS" rmdb "${TMP_PATH}/target_ss" ${VERBOSITY}
+        fi
+        if [ -f "${TMP_PATH}/target_pad" ]; then
+            # shellcheck disable=SC2086
+            "$MMSEQS" rmdb "${TMP_PATH}/target_pad" ${VERBOSITY}
+            # shellcheck disable=SC2086
+            "$MMSEQS" rmdb "${TMP_PATH}/target_pad_h" ${VERBOSITY}
+            # shellcheck disable=SC2086
+            "$MMSEQS" rmdb "${TMP_PATH}/target_pad_ss" ${VERBOSITY}
+            # shellcheck disable=SC2086
+            "$MMSEQS" rmdb "${TMP_PATH}/target_pad_ss_h" ${VERBOSITY}
+            if exists "${TMP_PATH}/target_pad_ca.dbtype"; then
+                # shellcheck disable=SC2086
+                "$MMSEQS" rmdb "${TMP_PATH}/target_pad_ca" ${VERBOSITY}
+            fi
         fi
         if [ -f "${TMP_PATH}/query.dbtype" ]; then
             # shellcheck disable=SC2086
             "$MMSEQS" rmdb "${TMP_PATH}/query" ${VERBOSITY}
             # shellcheck disable=SC2086
             "$MMSEQS" rmdb "${TMP_PATH}/query_h" ${VERBOSITY}
-            # shellcheck disable=SC2086
-            "$MMSEQS" rmdb "${TMP_PATH}/query_ca" ${VERBOSITY}
+            if exists "${TMP_PATH}/query_ca.dbtype"; then
+                # shellcheck disable=SC2086
+                "$MMSEQS" rmdb "${TMP_PATH}/query_ca" ${VERBOSITY}
+            fi
             # shellcheck disable=SC2086
             "$MMSEQS" rmdb "${TMP_PATH}/query_ss" ${VERBOSITY}
         fi
