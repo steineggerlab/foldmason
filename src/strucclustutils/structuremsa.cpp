@@ -3,7 +3,6 @@
 #include "DBReader.h"
 #include "DBWriter.h"
 #include "Debug.h"
-// #include "Fwbw.h"
 #include "IndexReader.h"
 #include "FoldmasonParameters.h"
 #include "Matcher.h"
@@ -120,150 +119,25 @@ Matcher::result_t pairwiseAlignment(
         target_aa_seq = target_aa->numConsensusSequence;
         target_3di_seq = target_3di->numConsensusSequence;
     }
-
-    float *composition_bias_aa  = new float[query_aa->L];
-    float *composition_bias_ss  = new float[query_aa->L];
-    float *tmp_composition_bias = new float[query_aa->L];
-    if (compBiasCorrection) {
-        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_aa, query_aa->numSequence, query_aa->L, tmp_composition_bias, 1.0);
-        for (int i =0; i < query_aa->L; i++) {
-            composition_bias_aa[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
-        }
-        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_3di, query_3di->numSequence, query_3di->L, tmp_composition_bias, 1.0);
-        for (int i =0; i < query_aa->L; i++) {
-            composition_bias_ss[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
-        }
-    } else {
-        memset(composition_bias_aa, 0, query_aa->L * sizeof(int8_t));
-        memset(composition_bias_ss, 0, query_aa->L * sizeof(int8_t));
-    }
-
-    short **query_profile_scores_aa = new short * [aligner.get_profile()->alphabetSize];
-    short **query_profile_scores_3di = new short * [aligner.get_profile()->alphabetSize];
-    for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
-        query_profile_scores_aa[j] = new short [querySeqLen];
-        query_profile_scores_3di[j] = new short [querySeqLen];
-    }
-    if (queryIsProfile) {
-        for (unsigned int i = 0; i < querySeqLen; i++) {
-            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
-                query_profile_scores_aa[j][i]  = query_aa->profile_for_alignment[j * querySeqLen + i];
-                query_profile_scores_3di[j][i] = query_3di->profile_for_alignment[j * querySeqLen + i];
-            }
-        }
-    } else {
-        for (unsigned int i = 0; i < querySeqLen; i++) {
-            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
-                query_profile_scores_aa[j][i]  = mat_aa->subMatrix[j][query_aa_seq[i]]   + composition_bias_aa[i];
-                query_profile_scores_3di[j][i] = mat_3di->subMatrix[j][query_3di_seq[i]] + composition_bias_ss[i];
-            }
-        }
-    }
-   
-    short **target_profile_scores_aa = new short * [aligner.get_profile()->alphabetSize];
-    short **target_profile_scores_3di = new short * [aligner.get_profile()->alphabetSize];
-    for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
-        target_profile_scores_aa[j]  = new short [target_aa->L];
-        target_profile_scores_3di[j] = new short [target_aa->L];
-    }
-    if (targetIsProfile) {
-        for (int i = 0; i < target_aa->L; i++) {
-            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
-                target_profile_scores_aa[j][i]  = target_aa->profile_for_alignment[j * target_aa->L + i];
-                target_profile_scores_3di[j][i] = target_3di->profile_for_alignment[j * target_aa->L + i];
-            }
-        }
-    } else {
-        for (int i = 0; i < target_aa->L; i++) {
-            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
-                target_profile_scores_aa[j][i]  = mat_aa->subMatrix[j][target_aa_seq[i]];
-                target_profile_scores_3di[j][i] = mat_3di->subMatrix[j][target_3di_seq[i]];
-            }
-        }
-    }
-
-    delete[] composition_bias_aa;
-    delete[] composition_bias_ss;
-    delete[] tmp_composition_bias;
-    
-    Matcher::result_t gAlign = aligner.simpleGotoh(
-        target_aa_seq,
-        target_3di_seq,
-        query_profile_scores_aa,
-        query_profile_scores_3di,
-        target_profile_scores_aa,
-        target_profile_scores_3di,
-        0,
-        query_aa->L,
-        0,
-        target_aa->L,
-        gapOpen,
-        gapExtend
-    );
-    
-   for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
-        delete[] query_profile_scores_aa[i];
-        delete[] query_profile_scores_3di[i];
-        delete[] target_profile_scores_aa[i];
-        delete[] target_profile_scores_3di[i];
-    }
-
-    delete[] query_profile_scores_aa;
-    delete[] query_profile_scores_3di;
-    delete[] target_profile_scores_aa;
-    delete[] target_profile_scores_3di;
-   
-    return gAlign;
-}
-
-Matcher::result_t pairwiseAlignment2(
-    FwBwAligner& fwbwaln,
-    unsigned int querySeqLen,
-    Sequence* query_aa,
-    Sequence* query_3di,
-    Sequence* target_aa,
-    Sequence* target_3di,
-    SubstitutionMatrix* mat_aa,
-    SubstitutionMatrix* mat_3di,
-    int compBiasCorrection
-) {
-    std::string backtrace;
-
-    bool targetIsProfile = (Parameters::isEqualDbtype(target_aa->getSeqType(), Parameters::DBTYPE_HMM_PROFILE));
-    bool queryIsProfile = (Parameters::isEqualDbtype(query_aa->getSeqType(), Parameters::DBTYPE_HMM_PROFILE));
-
-    unsigned char * query_aa_seq = query_aa->numSequence;
-    unsigned char * query_3di_seq = query_3di->numSequence;
-    unsigned char * target_aa_seq = target_aa->numSequence;
-    unsigned char * target_3di_seq = target_3di->numSequence;
-    if (queryIsProfile) {
-        query_aa_seq = query_aa->numConsensusSequence;
-        query_3di_seq = query_3di->numConsensusSequence;
-    }
-    if (targetIsProfile) {
-        target_aa_seq = target_aa->numConsensusSequence;
-        target_3di_seq = target_3di->numConsensusSequence;
-    }
-
-    float *composition_bias_aa  = new float[query_aa->L];
-    float *composition_bias_ss  = new float[query_aa->L];
-    float *tmp_composition_bias = new float[query_aa->L];
-    if (compBiasCorrection) {
-        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_aa, query_aa->numSequence, query_aa->L, tmp_composition_bias, 1.0);
-        for (int i =0; i < query_aa->L; i++) {
-            composition_bias_aa[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
-        }
-        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_3di, query_3di->numSequence, query_3di->L, tmp_composition_bias, 1.0);
-        for (int i =0; i < query_aa->L; i++) {
-            composition_bias_ss[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
-        }
-    } else {
-        memset(composition_bias_aa, 0, query_aa->L * sizeof(int8_t));
-        memset(composition_bias_ss, 0, query_aa->L * sizeof(int8_t));
-    }
-    
     
     int32_t alphabetSize = mat_aa->alphabetSize;
+
+    float *composition_bias_aa  = new float[query_aa->L];
+    float *composition_bias_ss  = new float[query_aa->L];
+    float *tmp_composition_bias = new float[query_aa->L];
+    if (compBiasCorrection) {
+        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_aa, query_aa->numSequence, query_aa->L, tmp_composition_bias, 1.0);
+        for (int i =0; i < query_aa->L; i++) {
+            composition_bias_aa[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
+        }
+        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_3di, query_3di->numSequence, query_3di->L, tmp_composition_bias, 1.0);
+        for (int i =0; i < query_aa->L; i++) {
+            composition_bias_ss[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
+        }
+    } else {
+        memset(composition_bias_aa, 0, query_aa->L * sizeof(int8_t));
+        memset(composition_bias_ss, 0, query_aa->L * sizeof(int8_t));
+    }
 
     short **query_profile_scores_aa = new short * [alphabetSize];
     short **query_profile_scores_3di = new short * [alphabetSize];
@@ -313,40 +187,21 @@ Matcher::result_t pairwiseAlignment2(
     delete[] composition_bias_ss;
     delete[] tmp_composition_bias;
     
-    size_t length = 16;
-    int targetLen = target_aa->L;
-    int queryLen = query_aa->L;
-    size_t ColsCapacity = ((queryLen + length - 1) / length) * length;
-    size_t RowsCapacity = ((targetLen + length - 1) / length) * length;
-    float** G;
-    G = malloc_matrix<float>(targetLen, queryLen);
-    for (int i = 0; i < targetLen; ++i) {
-        for (int j = 0; j < queryLen; ++j) {
-            G[i][j] = static_cast<float>(
-                (query_profile_scores_aa[target_aa_seq[i]][j] + target_profile_scores_aa[query_aa_seq[j]][i]) / 2 +
-                (query_profile_scores_3di[target_3di_seq[i]][j] + target_profile_scores_3di[query_3di_seq[j]][i]) / 2
-            );
-        }
-    }
-    // FwBwAligner fwbwaln(-gapOpen, -gapExtend, T, 0.0f, RowsCapacity, ColsCapacity, length, 2);
-    size_t* gaps = new size_t[4]{ 0, static_cast<size_t>(targetLen), 0, static_cast<size_t>(queryLen) }; //gaps: [rowStart, rowEnd, colStart, colEnd]
-    fwbwaln.resizeMatrix<false, true>(RowsCapacity, ColsCapacity);
-    fwbwaln.initScoreMatrix(G, gaps);
-    fwbwaln.runFwBw<false, 2>();
-    FwBwAligner::s_align aln = fwbwaln.getFwbwAlnResult();
-
-    Matcher::result_t result;
-    result.qStartPos = aln.qStartPos1;
-    result.qEndPos = aln.qEndPos1;
-    result.qLen = queryLen;
-    result.dbStartPos = aln.dbStartPos1;
-    result.dbEndPos = aln.dbEndPos1;
-    result.dbLen = targetLen;
-    result.alnLength = aln.cigarLen;
-    result.backtrace = aln.cigar;
-
-    free(G);
-
+    Matcher::result_t result = aligner.simpleGotoh(
+        target_aa_seq,
+        target_3di_seq,
+        query_profile_scores_aa,
+        query_profile_scores_3di,
+        target_profile_scores_aa,
+        target_profile_scores_3di,
+        0,
+        query_aa->L,
+        0,
+        target_aa->L,
+        gapOpen,
+        gapExtend
+    );
+    
    for (int32_t i = 0; i < alphabetSize; i++) {
         delete[] query_profile_scores_aa[i];
         delete[] query_profile_scores_3di[i];
@@ -1548,11 +1403,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 #endif
     );
 
-    size_t length = 16;
-    size_t RowsCapacity = ((seqDbrAA.getMaxSeqLen() + length - 1) / length) * length;
-    size_t ColsCapacity = ((seqDbrAA.getMaxSeqLen() + length - 1) / length) * length;
-    FwBwAligner fwbwaln(-par.gapOpen.values.aminoacid(), -par.gapExtend.values.aminoacid(), par.temperature, 0.0f, RowsCapacity, ColsCapacity, length, 2);
-
     // Add four seq objects per alignee per thread
     // Amino acid profile/sequence, 3Di profile/sequence
     Sequence seqMergedAaAa(par.maxSeqLen, Parameters::DBTYPE_AMINO_ACIDS, (const BaseMatrix *) &subMat_aa,  0, false, par.compBiasCorrection);
@@ -1670,14 +1520,17 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             if (targetIsProfile) {
                 toRemove.push_back(targetSubMSA);
             }
-
-            Matcher::result_t res = pairwiseAlignment2(
-                fwbwaln,
+    
+            structureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
+            Matcher::result_t res = pairwiseAlignment(
+                structureSmithWaterman,
                 seqMergedAa->L,
                 seqMergedAa,
                 seqMergedSs, 
                 seqTargetAa,
                 seqTargetSs,
+                par.gapOpen.values.aminoacid(),
+                par.gapExtend.values.aminoacid(),
                 &subMat_aa,
                 &subMat_3di,
                 par.compBiasCorrection
@@ -1786,7 +1639,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     if (par.refineIters > 0) {
         refineMany(
             tinySubMatAA, tinySubMat3Di, seqDbrCA, msa.cigars_aa, msa.cigars_ss, calculator_aa,
-            filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di, fwbwaln,
+            filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di, structureSmithWaterman,
             par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId, par.qsc,
             par.Ndiff, par.covMSAThr, par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(),
             par.gapOpen.values.aminoacid(), par.maxSeqLen, par.qid, par.pairThreshold, msa.dbKeys,

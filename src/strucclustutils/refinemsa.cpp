@@ -108,7 +108,7 @@ void refineOne(
     PSSMCalculator &calculator_3di,
     MsaFilter &filter_3di,
     SubstitutionMatrix &subMat_3di,
-    FwBwAligner& fwbwaln,
+    StructureSmithWaterman &structureSmithWaterman,
     bool filterMsa,
     bool compBiasCorrection,
     std::string & qid,
@@ -211,12 +211,17 @@ void refineOne(
         std::swap(group1, group2);
         std::swap(qId, tId);
     }
-
-    Matcher::result_t result = pairwiseAlignment2(
-        fwbwaln,
+    structureSmithWaterman.ssw_init(
+        sequences_aa[qId],
+        sequences_ss[qId],
+        tinySubMatAA, tinySubMat3Di, &subMat_aa
+    );
+    Matcher::result_t result = pairwiseAlignment(
+        structureSmithWaterman,
         sequences_aa[qId]->L,
         sequences_aa[qId], sequences_ss[qId],
         sequences_aa[tId], sequences_ss[tId],
+        gapOpen, gapExtend,
         &subMat_aa, &subMat_3di,
         compBiasCorrection
     );
@@ -238,7 +243,7 @@ void refineMany(
     PSSMCalculator &calculator_3di,
     MsaFilter &filter_3di,
     SubstitutionMatrix &subMat_3di,
-    FwBwAligner& fwbwaln,
+    StructureSmithWaterman & structureSmithWaterman,
     int iterations,
     bool compBiasCorrection,
     bool wg,
@@ -293,7 +298,7 @@ void refineMany(
             cigars_new_aa, cigars_new_ss,
             calculator_aa, filter_aa, subMat_aa,
             calculator_3di, filter_3di, subMat_3di,
-            fwbwaln, filterMsa, compBiasCorrection,
+            structureSmithWaterman, filterMsa, compBiasCorrection,
             qid, filterMaxSeqId, Ndiff, covMSAThr, qsc, filterMinEnable,
             wg, gapExtend, gapOpen,
             sequences_aa, sequences_ss,
@@ -381,11 +386,6 @@ int refinemsa(int argc, const char **argv, const Command& command) {
         for (int j = 0; j < subMat_3di.alphabetSize; j++)
             tinySubMat3Di[i * subMat_3di.alphabetSize + j] = subMat_3di.subMatrix[i][j]; // for farrar profile
 
-    size_t length = 16;
-    size_t RowsCapacity = ((seqDbrAA.getMaxSeqLen() + length - 1) / length) * length;
-    size_t ColsCapacity = ((seqDbrAA.getMaxSeqLen() + length - 1) / length) * length;
-    FwBwAligner fwbwaln(-par.gapOpen.values.aminoacid(), -par.gapExtend.values.aminoacid(), par.temperature, 0.0f, RowsCapacity, ColsCapacity, length, 2);
-
     StructureSmithWaterman structureSmithWaterman(par.maxSeqLen, subMat_3di.alphabetSize, par.compBiasCorrection, par.compBiasCorrectionScale, &subMat_aa, &subMat_3di);
     MsaFilter filter_aa(par.maxSeqLen + 1, sequenceCnt + 1, &subMat_aa, par.gapOpen.values.aminoacid(), par.gapExtend.values.aminoacid());
     MsaFilter filter_3di(par.maxSeqLen + 1, sequenceCnt + 1, &subMat_3di, par.gapOpen.values.aminoacid(), par.gapExtend.values.aminoacid()); 
@@ -404,7 +404,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
     refineMany(
         tinySubMatAA, tinySubMat3Di, &seqDbrCA, cigars_aa, cigars_ss,
         calculator_aa, filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
-        fwbwaln, par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
+        structureSmithWaterman, par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
         par.qsc, par.Ndiff, par.covMSAThr,
         par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
         par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed
