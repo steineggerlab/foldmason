@@ -1541,7 +1541,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             getMergeInstructions(res, map1, map2, qBt, tBt);
             
             // NOTE this seems to degrade performance
-            //
             // If neither are profiles, do TM-align as well and take the best alignment
             if (!queryIsProfile && !targetIsProfile && caExist) {
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
