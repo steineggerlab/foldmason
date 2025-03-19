@@ -169,12 +169,7 @@ case "${SELECTION}" in
         INPUT_TYPE="FOLDSEEK_DB"
     ;;
     "ProstT5")
-        MODEL=prostt5-f16-safetensors.tar.gz
-        if [ -n "${PROSTT5_QUANTIZED}" ]; then
-            # quantized weights are worse and slower
-            # they were only added to reduce download size in continous integration
-            MODEL=prostt5-q4_0-gguf.tar.gz
-        fi
+        MODEL=prostt5-f16-gguf.tar.gz
         if notExists "${TMP_PATH}/${MODEL}"; then
             downloadFile "https://foldseek.steineggerlab.workers.dev/${MODEL}" "${TMP_PATH}/${MODEL}"
         fi
@@ -189,6 +184,24 @@ case "${SELECTION}" in
         fi
         tar xvfz "${TMP_PATH}/bfvd.tar.gz" -C "${TMP_PATH}"
         push_back "${TMP_PATH}/bfvd"
+        INPUT_TYPE="FOLDSEEK_DB"
+    ;;
+    "TED")
+        if notExists "${TMP_PATH}/teddb.tar.gz"; then
+            downloadFile "https://foldseek.steineggerlab.workers.dev/teddb.tar.gz" "${TMP_PATH}/teddb.tar.gz"
+            downloadFile "https://foldseek.steineggerlab.workers.dev/teddb.version" "${TMP_PATH}/version"
+        fi
+        tar xvfz "${TMP_PATH}/teddb.tar.gz" -C "${TMP_PATH}"
+        push_back "${TMP_PATH}/teddb"
+        INPUT_TYPE="FOLDSEEK_DB"
+    ;;
+    "TED50")
+        if notExists "${TMP_PATH}/teddb_afdb50.tar.gz"; then
+            downloadFile "https://foldseek.steineggerlab.workers.dev/teddb_afdb50.tar.gz" "${TMP_PATH}/teddb_afdb50.tar.gz"
+            downloadFile "https://foldseek.steineggerlab.workers.dev/teddb_afdb50.version" "${TMP_PATH}/version"
+        fi
+        tar xvfz "${TMP_PATH}/teddb_afdb50.tar.gz" -C "${TMP_PATH}"
+        push_back "${TMP_PATH}/teddb_afdb50"
         INPUT_TYPE="FOLDSEEK_DB"
 esac
 
@@ -217,10 +230,10 @@ case "${INPUT_TYPE}" in
         for SUFFIX in "" "_ss" "_h" "_ca"; do
             if [ -e "${IN}_seq${SUFFIX}.dbtype" ]; then
                 # shellcheck disable=SC2086
-                "${MMSEQS}" mvdb "${IN}_seq${SUFFIX}" "${OUTDB}_seq${SUFFIX}" || fail "mv died"
+                "${MMSEQS}" mvdb "${IN}_seq${SUFFIX}" "${OUTDB}_seq${SUFFIX}" ${VERB_PAR} || fail "mv died"
             fi
             # shellcheck disable=SC2086
-            "${MMSEQS}" mvdb "${IN}${SUFFIX}" "${OUTDB}${SUFFIX}" || fail "mv died"
+            "${MMSEQS}" mvdb "${IN}${SUFFIX}" "${OUTDB}${SUFFIX}" ${VERB_PAR} || fail "mv died"
         done
 
         if [ -e "${IN}_clu.dbtype" ]; then
@@ -234,7 +247,7 @@ case "${INPUT_TYPE}" in
             done
 
             # shellcheck disable=SC2086
-            "${MMSEQS}" mvdb "${IN}_clu" "${OUTDB}_clu" || fail "mv died"
+            "${MMSEQS}" mvdb "${IN}_clu" "${OUTDB}_clu" ${VERB_PAR} || fail "mv died"
         fi
     ;;
 esac
