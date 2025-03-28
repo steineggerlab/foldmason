@@ -13,8 +13,7 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_PAIR_THRESHOLD(PARAM_PAIR_THRESHOLD_ID, "--pair-threshold", "LDDT pair threshold", "% of pair subalignments with LDDT information [0.0,1.0]",typeid(float), (void *) &pairThreshold, "^0(\\.[0-9]+)?|1(\\.0+)?$"),
         PARAM_REPORT_COMMAND(PARAM_REPORT_COMMAND_ID, "--report-command", "", "", typeid(std::string), (void *) &reportCommand, ""),
         PARAM_REPORT_PATHS(PARAM_REPORT_PATHS_ID, "--report-paths", "", "", typeid(bool), (void *) &reportPaths, ""),
-        PARAM_REFINE_SEED(PARAM_REFINE_SEED_ID, "--refine-seed", "Random number generator seed", "Random number generator seed", typeid(int), (void *) &refinementSeed, "^([-]?[0-9]*)$"),
-        PARAM_TEMPERATURE(PARAM_TEMPERATURE_ID, "--temperature", "Temperature", "Temperature for forward-backward", typeid(float), (void *) &temperature, "^(0\\.[0-9]+|[1-9][0-9]*\\.?[0-9]*)$")
+        PARAM_REFINE_SEED(PARAM_REFINE_SEED_ID, "--refine-seed", "Random number generator seed", "Random number generator seed", typeid(int), (void *) &refinementSeed, "^([-]?[0-9]*)$")
 {
     // structuremsa
     structuremsa.push_back(&PARAM_WG);
@@ -41,7 +40,6 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_NO_COMP_BIAS_CORR);
     structuremsa.push_back(&PARAM_V);
     structuremsa.push_back(&PARAM_REFINE_SEED);
-    structuremsa.push_back(&PARAM_TEMPERATURE);
 
     structuremsacluster = combineList(structuremsacluster, structuremsa);
 
@@ -65,13 +63,10 @@ FoldmasonParameters::FoldmasonParameters() :
     easymsaworkflow.push_back(&PARAM_PRECLUSTER);
     easymsaworkflow.push_back(&PARAM_REPORT_MODE);
     
-    // fwbw
-    temperature = 1; 
-
     bitFactorAa = 1.1f;
     bitFactor3Di = 2.1f;
     scoreBias = 0.6f;
-    matchRatio = 0.5f;
+    matchRatio = 0.52f;
     guideTree = "";
     reportCommand = "";
     reportPaths = true;
@@ -80,6 +75,8 @@ FoldmasonParameters::FoldmasonParameters() :
     refineIters = 0;
     pairThreshold = 0.0;
     wg = true;
+    filterMsa = 0;
+    compBiasCorrection = 0;
     refinementSeed = -1;
 
     citations.emplace(CITATION_FOLDMASON, " << TODO >> ");

@@ -42,9 +42,6 @@ public:
     PARAMETER(PARAM_REPORT_PATHS)
     PARAMETER(PARAM_REFINE_SEED)
     
-    //fwbw
-    PARAMETER(PARAM_TEMPERATURE) 
-
     std::string guideTree;
     bool recomputeScores;
     bool precluster;
@@ -55,8 +52,5 @@ public:
     bool reportPaths;
     float pairThreshold;
     int refinementSeed;
-    
-    // fwbw
-    float temperature;
 };
 #endif

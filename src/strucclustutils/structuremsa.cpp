@@ -1542,17 +1542,17 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             
             // NOTE this seems to degrade performance
             // If neither are profiles, do TM-align as well and take the best alignment
-            // if (!queryIsProfile && !targetIsProfile && caExist) {
-            //     Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
-            //     double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
-            //     double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
-            //     if (lddtTM > lddt3Di) {
-            //         qBt.clear();
-            //         tBt.clear();
-            //         getMergeInstructions(tmRes, map1, map2, qBt, tBt);
-            //         std::swap(res, tmRes);
-            //     }
-            // }
+            if (!queryIsProfile && !targetIsProfile && caExist) {
+                Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
+                double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
+                double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
+                if (lddtTM > lddt3Di) {
+                    qBt.clear();
+                    tBt.clear();
+                    getMergeInstructions(tmRes, map1, map2, qBt, tBt);
+                    std::swap(res, tmRes);
+                }
+            }
 
             updateCIGARs(res, map1, map2, msa.cigars_aa, msa.cigars_ss, qMembers, tMembers, qBt, tBt);
 
