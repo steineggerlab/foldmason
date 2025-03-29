@@ -122,10 +122,10 @@ Matcher::result_t pairwiseAlignment(
     
     int32_t alphabetSize = mat_aa->alphabetSize;
 
-    float *composition_bias_aa  = new float[query_aa->L];
-    float *composition_bias_ss  = new float[query_aa->L];
-    float *tmp_composition_bias = new float[query_aa->L];
+    int8_t *composition_bias_aa = new int8_t[query_aa->L];
+    int8_t *composition_bias_ss = new int8_t[query_aa->L];
     if (compBiasCorrection) {
+        float *tmp_composition_bias = new float[query_aa->L];
         SubstitutionMatrix::calcLocalAaBiasCorrection(mat_aa, query_aa->numSequence, query_aa->L, tmp_composition_bias, 1.0);
         for (int i =0; i < query_aa->L; i++) {
             composition_bias_aa[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
@@ -134,6 +134,7 @@ Matcher::result_t pairwiseAlignment(
         for (int i =0; i < query_aa->L; i++) {
             composition_bias_ss[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
         }
+        delete[] tmp_composition_bias;
     } else {
         memset(composition_bias_aa, 0, query_aa->L * sizeof(int8_t));
         memset(composition_bias_ss, 0, query_aa->L * sizeof(int8_t));
@@ -185,7 +186,6 @@ Matcher::result_t pairwiseAlignment(
 
     delete[] composition_bias_aa;
     delete[] composition_bias_ss;
-    delete[] tmp_composition_bias;
     
     Matcher::result_t result = aligner.simpleGotoh(
         target_aa_seq,
