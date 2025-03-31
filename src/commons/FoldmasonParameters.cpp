@@ -78,6 +78,8 @@ FoldmasonParameters::FoldmasonParameters() :
     filterMsa = 0;
     compBiasCorrection = 0;
     refinementSeed = -1;
+    gapOpen = 25;
+    gapExtend = 3;
 
     citations.emplace(CITATION_FOLDMASON, " << TODO >> ");
 }
