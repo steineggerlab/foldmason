@@ -10,6 +10,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 set(FOLDSEEK_FRAMEWORK_ONLY 1 CACHE INTERNAL "" FORCE)
+set(ENABLE_PROSTT5 0 CACHE INTERNAL "" FORCE)
 add_subdirectory(lib/foldseek EXCLUDE_FROM_ALL)
 
 add_subdirectory(data)

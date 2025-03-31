@@ -261,7 +261,6 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     std::vector<float> perColumnScore(alnLength, 0.0);
     std::vector<int>   perColumnCount(alnLength, 0);
 
-    float sum = 0.0;
     int numPairs = cigars.size() * (cigars.size() - 1) / 2;
     
     // Sort subset vector by indices so we can initQuery in outer loop
@@ -271,7 +270,7 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     // 
     std::vector<float> scores(numPairs);
     
-#pragma omp parallel reduction(+:sum)
+#pragma omp parallel
 {
     unsigned int thread_idx = 0;
 #ifdef OPENMP
@@ -367,7 +366,7 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     }
 #pragma omp critical
 {
-    for (size_t i = 0; i < alnLength; i++) {
+    for (int i = 0; i < alnLength; i++) {
         perColumnCount[i] += perColumnCount_thread[i];
         perColumnScore[i] += perColumnScore_thread[i];
     }
