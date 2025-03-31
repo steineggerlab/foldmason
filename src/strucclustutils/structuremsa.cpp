@@ -38,8 +38,14 @@
 #include "newick.h"
 #include "MSA.h"
 
+#include "simd.h"
+
 #ifdef OPENMP
 #include <omp.h>
+#endif
+
+#ifndef SIZE_T_MAX
+#define SIZE_T_MAX ((size_t) -1)
 #endif
 
 KSEQ_INIT(kseq_buffer_t*, kseq_buffer_reader)
@@ -54,6 +60,33 @@ GapData getGapData(const Matcher::result_t &res, const std::vector<size_t>& qMap
     data.endSequence = qMap.back() - qMap[res.qEndPos];
     data.endGaps     = tMap.back() - tMap[res.dbEndPos];
     return data;
+}
+
+std::vector<size_t> map_mask_indices(const std::string& mask, size_t n) {
+    std::vector<size_t> indices(n);
+    size_t count = 0;
+    for (size_t i = 0; i < mask.length(); ++i) {
+        if (mask[i] == '0') {
+            indices[count] = i;
+            count++;
+        } 
+    }
+    return indices;
+}
+
+void print_matrix(float** matrix, size_t m, size_t n) {
+    std::cout.precision(2);
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < m; ++j) {
+            std::cout << std::fixed << matrix[i][j] << '\t';
+        }
+        std::cout << '\n';
+    }
+}
+
+
+inline size_t upper_triangle_index(size_t i, size_t j, size_t n) {
+    return (i * (2 * n - i - 1)) / 2 + (j - i - 1);
 }
 
 Matcher::result_t pairwiseAlignment(
@@ -86,11 +119,13 @@ Matcher::result_t pairwiseAlignment(
         target_aa_seq = target_aa->numConsensusSequence;
         target_3di_seq = target_3di->numConsensusSequence;
     }
+    
+    int32_t alphabetSize = mat_aa->alphabetSize;
 
-    float *composition_bias_aa  = new float[query_aa->L];
-    float *composition_bias_ss  = new float[query_aa->L];
-    float *tmp_composition_bias = new float[query_aa->L];
+    int8_t *composition_bias_aa = new int8_t[query_aa->L];
+    int8_t *composition_bias_ss = new int8_t[query_aa->L];
     if (compBiasCorrection) {
+        float *tmp_composition_bias = new float[query_aa->L];
         SubstitutionMatrix::calcLocalAaBiasCorrection(mat_aa, query_aa->numSequence, query_aa->L, tmp_composition_bias, 1.0);
         for (int i =0; i < query_aa->L; i++) {
             composition_bias_aa[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
@@ -99,49 +134,50 @@ Matcher::result_t pairwiseAlignment(
         for (int i =0; i < query_aa->L; i++) {
             composition_bias_ss[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
         }
+        delete[] tmp_composition_bias;
     } else {
         memset(composition_bias_aa, 0, query_aa->L * sizeof(int8_t));
         memset(composition_bias_ss, 0, query_aa->L * sizeof(int8_t));
     }
 
-    short **query_profile_scores_aa = new short * [aligner.get_profile()->alphabetSize];
-    short **query_profile_scores_3di = new short * [aligner.get_profile()->alphabetSize];
-    for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+    short **query_profile_scores_aa = new short * [alphabetSize];
+    short **query_profile_scores_3di = new short * [alphabetSize];
+    for (int32_t j = 0; j < alphabetSize; j++) {
         query_profile_scores_aa[j] = new short [querySeqLen];
         query_profile_scores_3di[j] = new short [querySeqLen];
     }
     if (queryIsProfile) {
         for (unsigned int i = 0; i < querySeqLen; i++) {
-            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+            for (int32_t j = 0; j < alphabetSize; j++) {
                 query_profile_scores_aa[j][i]  = query_aa->profile_for_alignment[j * querySeqLen + i];
                 query_profile_scores_3di[j][i] = query_3di->profile_for_alignment[j * querySeqLen + i];
             }
         }
     } else {
         for (unsigned int i = 0; i < querySeqLen; i++) {
-            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+            for (int32_t j = 0; j < alphabetSize; j++) {
                 query_profile_scores_aa[j][i]  = mat_aa->subMatrix[j][query_aa_seq[i]]   + composition_bias_aa[i];
                 query_profile_scores_3di[j][i] = mat_3di->subMatrix[j][query_3di_seq[i]] + composition_bias_ss[i];
             }
         }
     }
    
-    short **target_profile_scores_aa = new short * [aligner.get_profile()->alphabetSize];
-    short **target_profile_scores_3di = new short * [aligner.get_profile()->alphabetSize];
-    for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+    short **target_profile_scores_aa = new short * [alphabetSize];
+    short **target_profile_scores_3di = new short * [alphabetSize];
+    for (int32_t j = 0; j < alphabetSize; j++) {
         target_profile_scores_aa[j]  = new short [target_aa->L];
         target_profile_scores_3di[j] = new short [target_aa->L];
     }
     if (targetIsProfile) {
         for (int i = 0; i < target_aa->L; i++) {
-            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+            for (int32_t j = 0; j < alphabetSize; j++) {
                 target_profile_scores_aa[j][i]  = target_aa->profile_for_alignment[j * target_aa->L + i];
                 target_profile_scores_3di[j][i] = target_3di->profile_for_alignment[j * target_aa->L + i];
             }
         }
     } else {
         for (int i = 0; i < target_aa->L; i++) {
-            for (int32_t j = 0; j < aligner.get_profile()->alphabetSize; j++) {
+            for (int32_t j = 0; j < alphabetSize; j++) {
                 target_profile_scores_aa[j][i]  = mat_aa->subMatrix[j][target_aa_seq[i]];
                 target_profile_scores_3di[j][i] = mat_3di->subMatrix[j][target_3di_seq[i]];
             }
@@ -150,9 +186,8 @@ Matcher::result_t pairwiseAlignment(
 
     delete[] composition_bias_aa;
     delete[] composition_bias_ss;
-    delete[] tmp_composition_bias;
-
-    Matcher::result_t gAlign = aligner.simpleGotoh(
+    
+    Matcher::result_t result = aligner.simpleGotoh(
         target_aa_seq,
         target_3di_seq,
         query_profile_scores_aa,
@@ -166,20 +201,20 @@ Matcher::result_t pairwiseAlignment(
         gapOpen,
         gapExtend
     );
-
-    for (int32_t i = 0; i < aligner.get_profile()->alphabetSize; i++) {
+    
+   for (int32_t i = 0; i < alphabetSize; i++) {
         delete[] query_profile_scores_aa[i];
         delete[] query_profile_scores_3di[i];
         delete[] target_profile_scores_aa[i];
         delete[] target_profile_scores_3di[i];
     }
-    
+
     delete[] query_profile_scores_aa;
     delete[] query_profile_scores_3di;
     delete[] target_profile_scores_aa;
     delete[] target_profile_scores_3di;
    
-    return gAlign;
+    return result;
 }
 
 void sortHitsByScore(std::vector<AlnSimple> &hits) {
@@ -1147,7 +1182,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     
     Debug(Debug::INFO) << "Got databases\n";
     
-    SubstitutionMatrix subMat_3di(par.scoringMatrixFile.values.aminoacid().c_str(), par.bitFactor3Di, par.scoreBias3di);
+    SubstitutionMatrix subMat_3di(par.scoringMatrixFile.values.aminoacid().c_str(), par.bitFactor3Di, par.scoreBias);
     std::string blosum;
     for (size_t i = 0; i < par.substitutionMatrices.size(); i++) {
         if (par.substitutionMatrices[i].name == "blosum62.out") {
@@ -1159,7 +1194,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         }
     }
 
-    SubstitutionMatrix subMat_aa(blosum.c_str(), par.bitFactorAa, par.scoreBiasAa);
+    SubstitutionMatrix subMat_aa(blosum.c_str(), par.bitFactorAa, par.scoreBias);
 
     Debug(Debug::INFO) << "Got substitution matrices\n";
 
@@ -1357,12 +1392,12 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     StructureSmithWaterman structureSmithWaterman(par.maxSeqLen, subMat_3di.alphabetSize, par.compBiasCorrection, par.compBiasCorrectionScale, &subMat_aa, &subMat_3di);
     MsaFilter filter_aa(maxSeqLength + 1, sequenceCnt + 1, &subMat_aa, par.gapOpen.values.aminoacid(), par.gapExtend.values.aminoacid());
     MsaFilter filter_3di(maxSeqLength + 1, sequenceCnt + 1, &subMat_3di, par.gapOpen.values.aminoacid(), par.gapExtend.values.aminoacid()); 
-    PSSMCalculator calculator_aa(&subMat_aa, maxSeqLength + 1, sequenceCnt + 1, par.pcmode, par.pcaAa, par.pcbAa
+    PSSMCalculator calculator_aa(&subMat_aa, maxSeqLength + 1, sequenceCnt + 1, par.pcmode, par.pca, par.pcb
 #ifdef GAP_POS_SCORING
     , par.gapOpen.values.aminoacid(), par.gapPseudoCount
 #endif
     );
-    PSSMCalculator calculator_3di(&subMat_3di, maxSeqLength + 1, sequenceCnt + 1, par.pcmode, par.pca3di, par.pcb3di
+    PSSMCalculator calculator_3di(&subMat_3di, maxSeqLength + 1, sequenceCnt + 1, par.pcmode, par.pca, par.pcb
 #ifdef GAP_POS_SCORING
     , par.gapOpen.values.aminoacid(), par.gapPseudoCount
 #endif
@@ -1485,8 +1520,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             if (targetIsProfile) {
                 toRemove.push_back(targetSubMSA);
             }
-
-            // Do alignment
+    
             structureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
             Matcher::result_t res = pairwiseAlignment(
                 structureSmithWaterman,
@@ -1501,12 +1535,14 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 &subMat_3di,
                 par.compBiasCorrection
             );
+
             std::vector<Instruction> qBt;
             std::vector<Instruction> tBt;
             getMergeInstructions(res, map1, map2, qBt, tBt);
-
+            
+            // NOTE this seems to degrade performance
             // If neither are profiles, do TM-align as well and take the best alignment
-            if (caExist && !queryIsProfile && !targetIsProfile) {
+            if (!queryIsProfile && !targetIsProfile && caExist) {
                 Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
                 double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
@@ -1531,7 +1567,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 newSubMSA->concat(qMembers);
                 newSubMSA->concat(tMembers);
             }
-
+            
             // Don't need to make profiles on final alignment
             if (!(i == merges.size() - 1 && j == merges[i] - 1)) {
                 newSubMSA->mask = computeProfileMask(
@@ -1597,14 +1633,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 #pragma omp barrier
     }
 
-    // Refine alignment -- MUSCLE5 style
-    // 1. Partition into two sub-MSAs
-    // 2. Remove all-gap columns
-    // 3. Create sub-MSA profiles
-    // 4. Save profiles -> Sequence objects
-    // 5. Pairwise alignment
-    // 6. Repeat x100
-    // Only run with master thread
 #pragma omp master
 {
     if (par.refineIters > 0) {

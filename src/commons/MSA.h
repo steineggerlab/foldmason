@@ -44,6 +44,9 @@ union Instruction {
     bool isFull() const {
         return (bits.count == 127);
     }
+    size_t length() const {
+        return (bits.state == 0) ? 1 : static_cast<size_t>(bits.count);
+    }
 };
 
 struct SubMSA {

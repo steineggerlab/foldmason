@@ -4,6 +4,5 @@ set(strucclustutils_source_files
 	strucclustutils/refinemsa.cpp
 	strucclustutils/refinemsa.h
 	strucclustutils/msa2lddt.cpp
-	strucclustutils/msa2lddt.h
         PARENT_SCOPE
         )

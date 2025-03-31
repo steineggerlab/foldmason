@@ -186,12 +186,14 @@ double calculate_lddt_pair(
         &targetCaData[result.dbLen * 2]
     );
 
-    double sum = 0.0;
+    return lddtres.avgLddtScore;
+
+    /* double sum = 0.0 ;
     for (int i = 0; i < lddtres.scoreLength; i++) {
         sum += lddtres.perCaLddtScore[i];
     }
 
-    return sum / alnLength;
+    return sum / alnLength; */
 }
 
 double calculate_lddt_pair(
@@ -254,21 +256,22 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     // keys vector = db keys (not ids) of selected ids for lookups
 
     int alnLength = cigarLength(cigars[subset[0]], true); 
-    
+
     // Track per-column scores and no. non-gaps to avg
     std::vector<float> perColumnScore(alnLength, 0.0);
     std::vector<int>   perColumnCount(alnLength, 0);
 
-    float n_sum = 0.0;
     float sum = 0.0;
-    int numPairs_ne = 0;
     int numPairs = cigars.size() * (cigars.size() - 1) / 2;
     
     // Sort subset vector by indices so we can initQuery in outer loop
     // AND ensure it is only ever done in one direction
     std::sort(subset.begin(), subset.end(), [&keys](int a, int b) { return keys[a] < keys[b]; });
     
-#pragma omp parallel reduction(+:sum) reduction(+:n_sum) reduction(vsum:perColumnScore,perColumnCount)
+    // 
+    std::vector<float> scores(numPairs);
+    
+#pragma omp parallel reduction(+:sum)
 {
     unsigned int thread_idx = 0;
 #ifdef OPENMP
@@ -278,6 +281,9 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     std::vector<Matcher::result_t> results(numPairs);
     Coordinate16 qcoords;
     Coordinate16 tcoords;
+
+    std::vector<float> perColumnScore_thread(alnLength, 0.0);
+    std::vector<int>   perColumnCount_thread(alnLength, 0);
 
 #pragma omp for schedule(dynamic, 1)
     for (size_t i = 0; i < subset.size(); i++) {
@@ -303,7 +309,9 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
         std::vector<int> match_to_msa;
         match_to_msa.reserve(10000);
 
-        for (size_t j = i + 1; j < subset.size(); j++) {
+        for (size_t j = 0; j < subset.size(); j++) {
+            if (i == j) continue;
+
             size_t j_idx = subset[j];
             size_t j_key = keys[j_idx];
             const std::vector<Instruction> &j_cigar = cigars[j_idx];
@@ -340,37 +348,33 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
                 &targetCaData[j_length],
                 &targetCaData[j_length * 2]
             );
-            
+
             if (std::isnan(lddtres.avgLddtScore)) {
                 std::cout << "Found nan\n";
+		continue;
             }
             
             for (int k = 0; k < lddtres.scoreLength; k++) {
                 if (lddtres.perCaLddtScore[k] == 0.0)
                     continue;
-                numPairs_ne++;
-                n_sum += lddtres.perCaLddtScore[k];
                 int idx = match_to_msa[k];
-                perColumnCount[idx] += 1;
-                perColumnScore[idx] += lddtres.perCaLddtScore[k];
+                perColumnCount_thread[idx] += 1;
+                perColumnScore_thread[idx] += lddtres.perCaLddtScore[k];
             }
-            sum += lddtres.avgLddtScore;
 
-            // float n_lddt = (lddtres.avgLddtScore * std::min(i_length, j_length)) / non_empty;
-            // Debug(Debug::INFO) << "nLDDT: " << n_lddt << '\n';
-            // n_sum += n_lddt;
-            
-            
             match_to_msa.clear();
         }
     }
-    delete lddtcalculator;
+#pragma omp critical
+{
+    for (size_t i = 0; i < alnLength; i++) {
+        perColumnCount[i] += perColumnCount_thread[i];
+        perColumnScore[i] += perColumnScore_thread[i];
+    }
 }
-    // float msa_n_lddt = n_sum / numPairs;
-    float msa_n_lddt = n_sum / numPairs_ne;
-    Debug(Debug::INFO) << "MSA pair sum: " << n_sum << '\n';
-    Debug(Debug::INFO) << "  MSA #pairs: " << numPairs_ne << '\n';
-    Debug(Debug::INFO) << "   MSA nLDDT: " << msa_n_lddt << '\n';
+    delete lddtcalculator;
+
+}
 
     std::vector<int> colCounts = countColumns(cigars, subset, alnLength);
     float scaledSum = 0.0;
@@ -378,6 +382,8 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     for (size_t i = 0; i < perColumnCount.size(); i++) {
         // float pairSupport = perColumnCount[i] / static_cast<float>(numPairs);
         float residuesInColumn = colCounts[i];
+        float occupancy = residuesInColumn / static_cast<float>(subset.size());
+        // float colscore = 0.0f;
 
         // TODO maybe change to bool flag to just count/not count single-residue columns in entire MSA score
         if ((residuesInColumn / subset.size()) < pairThreshold) {
@@ -386,19 +392,16 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
             continue;
         }
         if (perColumnCount[i] > 0) {
-            perColumnScore[i] /= perColumnCount[i];  // get mean LDDT for this column
-            // perColumnScore[i] *= pairSupport;  // scale by % of pairs with LDDT >0
+	    float score = perColumnScore[i] / perColumnCount[i];
+            //perColumnScore[i] /= perColumnCount[i];  // get mean LDDT for this column
+            perColumnScore[i] = (2 * score * occupancy) / (score + occupancy);
+            scaledSum += perColumnScore[i];
         } else {
             perColumnScore[i] = 0.0;
         }
-        // scaledSum += perColumnScore[i];
-        // if (perColumnCount[i] / static_cast<float>(numPairs) >= pairThreshold) {
-        scaledSum += perColumnScore[i];
+        // scaledSum += colscore;
         numCols++;
-        // }
     }
-    // float lddtScore = sum / static_cast<double>(numPairs);
-    // float lddtScore = (scaledSum / perColumnCount.size());  // get mean over all columns
     float lddtScore = (numCols > 0) ? scaledSum / static_cast<float>(numCols) : 0.0;
     return std::make_tuple(perColumnScore, perColumnCount, lddtScore, numCols);
 }

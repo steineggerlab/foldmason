@@ -8,7 +8,6 @@
 #include "MsaFilter.h"
 #include "SubstitutionMatrix.h"
 #include "StructureSmithWaterman.h"
-#include "Sequence.h"
 
 enum State {
     SEQ = 0,
