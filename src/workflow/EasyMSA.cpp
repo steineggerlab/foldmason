@@ -10,8 +10,6 @@
 
 void setEasyMSADefaults(Parameters *p) {
     p->sensitivity = 9.5;
-    p->gapOpen = 10;
-    p->gapExtend = 1;
     p->removeTmpFiles = true;
     p->alignmentMode = Parameters::ALIGNMENT_MODE_SCORE_COV_SEQID;
 }
