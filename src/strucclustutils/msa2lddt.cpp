@@ -186,14 +186,11 @@ double calculate_lddt_pair(
         &targetCaData[result.dbLen * 2]
     );
 
-    return lddtres.avgLddtScore;
-
-    /* double sum = 0.0 ;
+    double sum = 0.0 ;
     for (int i = 0; i < lddtres.scoreLength; i++) {
         sum += lddtres.perCaLddtScore[i];
     }
-
-    return sum / alnLength; */
+    return sum / (double)alnLength;
 }
 
 double calculate_lddt_pair(
