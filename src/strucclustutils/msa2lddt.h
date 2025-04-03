@@ -24,7 +24,8 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     std::vector<size_t> &subset,
     std::vector<size_t> &keys,
     DBReader<unsigned int> * seqDbrCA,
-    float pairThreshold
+    float pairThreshold,
+    bool scoringColsOnly
 );
 
 double calculate_lddt_pair(
@@ -49,7 +50,8 @@ float getLDDTScore(
     DBReader<unsigned int> &seqDbr3Di,
     DBReader<unsigned int> &seqDbrCA,
     std::string msa,
-    float pairThreshold
+    float pairThreshold,
+    bool scoringColsOnly
 );
 
 #endif

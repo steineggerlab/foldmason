@@ -41,6 +41,7 @@ public:
     PARAMETER(PARAM_REPORT_COMMAND)
     PARAMETER(PARAM_REPORT_PATHS)
     PARAMETER(PARAM_REFINE_SEED)
+    PARAMETER(PARAM_ONLY_SCORING_COLS)
     
     std::string guideTree;
     bool recomputeScores;
@@ -52,5 +53,6 @@ public:
     bool reportPaths;
     float pairThreshold;
     int refinementSeed;
+    bool onlyScoringCols;
 };
 #endif

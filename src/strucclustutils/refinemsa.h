@@ -30,7 +30,8 @@ void refineMany(
     std::string qid,
     float pairThreshold,
     std::vector<size_t> indices,
-    int seed
+    int seed,
+    bool onlyScoringCols
 );
 void deleteGapCols(std::vector<std::string> &sequences);
 void buildSubMSA(std::vector<std::string> &headers, std::vector<std::string> &sequences, std::string &subMSA);

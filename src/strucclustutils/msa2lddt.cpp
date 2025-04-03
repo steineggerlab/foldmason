@@ -245,7 +245,8 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     std::vector<size_t> &subset,
     std::vector<size_t> &keys,
     DBReader<unsigned int> * seqDbrCA,
-    float pairThreshold
+    float pairThreshold,
+    bool onlyScoringCols
 ) {
     // mapping:
     // cigar vectors can be any size
@@ -375,6 +376,7 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
     std::vector<int> colCounts = countColumns(cigars, subset, alnLength);
     float scaledSum = 0.0;
     int numCols = 0;
+    int numColsScoring = 0;
     for (size_t i = 0; i < perColumnCount.size(); i++) {
         // float pairSupport = perColumnCount[i] / static_cast<float>(numPairs);
         float residuesInColumn = colCounts[i];
@@ -392,13 +394,16 @@ std::tuple<std::vector<float>, std::vector<int>, float, int> calculate_lddt(
             //perColumnScore[i] /= perColumnCount[i];  // get mean LDDT for this column
             perColumnScore[i] = (2 * score * occupancy) / (score + occupancy);
             scaledSum += perColumnScore[i];
+            numColsScoring++;
         } else {
             perColumnScore[i] = 0.0;
         }
         // scaledSum += colscore;
         numCols++;
     }
-    float lddtScore = (numCols > 0) ? scaledSum / static_cast<float>(numCols) : 0.0;
+    float lddtScore = onlyScoringCols
+        ? ((numColsScoring > 0) ? scaledSum / static_cast<float>(numColsScoring) : 0.0f)
+        : ((numCols > 0) ? scaledSum / static_cast<float>(numCols) : 0.0f);
     return std::make_tuple(perColumnScore, perColumnCount, lddtScore, numCols);
 }
 
@@ -464,7 +469,8 @@ float getLDDTScore(
     DBReader<unsigned int> &seqDbr3Di,
     DBReader<unsigned int> &seqDbrCA,
     std::string msa,
-    float pairThreshold
+    float pairThreshold,
+    bool onlyScoringCols
 ) {
     KSeqWrapper* kseq = new KSeqBuffer(msa.c_str(), msa.length());
     int alnLength = 0;
@@ -479,7 +485,7 @@ float getLDDTScore(
     std::vector<int>   perColumnCount;
     float lddtScore;
     int numCols;
-    std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, inds, inds, &seqDbrCA, pairThreshold);
+    std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, inds, inds, &seqDbrCA, pairThreshold, onlyScoringCols);
 
     return lddtScore;
 }
@@ -531,7 +537,7 @@ int msa2lddt(int argc, const char **argv, const Command& command, int makeReport
     std::iota(subset.begin(), subset.end(), 0);
     
     if (caExist) {
-        std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, subset, indices, seqDbrCA, par.pairThreshold);
+        std::tie(perColumnScore, perColumnCount, lddtScore, numCols) = calculate_lddt(cigars_aa, subset, indices, seqDbrCA, par.pairThreshold, par.onlyScoringCols);
         std::string scores;
         for (float score : perColumnScore) {
             if (scores.length() > 0) scores += ",";

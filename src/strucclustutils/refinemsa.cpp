@@ -259,7 +259,8 @@ void refineMany(
     std::string qid,
     float pairThreshold,
     std::vector<size_t> indices,
-    int seed
+    int seed,
+    bool onlyScoringCols
 ) {
     std::cout << "Running " << iterations << " refinement iterations\n";
 
@@ -268,7 +269,7 @@ void refineMany(
         subset[i] = i;
     }
 
-    float prevLDDT = std::get<2>(calculate_lddt(cigars_aa, subset, indices, seqDbrCA, pairThreshold));
+    float prevLDDT = std::get<2>(calculate_lddt(cigars_aa, subset, indices, seqDbrCA, pairThreshold, onlyScoringCols));
     float initLDDT = prevLDDT;
     std::cout << "Initial LDDT: " << prevLDDT << '\n';
 
@@ -304,7 +305,7 @@ void refineMany(
             sequences_aa, sequences_ss,
             rng
         );
-        float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, seqDbrCA, pairThreshold));
+        float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, seqDbrCA, pairThreshold, onlyScoringCols));
         // std::cout << std::fixed << std::setprecision(4) << "New LDDT: " << lddtScore << '\t' << "(" << i + 1 << ")\n";
         // for (std::vector<Instruction> &ins : cigars_new_aa) {
         //     std::cout << expand(ins) << '\n';
@@ -407,7 +408,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
         structureSmithWaterman, par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
         par.qsc, par.Ndiff, par.covMSAThr,
         par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
-        par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed
+        par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed, par.onlyScoringCols
     );
     
     // Write final MSA to file
