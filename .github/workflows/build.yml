@@ -87,6 +87,13 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install mpi-default-dev mpi-default-bin
          
+      - name: Install cmake
+        run: |
+          wget https://github.com/Kitware/CMake/releases/download/v3.31.0/cmake-3.31.0-linux-x86_64.sh
+          chmod +x cmake-3.31.0-linux-x86_64.sh
+          sudo mkdir -p /opt/cmake-3.31.0
+          sudo ./cmake-3.31.0-linux-x86_64.sh --skip-license --prefix=/opt/cmake-3.31.0
+
       - name: Build Foldmason
         run: |
           mkdir build
@@ -94,11 +101,13 @@ jobs:
           export CC=gcc-12
           export CXX=g++-12
           if [ "${{ matrix.STATIC }}" -eq "1" ]; then
-              cmake -DHAVE_SANITIZER=1 -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} -DHAVE_TESTS=1 \
+              /opt/cmake-3.31.0/bin/cmake \
+                -DHAVE_SANITIZER=1 -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} -DHAVE_TESTS=1 \
                 -DFORCE_STATIC_DEPS=1 \
                 -DENABLE_WERROR=1 -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
           else
-              cmake -DHAVE_SANITIZER=1 -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} -DHAVE_TESTS=1 \
+              /opt/cmake-3.31.0/bin/cmake \
+                -DHAVE_SANITIZER=1 -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} -DHAVE_TESTS=1 \
                 -DENABLE_WERROR=1 -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
           fi
           make -j $(nproc --all)
@@ -149,11 +158,19 @@ jobs:
           sudo apt-get -y install -o APT::Immediate-Configure=false crossbuild-essential-${{ matrix.ARCH }} zlib1g-dev:${{ matrix.ARCH }} libbz2-dev:${{ matrix.ARCH }} g++-12-${{ matrix.CPREF }}-linux-gnu
           rustup target add ${{ matrix.CPREF }}-unknown-linux-gnu
 
+      - name: Install cmake
+        run: |
+          wget https://github.com/Kitware/CMake/releases/download/v3.31.0/cmake-3.31.0-linux-x86_64.sh
+          chmod +x cmake-3.31.0-linux-x86_64.sh
+          sudo mkdir -p /opt/cmake-3.31.0
+          sudo ./cmake-3.31.0-linux-x86_64.sh --skip-license --prefix=/opt/cmake-3.31.0
+
       - name: Build Cross
         run: |
           mkdir build && cd build
           CC=${{ matrix.CPREF }}-linux-gnu-gcc-12 CXX=${{ matrix.CPREF }}-linux-gnu-g++-12 \
-          cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHAVE_TESTS=1 \
+          /opt/cmake-3.31.0/bin/cmake \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHAVE_TESTS=1 \
             -DFORCE_STATIC_DEPS=1 \
             -DRust_CARGO_TARGET=${{ matrix.CPREF }}-unknown-linux-gnu \
             -DENABLE_WERROR=1 -DHAVE_${{ matrix.SIMD }}=1 ..
