@@ -172,8 +172,9 @@ jobs:
       - name: Build Cross
         run: |
           mkdir build && cd build
-          CC=${{ matrix.CPREF }}-linux-gnu-gcc-12 CXX=${{ matrix.CPREF }}-linux-gnu-g++-12 \
-          LIBGOMP=/usr/lib/gcc-cross/${CPREF}-linux-gnu/12;
+          export CC=${{ matrix.CPREF }}-linux-gnu-gcc-12
+          export CXX=${{ matrix.CPREF }}-linux-gnu-g++-12
+          export LIBGOMP=/usr/lib/gcc-cross/${{ matrix.CPREF }}-linux-gnu/12
           /opt/cmake-3.31.0/bin/cmake \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHAVE_TESTS=1 \
             -DFORCE_STATIC_DEPS=1 \
