@@ -79,7 +79,7 @@ jobs:
       - name: Install G++
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++-12 rustc cargo
+          sudo apt-get install -y gcc-12 g++-12 rustc cargo libgcc-12-dev build-essential
 
       - name: Install Dependencies
         if: matrix.MPI == 1
@@ -101,9 +101,11 @@ jobs:
           export CC=gcc-12
           export CXX=g++-12
           if [ "${{ matrix.STATIC }}" -eq "1" ]; then
+              LIBGOMP=/usr/lib/gcc/x86_64-linux-gnu/12
               /opt/cmake-3.31.0/bin/cmake \
                 -DHAVE_SANITIZER=1 -DCMAKE_BUILD_TYPE=${{ matrix.BUILD_TYPE }} -DHAVE_TESTS=1 \
                 -DFORCE_STATIC_DEPS=1 \
+                -DOpenMP_C_FLAGS="-fopenmp -I${LIBGOMP}" -DOpenMP_C_LIB_NAMES=gomp -DOpenMP_CXX_FLAGS="-fopenmp -I${LIBGOMP}" -DOpenMP_CXX_LIB_NAMES=gomp -DOpenMP_gomp_LIBRARY=${LIBGOMP}/libgomp.a \
                 -DENABLE_WERROR=1 -DHAVE_${{ matrix.SIMD }}=1 -DHAVE_MPI=${{ matrix.MPI }} ..
           else
               /opt/cmake-3.31.0/bin/cmake \
@@ -155,7 +157,9 @@ jobs:
           deb [arch=${{ matrix.ARCH }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-security main universe multiverse
           HEREDOC
           sudo apt-get update
-          sudo apt-get -y install -o APT::Immediate-Configure=false crossbuild-essential-${{ matrix.ARCH }} zlib1g-dev:${{ matrix.ARCH }} libbz2-dev:${{ matrix.ARCH }} g++-12-${{ matrix.CPREF }}-linux-gnu
+          sudo apt-get -y install -o APT::Immediate-Configure=false \
+            crossbuild-essential-${{ matrix.ARCH }} zlib1g-dev:${{ matrix.ARCH }} libbz2-dev:${{ matrix.ARCH }} \
+            gcc-12-${{ matrix.CPREF }}-linux-gnu g++-12-${{ matrix.CPREF }}-linux-gnu
           rustup target add ${{ matrix.CPREF }}-unknown-linux-gnu
 
       - name: Install cmake
@@ -169,9 +173,11 @@ jobs:
         run: |
           mkdir build && cd build
           CC=${{ matrix.CPREF }}-linux-gnu-gcc-12 CXX=${{ matrix.CPREF }}-linux-gnu-g++-12 \
+          LIBGOMP=/usr/lib/gcc-cross/${CPREF}-linux-gnu/12;
           /opt/cmake-3.31.0/bin/cmake \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHAVE_TESTS=1 \
             -DFORCE_STATIC_DEPS=1 \
+            -DOpenMP_C_FLAGS="-fopenmp -I${LIBGOMP}" -DOpenMP_C_LIB_NAMES=gomp -DOpenMP_CXX_FLAGS="-fopenmp -I${LIBGOMP}" -DOpenMP_CXX_LIB_NAMES=gomp -DOpenMP_gomp_LIBRARY=${LIBGOMP}/libgomp.a \
             -DRust_CARGO_TARGET=${{ matrix.CPREF }}-unknown-linux-gnu \
             -DENABLE_WERROR=1 -DHAVE_${{ matrix.SIMD }}=1 ..
           make -j $(nproc --all)
