@@ -1,22 +1,43 @@
+set(HAVE_GCS 0 CACHE BOOL "Have Google Cloud Storage SDK")
+
 include_directories(commons)
 add_subdirectory(strucclustutils)
 add_subdirectory(commons)
-add_subdirectory(version)
 add_subdirectory(workflow)
 
-add_executable(foldmason
+add_library(foldseek-framework
         ${commons_source_files}
         ${strucclustutils_source_files}
         ${workflow_source_files}
         LocalCommandDeclarations.h
-        foldmason.cpp)
+        FoldseekBase.cpp
+)
+mmseqs_setup_derived_target(foldseek-framework)
+target_link_libraries(foldseek-framework gemmiwrapper 3di pulchra kerasify tmalign block_aligner_c)
+if(ENABLE_PROSTT5)
+        add_library(prostt5 ${prostt5_source_files})
+        target_link_libraries(prostt5 llama)
+        target_link_libraries(foldseek-framework prostt5)
+        target_compile_definitions(foldseek-framework PUBLIC -DHAVE_PROSTT5=1)
+endif()
 
-mmseqs_setup_derived_target(foldmason foldseek-framework)
-add_dependencies(foldmason foldmason-generated local-generated)
-target_include_directories(foldmason PUBLIC ${PROJECT_BINARY_DIR}/generated)
-target_include_directories(foldseek-framework PUBLIC ${PROJECT_BINARY_DIR}/lib/foldseek/generated)
-target_link_libraries(foldmason version)
-target_link_libraries(foldseek-framework version)
-target_link_libraries(mmseqs-framework version)
+if(ENABLE_CUDA)
+        target_compile_definitions(foldseek-framework PUBLIC -DHAVE_CUDA=1)
+endif()
 
-install(TARGETS foldmason DESTINATION bin)
+
+add_dependencies(foldseek-framework local-generated)
+
+if(HAVE_GCS)
+        find_package(google_cloud_cpp_storage REQUIRED)
+        target_link_libraries(foldseek-framework google-cloud-cpp::storage)
+endif()
+
+if (NOT FOLDSEEK_FRAMEWORK_ONLY)
+        add_subdirectory(version)
+        add_executable(foldseek foldseek.cpp)
+        mmseqs_setup_derived_target(foldseek foldseek-framework)
+        target_link_libraries(mmseqs-framework version)
+        target_link_libraries(foldseek version)
+        install(TARGETS foldseek DESTINATION bin)
+endif()

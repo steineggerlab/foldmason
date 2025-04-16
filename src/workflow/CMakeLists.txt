@@ -1,4 +1,14 @@
 set(workflow_source_files
-	workflow/EasyMSA.cpp
+        workflow/StructureCluster.cpp
+        workflow/StructureIndex.cpp
+        workflow/StructureSearch.cpp
+        workflow/StructureRbh.cpp
+        workflow/EasyStructureRbh.cpp
+        workflow/EasyStructureSearch.cpp
+        workflow/EasyStructureCluster.cpp
+        workflow/EasyMultimerSearch.cpp
+        workflow/MultimerSearch.cpp
+        workflow/MultimerCluster.cpp
+        workflow/EasyMultimerCluster.cpp
         PARENT_SCOPE
         )

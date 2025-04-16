@@ -47,7 +47,6 @@
 #include "BaseMatrix.h"
 
 #include "Sequence.h"
-#include "Matcher.h"
 #include "EvalueComputation.h"
 #include "../strucclustutils/EvalueNeuralNet.h"
 #include "block_aligner.h"
@@ -73,14 +72,6 @@ public:
     static inline int midx (int qpos, int dbpos, int iter){
         return dbpos * (8 * iter) + (qpos % iter) * 8 + (qpos / iter);
     }
-
-    typedef struct {
-        short qStartPos;
-        short dbStartPos;
-        short qEndPos;
-        short dbEndPos;
-    } aln_t;
-
 
     typedef struct {
         uint32_t score1;
@@ -139,8 +130,6 @@ public:
             StructureSmithWaterman::s_align r,
             const int covMode, const float covThr,
             const int32_t maskLen);
-    
-    int ungapped_alignment(const unsigned char *db_sequence, const unsigned char *db_3di_sequence, int32_t db_length);
 
     s_align alignStartPosBacktraceBlock (
             const unsigned char *db_aa_sequence,
@@ -150,21 +139,7 @@ public:
             const uint8_t gap_extend,
             std::string & backtrace,
             StructureSmithWaterman::s_align r);
-    
-    Matcher::result_t simpleGotoh(
-        const unsigned char *db_sequence_aa,
-        const unsigned char *db_sequence_3di,
-        short **profile_word_aa,
-        short **profile_word_3di,
-        short **target_profile_word_aa,
-        short **target_profile_word_3di,
-        int32_t query_start, int32_t query_end,
-        int32_t target_start, int32_t target_end,
-        const short gap_open, const short gap_extend
-        // bool targetIsProfile,
-        // size_t queryId,
-        // size_t targetId
-    );
+
 
     /*!	@function	Create the query profile using the query sequence.
      @param	read	pointer to the query sequence; the query sequence needs to be numbers
@@ -197,7 +172,7 @@ public:
     int isProfileSearch(){
         return profile->isProfile;
     }
-    
+
     const static unsigned int SUBSTITUTIONMATRIX = 1;
     const static unsigned int PROFILE = 2;
     const static unsigned int PROFILE_HMM = 3;
@@ -205,25 +180,35 @@ public:
     const static unsigned int PROFILE_SEQ = 5;
     const static unsigned int PROFILE_PROFILE = 6;
 
+private:
+
     struct s_profile{
         simd_int* profile_aa_byte;	// 0: none
         simd_int* profile_aa_word;	// 0: none
+        simd_int* profile_aa_int;
         simd_int* profile_aa_rev_byte;	// 0: none
         simd_int* profile_aa_rev_word;	// 0: none
+        simd_int* profile_aa_rev_int;
         // gap penalties
 #ifdef GAP_POS_SCORING
         simd_int* profile_gDelOpen_byte;
         simd_int* profile_gDelOpen_word;
+        simd_int* profile_gDelOpen_int;
         simd_int* profile_gDelClose_byte;
         simd_int* profile_gDelClose_word;
+        simd_int* profile_gDelClose_int;
         simd_int* profile_gIns_byte;
         simd_int* profile_gIns_word;
+        simd_int* profile_gIns_int;
         simd_int* profile_gDelOpen_rev_byte;
         simd_int* profile_gDelOpen_rev_word;
+        simd_int* profile_gDelOpen_rev_int;
         simd_int* profile_gDelClose_rev_byte;
         simd_int* profile_gDelClose_rev_word;
+        simd_int* profile_gDelClose_rev_int;
         simd_int* profile_gIns_rev_byte;
         simd_int* profile_gIns_rev_word;
+        simd_int* profile_gIns_rev_int;
         uint8_t* gDelOpen;
         uint8_t* gDelClose;
         uint8_t* gIns;
@@ -235,8 +220,10 @@ public:
         int8_t* query_aa_rev_sequence;
         simd_int* profile_3di_byte;	// 0: none
         simd_int* profile_3di_word;	// 0: none
+        simd_int* profile_3di_int;
         simd_int* profile_3di_rev_byte;	// 0: none
         simd_int* profile_3di_rev_word;	// 0: none
+        simd_int* profile_3di_rev_int;
         int8_t* query_3di_sequence;
         int8_t* query_3di_rev_sequence;
         int8_t* composition_bias_ss;
@@ -250,10 +237,6 @@ public:
         int8_t* alignment_aa_profile;
         int8_t* alignment_3di_profile;
         bool isProfile;
-        int8_t* mat_rev; // needed for queryProfile
-        int32_t query_length;
-        int32_t alphabetSize;
-        uint8_t bias;
         // Memory layout of if mat + queryProfile is qL * AA
         //    Query length
         // A  -1  -3  -2  -1  -4  -2  -2  -3  -1  -3  -2  -2   7  -1  -2  -1  -1  -2  -5  -3
@@ -266,18 +249,15 @@ public:
         // C  -1  -4   2   5  -3  -2   0  -3   1  -3  -2   0  -1   2   0   0  -1  -3  -4  -2
         // ...
         // Y -1  -3  -2  -1  -4  -2  -2  -3  -1  -3  -2  -2   7  -1  -2  -1  -1  -2  -5  -3
+        int8_t* mat_rev; // needed for queryProfile
+        int32_t query_length;
+        int32_t alphabetSize;
+        uint8_t bias;
         short ** profile_aa_word_linear;
+        int32_t ** profile_aa_int_linear;
         short ** profile_3di_word_linear;
+        int32_t ** profile_3di_int_linear;
     };
-    s_profile* get_profile() {
-        return profile;
-    }
-
-
-
-private:
-
-
     simd_int* vHStore;
     simd_int* vHLoad;
     simd_int* vE;
@@ -285,10 +265,11 @@ private:
     uint8_t * maxColumn;
     BlockHandle block;
     typedef struct {
-        uint16_t score;
+        uint32_t score;
         int32_t ref;	 //0-based position
         int32_t read;    //alignment ending position on read, 0-based
     } alignment_end;
+
 
     typedef struct {
         uint32_t* seq;
@@ -340,6 +321,27 @@ private:
                                                           const simd_int*query_3di_profile_byte,
                                                           uint16_t terminate,
                                                           int32_t maskLen);
+
+    template <const unsigned int type>
+    std::pair<alignment_end, alignment_end> sw_sse2_int(
+        const unsigned char* db_aa_sequence,
+        const unsigned char* db_3di_sequence,
+        int8_t ref_dir,	// 0: forward ref; 1: reverse ref
+        int32_t db_length,
+        int32_t query_length,
+        const uint8_t gap_open, /* will be used as - */
+        const uint8_t gap_extend, /* will be used as - */
+#ifdef GAP_POS_SCORING
+        const simd_int *gap_open_del,
+        const simd_int *gap_close_del,
+        const simd_int *gap_open_ins,
+#endif
+        const simd_int*query_aa_profile_byte,
+        const simd_int*query_3di_profile_byte,
+        uint32_t terminate,
+        int32_t maskLen
+    );
+
     template <const unsigned int type>
     StructureSmithWaterman::cigar *banded_sw(const unsigned char *db_aa_sequence, const unsigned char *db_3di_sequence,
                                              const int8_t *query_aa_sequence, const int8_t *query_3di_sequence,
@@ -370,6 +372,7 @@ private:
     s_profile* profile;
 
 
+
     template <typename T, size_t Elements, const unsigned int type>
     void createQueryProfile(simd_int *profile, const int8_t *query_sequence, const int8_t * composition_bias, const int8_t *mat, const int32_t query_length, const int32_t aaSize, uint8_t bias, const int32_t offset, const int32_t entryLength);
     
@@ -380,7 +383,9 @@ private:
 
     float *tmp_composition_bias;
     short * profile_aa_word_linear_data;
+    int32_t * profile_aa_int_linear_data;
     short * profile_3di_word_linear_data;
+    int32_t * profile_3di_int_linear_data;
     bool aaBiasCorrection;
     float aaBiasCorrectionScale;
     SubstitutionMatrix * subMatAA;
