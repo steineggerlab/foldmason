@@ -18,6 +18,7 @@
 #include "Util.h"
 #include "structureto3diseqdist.h"
 #include <cassert>
+#include <cmath>
 #include <tuple>
 #include <set>
 #include <fstream>
@@ -53,6 +54,16 @@ KSEQ_INIT(kseq_buffer_t*, kseq_buffer_reader)
 #define	EXIT_FAILURE	1
 #define	EXIT_SUCCESS	0
 
+extern int alignStructure(
+    StructureSmithWaterman &structureSmithWaterman,
+    StructureSmithWaterman &reverseStructureSmithWaterman,
+    Sequence &tSeqAA, Sequence &tSeq3Di,
+    unsigned int querySeqLen, unsigned int targetSeqLen,
+    EvalueNeuralNet &evaluer, std::pair<double, double> muLambda,
+    Matcher::result_t &res, std::string &backtrace,
+    Parameters &par
+);
+
 GapData getGapData(const Matcher::result_t &res, const std::vector<size_t>& qMap, const std::vector<size_t>& tMap) {
     GapData data;
     data.preSequence = qMap[res.qStartPos];
@@ -84,11 +95,297 @@ void print_matrix(float** matrix, size_t m, size_t n) {
     }
 }
 
+inline float prob_dot_product_inline(short **q, short **t, int i, int j) {
+    float Z_q = 0.0f,
+          Z_t = 0.0f;
+    float q_probs[20],
+        t_probs[20]; // temporary, small footprint
+    for (int a = 0; a < 20; ++a) {
+        q_probs[a] = std::pow(2.0f, static_cast<float>(q[a][j]));
+        t_probs[a] = std::pow(2.0f, static_cast<float>(t[a][i]));
+        Z_q += q_probs[a];
+        Z_t += t_probs[a];
+    }
+    if (Z_q == 0.0f || Z_t == 0.0f)
+        return 0.0f;
+    float dot = 0.0f;
+    for (int a = 0; a < 20; ++a) {
+        dot += (q_probs[a] / Z_q) * (t_probs[a] / Z_t);
+    }
+    return dot;
+}
+
+inline float prob_cosine_similarity_inline(short **q, short **t, int i, int j) {
+    float Z_q = 0.0f, Z_t = 0.0f;
+    float q_probs[20], t_probs[20];
+
+    for (int a = 0; a < 20; ++a) {
+        q_probs[a] = std::pow(2.0f, static_cast<float>(q[a][j]));
+        t_probs[a] = std::pow(2.0f, static_cast<float>(t[a][i]));
+        Z_q += q_probs[a];
+        Z_t += t_probs[a];
+    }
+
+    if (Z_q == 0.0f || Z_t == 0.0f)
+        return 0.0f;
+
+    // Normalize to probability vectors
+    for (int a = 0; a < 20; ++a) {
+        q_probs[a] /= Z_q;
+        t_probs[a] /= Z_t;
+    }
+
+    float dot = 0.0f, norm_q = 0.0f, norm_t = 0.0f;
+
+    for (int a = 0; a < 20; ++a) {
+        dot    += q_probs[a] * t_probs[a];
+        norm_q += q_probs[a] * q_probs[a];
+        norm_t += t_probs[a] * t_probs[a];
+    }
+
+    float denom = std::sqrt(norm_q * norm_t);
+    return (denom > 0.0f) ? (dot / denom) : 0.0f;
+}
+
 
 inline size_t upper_triangle_index(size_t i, size_t j, size_t n) {
     return (i * (2 * n - i - 1)) / 2 + (j - i - 1);
 }
+Matcher::result_t pairwiseAlignment(
+    StructureSmithWaterman & aligner,
+    unsigned int querySeqLen,
+    Sequence *query_aa,
+    Sequence *query_3di,
+    Sequence *target_aa,
+    Sequence *target_3di,
+    int gapOpen,
+    int gapExtend,
+    SubstitutionMatrix *mat_aa,
+    SubstitutionMatrix *mat_3di,
+    int compBiasCorrection,
+    float** lddtScoreMap,
+    std::vector<std::tuple<size_t, size_t, size_t, size_t> > anchors
+) {
+    std::string backtrace;
 
+    bool targetIsProfile = (Parameters::isEqualDbtype(target_aa->getSeqType(), Parameters::DBTYPE_HMM_PROFILE));
+    bool queryIsProfile = (Parameters::isEqualDbtype(query_aa->getSeqType(), Parameters::DBTYPE_HMM_PROFILE));
+
+    unsigned char * query_aa_seq = query_aa->numSequence;
+    unsigned char * query_3di_seq = query_3di->numSequence;
+    unsigned char * target_aa_seq = target_aa->numSequence;
+    unsigned char * target_3di_seq = target_3di->numSequence;
+    if (queryIsProfile) {
+        query_aa_seq = query_aa->numConsensusSequence;
+        query_3di_seq = query_3di->numConsensusSequence;
+    }
+    if (targetIsProfile) {
+        target_aa_seq = target_aa->numConsensusSequence;
+        target_3di_seq = target_3di->numConsensusSequence;
+    }
+    
+    int32_t alphabetSize = mat_aa->alphabetSize;
+
+    int8_t *composition_bias_aa = new int8_t[query_aa->L];
+    int8_t *composition_bias_ss = new int8_t[query_aa->L];
+    if (compBiasCorrection) {
+        float *tmp_composition_bias = new float[query_aa->L];
+        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_aa, query_aa->numSequence, query_aa->L, tmp_composition_bias, 1.0);
+        for (int i =0; i < query_aa->L; i++) {
+            composition_bias_aa[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
+        }
+        SubstitutionMatrix::calcLocalAaBiasCorrection(mat_3di, query_3di->numSequence, query_3di->L, tmp_composition_bias, 1.0);
+        for (int i =0; i < query_aa->L; i++) {
+            composition_bias_ss[i] = (int8_t) (tmp_composition_bias[i] < 0.0) ? tmp_composition_bias[i] - 0.5 : tmp_composition_bias[i] + 0.5;
+        }
+        delete[] tmp_composition_bias;
+    } else {
+        memset(composition_bias_aa, 0, query_aa->L * sizeof(int8_t));
+        memset(composition_bias_ss, 0, query_aa->L * sizeof(int8_t));
+    }
+
+    short **query_profile_scores_aa = new short * [alphabetSize];
+    short **query_profile_scores_3di = new short * [alphabetSize];
+    for (int32_t j = 0; j < alphabetSize; j++) {
+        query_profile_scores_aa[j] = new short [querySeqLen];
+        query_profile_scores_3di[j] = new short [querySeqLen];
+    }
+    if (queryIsProfile) {
+        for (unsigned int i = 0; i < querySeqLen; i++) {
+            for (int32_t j = 0; j < alphabetSize; j++) {
+                query_profile_scores_aa[j][i]  = query_aa->profile_for_alignment[j * querySeqLen + i];
+                query_profile_scores_3di[j][i] = query_3di->profile_for_alignment[j * querySeqLen + i];
+            }
+        }
+    } else {
+        for (unsigned int i = 0; i < querySeqLen; i++) {
+            for (int32_t j = 0; j < alphabetSize; j++) {
+                query_profile_scores_aa[j][i]  = mat_aa->subMatrix[j][query_aa_seq[i]]   + composition_bias_aa[i];
+                query_profile_scores_3di[j][i] = mat_3di->subMatrix[j][query_3di_seq[i]] + composition_bias_ss[i];
+            }
+        }
+    }
+   
+    short **target_profile_scores_aa = new short * [alphabetSize];
+    short **target_profile_scores_3di = new short * [alphabetSize];
+    for (int32_t j = 0; j < alphabetSize; j++) {
+        target_profile_scores_aa[j]  = new short [target_aa->L];
+        target_profile_scores_3di[j] = new short [target_aa->L];
+    }
+    if (targetIsProfile) {
+        for (int i = 0; i < target_aa->L; i++) {
+            for (int32_t j = 0; j < alphabetSize; j++) {
+                target_profile_scores_aa[j][i]  = target_aa->profile_for_alignment[j * target_aa->L + i];
+                target_profile_scores_3di[j][i] = target_3di->profile_for_alignment[j * target_aa->L + i];
+            }
+        }
+    } else {
+        for (int i = 0; i < target_aa->L; i++) {
+            for (int32_t j = 0; j < alphabetSize; j++) {
+                target_profile_scores_aa[j][i]  = mat_aa->subMatrix[j][target_aa_seq[i]];
+                target_profile_scores_3di[j][i] = mat_3di->subMatrix[j][target_3di_seq[i]];
+            }
+        }
+    }
+    
+    float **similarity = new float * [querySeqLen];
+    float **softmax_row = new float * [querySeqLen];
+    float **softmax_col = new float * [querySeqLen];
+    float **sim_sm = new float * [querySeqLen];
+    for (int32_t j = 0; j < querySeqLen; j++) {
+        similarity[j] = new float [target_aa->L];
+        softmax_row[j] = new float [target_aa->L];
+        softmax_col[j] = new float [target_aa->L];
+        sim_sm[j] = new float [target_aa->L];
+    }
+    
+    
+    // Get cosine similarities of PSSM columns
+    float scale = 20.0f;
+    for (int32_t i = 0; i < querySeqLen; i++) {
+        for (int32_t j = 0; j < target_aa->L; j++) {
+            float score_aa  = prob_cosine_similarity_inline(query_profile_scores_aa, target_profile_scores_aa, j, i);
+            float score_3di = prob_cosine_similarity_inline(query_profile_scores_3di, target_profile_scores_3di, j, i);
+            // score_aa = std::pow(2.0f, static_cast<float>(query_profile_scores_aa[target_aa_seq[j]][j] + target_profile_scores_aa[query_aa_seq[i]][i]));
+            // score_3di = std::pow(2.0f, static_cast<float>(query_profile_scores_3di[target_3di_seq[j]][j] + target_profile_scores_3di[query_3di_seq[i]][i]));
+            similarity[i][j] = (score_aa + score_3di) / 2;
+            // similarity[i][j] = scale * (score_aa + score_3di - 1.0f);
+            // std::cout << std::fixed << std::setprecision(2) << similarity[i][j] << '\t';
+        }
+        // std::cout << '\n';
+    }
+    // std::cout << '\n';
+
+    // row softmax
+    for (size_t i = 0; i < querySeqLen; ++i) {
+        float rowmax = -std::numeric_limits<float>::infinity();
+        for (size_t j = 0; j < target_aa->L; ++j) {
+            rowmax = std::max(rowmax, similarity[i][j]); 
+        }
+        float sum = 0;
+        for (size_t j = 0; j < target_aa->L; ++j) {
+            float e = std::expf(similarity[i][j] - rowmax);
+            softmax_row[i][j] = e;
+            sum += e;
+        }
+        for (size_t j = 0; j < target_aa->L; ++j) {
+            softmax_row[i][j] /= sum;
+        }
+    }
+
+    // column softmax
+    for (size_t j = 0; j < target_aa->L; ++j) {
+        float colmax = -std::numeric_limits<float>::infinity();
+        for (size_t i = 0; i < querySeqLen; ++i) {
+            colmax = std::max(colmax, similarity[i][j]); 
+        }
+        float sum = 0;
+        for (size_t i = 0; i < querySeqLen; ++i) {
+            float e = std::expf(similarity[i][j] - colmax);
+            softmax_col[i][j] = e;
+            sum += e;
+        }
+        for (size_t i = 0; i < querySeqLen; ++i) {
+            softmax_col[i][j] /= sum;
+        }
+    }
+    
+    /* Just store top 10 values then zero out cells < 10th */
+    using Entry = float;
+    std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> minHeap;
+
+    for (size_t i = 0; i < querySeqLen; ++i) {
+        for (size_t j = 0; j < target_aa->L; ++j) {
+            sim_sm[i][j] = std::sqrt(softmax_row[i][j] * softmax_col[i][j]);
+            if (minHeap.size() < static_cast<size_t>(10)) {
+                minHeap.push(sim_sm[i][j]);
+            } else if (sim_sm[i][j] > minHeap.top()) {
+                minHeap.pop();
+                minHeap.push(sim_sm[i][j]);
+            }
+            // float val = sim_sm[i][j];
+            // std::cout << std::fixed << std::setprecision(4) << val << '\t';
+            // std::cout << std::fixed << std::setprecision(0) << (val > 0.5f ? 1 : 0) << '\t';
+        }
+        // std::cout << '\n';
+    }
+    // std::cout << '\n';
+
+    for (size_t i = 0; i < querySeqLen; ++i) {
+        for (size_t j = 0; j < target_aa->L; ++j) {
+            if (sim_sm[i][j] < minHeap.top()) {
+                sim_sm[i][j] = -10.0f;
+            }
+        }
+    }
+
+
+    delete[] composition_bias_aa;
+    delete[] composition_bias_ss;
+    
+    Matcher::result_t result = aligner.simpleGotoh(
+        target_aa_seq,
+        target_3di_seq,
+        query_profile_scores_aa,
+        query_profile_scores_3di,
+        target_profile_scores_aa,
+        target_profile_scores_3di,
+        0,
+        query_aa->L,
+        0,
+        target_aa->L,
+        gapOpen,
+        gapExtend,
+        sim_sm
+        // lddtScoreMap
+    );
+    
+    for (int32_t j = 0; j < querySeqLen; j++) {
+        delete[] similarity[j];
+        delete[] softmax_row[j];
+        delete[] softmax_col[j];
+        delete[] sim_sm[j];
+    }
+    delete[] similarity;
+    delete[] softmax_row;
+    delete[] softmax_col;
+    delete[] sim_sm;
+
+    
+    for (int32_t i = 0; i < alphabetSize; i++) {
+        delete[] query_profile_scores_aa[i];
+        delete[] query_profile_scores_3di[i];
+        delete[] target_profile_scores_aa[i];
+        delete[] target_profile_scores_3di[i];
+    }
+
+    delete[] query_profile_scores_aa;
+    delete[] query_profile_scores_3di;
+    delete[] target_profile_scores_aa;
+    delete[] target_profile_scores_3di;
+   
+    return result;
+}
 Matcher::result_t pairwiseAlignment(
     StructureSmithWaterman & aligner,
     unsigned int querySeqLen,
@@ -274,6 +571,16 @@ void updateAllScores(
         progress.reset(n);
     }
     
+    int go = 10; int ge = 1;
+    if (const char* s = std::getenv("PCA")) {
+        try { go = std::stoi(s); }
+        catch(...) { std::cerr << "Warning: invalid PCA='" << s << "', using default\n"; }
+    }
+    if (const char* s = std::getenv("PCB")) {
+        try { ge = std::stoi(s); }
+        catch(...) { std::cerr << "Warning: invalid PCB='" << s << "', using default\n"; }
+    }
+    
 
 #pragma omp parallel
 {
@@ -332,7 +639,18 @@ void updateAllScores(
             AlnSimple aln;
             aln.queryId = mergedId;
             aln.targetId = targetId;
-            aln.score = structureSmithWaterman.ungapped_alignment(seqTargetAa.numSequence, seqTargetSs.numSequence, seqTargetAa.L);
+            // aln.score = structureSmithWaterman.ungapped_alignment(seqTargetAa.numSequence, seqTargetSs.numSequence, seqTargetAa.L);
+            
+            StructureSmithWaterman::s_align saln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
+                    seqTargetAa.numSequence,
+                    seqTargetSs.numSequence,
+                    seqTargetAa.L,
+                    go, ge,
+                    seqMergedAa.L/2
+            );
+            aln.score = saln.score1;
+
+            
             threadHits.push_back(aln);     
             progress.updateProgress();
         }
@@ -1151,6 +1469,42 @@ void copyInstructionVectors(std::vector<std::vector<Instruction> > &one, std::ve
     }
 }
 
+
+void mergeAndExtendAnchors(
+    std::vector<std::tuple<size_t, size_t, size_t, size_t>>& anchors,
+    size_t qlen,
+    size_t tlen,
+    size_t threshold = 5
+) {
+    if (anchors.empty()) return;
+    std::vector<std::tuple<size_t, size_t, size_t, size_t>> merged;
+    auto [qs, ts, qe, te] = anchors[0];
+    for (size_t i = 1; i < anchors.size(); ++i) {
+        auto [next_qs, next_ts, next_qe, next_te] = anchors[i];
+        if ((next_qs <= qe + threshold) && (next_ts <= te + threshold)) {
+            qe = std::max(qe, next_qe);
+            te = std::max(te, next_te);
+        } else {
+            merged.emplace_back(qs, ts, qe, te);
+            std::tie(qs, ts, qe, te) = anchors[i];
+        }
+    }
+    merged.emplace_back(qs, ts, qe, te);
+    for (auto& a : merged) {
+        auto& [qs, ts, qe, te] = a;
+        if (qs <= threshold && ts <= threshold) {
+            qs = 0;
+            ts = 0;
+        }
+        if (qe + threshold >= qlen && te + threshold >= tlen) {
+            qe = qlen - 1;
+            te = tlen - 1;
+        }
+    }
+    anchors = std::move(merged);
+}
+
+
 int structuremsa(int argc, const char **argv, const Command& command, bool preCluster) {
     FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
 
@@ -1377,6 +1731,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     int index = 0; // in hit list
     size_t maxMerges = *std::max_element(merges.begin(), merges.end());
     int maxThreads = std::min(par.threads, static_cast<int>(maxMerges));
+
+    EvalueNeuralNet evaluer(seqDbrAA.getAminoAcidDBSize(), &subMat_3di);
     
     Debug::Progress progress;
     progress.reset(sequenceCnt - 1);
@@ -1390,6 +1746,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
     // Initialise alignment objects per thread
     StructureSmithWaterman structureSmithWaterman(par.maxSeqLen, subMat_3di.alphabetSize, par.compBiasCorrection, par.compBiasCorrectionScale, &subMat_aa, &subMat_3di);
+    StructureSmithWaterman revStructureSmithWaterman(par.maxSeqLen, subMat_3di.alphabetSize, par.compBiasCorrection, par.compBiasCorrectionScale, &subMat_aa, &subMat_3di);
+
     MsaFilter filter_aa(maxSeqLength + 1, sequenceCnt + 1, &subMat_aa, par.gapOpen.values.aminoacid(), par.gapExtend.values.aminoacid());
     MsaFilter filter_3di(maxSeqLength + 1, sequenceCnt + 1, &subMat_3di, par.gapOpen.values.aminoacid(), par.gapExtend.values.aminoacid()); 
     PSSMCalculator calculator_aa(&subMat_aa, maxSeqLength + 1, sequenceCnt + 1, par.pcmode, par.pca, par.pcb
@@ -1520,21 +1878,195 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             if (targetIsProfile) {
                 toRemove.push_back(targetSubMSA);
             }
-    
+
             structureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
+
+            int go = 10; int ge = 1;
+            if (const char* s = std::getenv("PCA")) {
+                try { go = std::stoi(s); }
+                catch(...) { std::cerr << "Warning: invalid PCA='" << s << "', using default\n"; }
+            }
+            if (const char* s = std::getenv("PCB")) {
+                try { ge = std::stoi(s); }
+                catch(...) { std::cerr << "Warning: invalid PCB='" << s << "', using default\n"; }
+            }
+
+            std::vector<std::vector<Instruction>> copyAa;
+            std::vector<std::vector<Instruction>> copySs;
+            copyInstructionVectors(msa.cigars_aa, copyAa);
+            copyInstructionVectors(msa.cigars_ss, copySs);
+            std::string sw_backtrace = "";
+            StructureSmithWaterman::s_align align = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
+                targetIsProfile ? seqTargetAa->numConsensusSequence : seqTargetAa->numSequence,
+                targetIsProfile ? seqTargetSs->numConsensusSequence : seqTargetSs->numSequence,
+                seqTargetAa->L,
+                go,
+                ge,
+                seqMergedAa->L / 2
+            );
+            align = structureSmithWaterman.alignStartPosBacktrace<StructureSmithWaterman::PROFILE>(
+                targetIsProfile ? seqTargetAa->numConsensusSequence : seqTargetAa->numSequence,
+                targetIsProfile ? seqTargetSs->numConsensusSequence : seqTargetSs->numSequence,
+                seqTargetAa->L,
+                go, ge,
+                3,
+                sw_backtrace,
+                align,
+                0,
+                0.0,
+                seqMergedAa->L
+            );
+            unsigned int alnLength = Matcher::computeAlnLength(align.qStartPos1, align.qEndPos1, align.dbStartPos1, align.dbEndPos1);
+            alnLength = sw_backtrace.size();
+            float seqId = Util::computeSeqId(Parameters::SEQ_ID_ALN_LEN, align.identicalAACnt, seqMergedAa->L, seqTargetAa->L, alnLength); 
+            // std::cout << "s_align: " << align.qStartPos1 << '-' << align.qEndPos1 << '\t' << align.dbStartPos1 << '-' << align.dbEndPos1 << '\n';
+            Matcher::result_t sw_align(
+                seqTargetAa->getDbKey(),
+                align.score1,
+                align.qCov,
+                align.tCov,
+                seqId,
+                align.evalue,
+                alnLength,
+                align.qStartPos1,
+                align.qEndPos1,
+                seqMergedAa->L,
+                align.dbStartPos1,
+                align.dbEndPos1,
+                seqTargetAa->L,
+                sw_backtrace
+            );
+
+            std::vector<Instruction> swqBt;
+            std::vector<Instruction> swtBt;
+            getMergeInstructions(sw_align, map1, map2, swqBt, swtBt);
+            // std::cout << std::setprecision(2) << mergedId << '\t' << targetId
+            //     << '\t' << sw_align.alnLength << '\t' << sw_align.seqId
+            //     << '\t' << sw_align.qStartPos << '-' << sw_align.qEndPos << " (" << sw_align.qLen << ')'
+            //     << '\t' << sw_align.dbStartPos << '-' << sw_align.dbEndPos << " (" << sw_align.dbLen << ')'
+            //     << '\t' << sw_align.backtrace << '\n';
+            updateCIGARs(sw_align, map1, map2, copyAa, copySs, qMembers, tMembers, swqBt, swtBt);
+
+            std::vector<size_t> members;
+            members.insert(members.end(), qMembers.begin(), qMembers.end());
+            members.insert(members.end(), tMembers.begin(), tMembers.end());
+            
+            std::vector<float> lddtScores = std::get<0>(calculate_lddt(copyAa, members, msa.dbKeys, seqDbrCA, par.pairThreshold, par.onlyScoringCols));
+            // std::cout << "LDDT: " << lddtScores[0] << '\n';
+
+            // 1. sw, update relevant copied cigars --> MSA
+            // 2. lddt on MSA --> per col count
+            // 3. iterate cigar, map msa per col lddt -> (i, j)
+            float **lddtScoreMap = new float *[seqMergedAa->L];
+            for (int32_t z = 0; z < seqMergedAa->L; z++) {
+                lddtScoreMap[z] = new float [seqTargetAa->L];
+                memset(lddtScoreMap[z], 0, sizeof(float) * seqTargetAa->L);
+                // std::fill(lddtScoreMap[z], lddtScoreMap[z] + seqTargetAa->L, 0.0f);
+            }
+
+            unsigned int qi = 0;
+            unsigned int tj = 0;
+            size_t bt = 0;
+            
+            std::vector<std::tuple<size_t, size_t, size_t, size_t> > anchors;
+            int blockStart = -1;
+            int blockEnd = -1;
+            int blockCount = 0;
+            int blockThreshold = 5;
+            int underCount = 0;
+            int underThreshold = 3;
+            
+            for (size_t z = 0; z < lddtScores.size(); z++) {
+
+                if (lddtScores[z] > 0.7) {
+                    if (blockStart == -1 && blockEnd == -1) {
+                        blockStart = qi;
+                        blockEnd = tj;
+                    }
+                    blockCount++;
+                    if (z == lddtScores.size() - 1 && blockStart != -1 && blockEnd != -1) {
+                        anchors.push_back(std::make_tuple(blockStart, blockEnd, qi, tj));
+                    }
+                } else {
+                    if (blockStart != -1 && blockEnd != -1) {
+                        if (underCount == underThreshold) {
+                            if (blockCount >= blockThreshold) {
+                                anchors.push_back(std::make_tuple(blockStart, blockEnd, qi, tj));
+                            }
+                            blockStart = -1;
+                            blockEnd = -1;
+                            blockCount = 0;
+                            underCount = 0;
+                        } 
+                        underCount++;
+                    }
+                }
+
+                if (qi < sw_align.qStartPos) {
+                    lddtScoreMap[qi][0] = lddtScores[z];
+                    qi++;
+                    continue;
+                }
+                if (tj < sw_align.dbStartPos) {
+                    lddtScoreMap[0][tj] = lddtScores[z];
+                    tj++;
+                    continue;
+                }
+                if (bt < sw_align.backtrace.size()) {
+                    if (sw_align.backtrace[bt] == 'M') {
+                        lddtScoreMap[qi][tj] = lddtScores[z];
+                        qi++;
+                        tj++;
+                        bt++;
+                    } else if (sw_align.backtrace[bt] == 'I') {
+                        lddtScoreMap[qi][tj] = lddtScores[z];
+                        qi++;
+                        bt++;
+                    } else {
+                        lddtScoreMap[qi][tj] = lddtScores[z];
+                        tj++;
+                        bt++;
+                    }
+                    continue;
+                }
+                if (tj < sw_align.dbLen) {
+                    lddtScoreMap[0][tj] = lddtScores[z];
+                    tj++;
+                    continue;
+                }
+                if (qi < sw_align.qLen) {
+                    lddtScoreMap[qi][0] = lddtScores[z];
+                    qi++;
+                    continue;
+                }
+            }
+            
+            // Identify anchors
+            // >0.8 LDDT, >10 residues?
+            mergeAndExtendAnchors(anchors, seqMergedAa->L, seqTargetAa->L, 5);
+
+
             Matcher::result_t res = pairwiseAlignment(
                 structureSmithWaterman,
                 seqMergedAa->L,
                 seqMergedAa,
-                seqMergedSs, 
+                seqMergedSs,
                 seqTargetAa,
                 seqTargetSs,
                 par.gapOpen.values.aminoacid(),
                 par.gapExtend.values.aminoacid(),
                 &subMat_aa,
                 &subMat_3di,
-                par.compBiasCorrection
+                par.compBiasCorrection,
+                lddtScoreMap,
+                anchors
             );
+
+            for (int32_t z = 0; z < seqMergedAa->L; z++) {
+                delete[] lddtScoreMap[z];
+            }
+            delete[] lddtScoreMap;
+ 
 
             std::vector<Instruction> qBt;
             std::vector<Instruction> tBt;
@@ -1612,7 +2144,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 );
             }
 
-            progress.updateProgress();
+            // progress.updateProgress();
         }
 
 #pragma omp critical
