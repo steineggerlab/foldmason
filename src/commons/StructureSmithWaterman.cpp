@@ -1094,7 +1094,7 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
             //     ((query_profile_3di[j-1] + target_profile_3di[i]) / 2) << '\n';
             
             short lddtBias = 0;
-            if (lddtScoreMap[j-1][i] > 0.0f) {
+            if (lddtScoreMap[j-1][i] > 0.8f) {
                 lddtBias = 50;
             }
             // else if (lddtScoreMap[j-1][i] < 0.3f) {
@@ -1126,20 +1126,20 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
             curr_sM_G_D_vec[j].F = std::max(tempF, static_cast<short>(tempFF));
             curr_sM_G_D_vec[j].H = std::max(tempH, curr_sM_G_D_vec[j].E);
             curr_sM_G_D_vec[j].H = std::max(curr_sM_G_D_vec[j].H, curr_sM_G_D_vec[j].F);
-            // curr_sM_G_D_vec[j].H = std::max(curr_sM_G_D_vec[j].H, static_cast<short>(0));
+            curr_sM_G_D_vec[j].H = std::max(curr_sM_G_D_vec[j].H, static_cast<short>(0));
             
             // std::cout << curr_sM_G_D_vec[j].H << '\t';
 
             uint8_t mode = 0;
-            if (lddtScoreMap[j-1][i] >= 0.9f) {
-                mode |= (curr_sM_G_D_vec[j].E == tempE) ? E_M_FLAG : E_E_FLAG;
-                mode |= (curr_sM_G_D_vec[j].F == tempF) ? F_M_FLAG : F_F_FLAG;
-                mode |= H;   
-            } else {
-                mode |= (curr_sM_G_D_vec[j].E == tempE) ? E_M_FLAG : E_E_FLAG;
-                mode |= (curr_sM_G_D_vec[j].F == tempF) ? F_M_FLAG : F_F_FLAG;
-                mode |= (curr_sM_G_D_vec[j].H == tempH) ? H : (curr_sM_G_D_vec[j].H == curr_sM_G_D_vec[j].E) ? E : F;
-            }
+            // if (lddtScoreMap[j-1][i] >= 0.9f) {
+            //     mode |= (curr_sM_G_D_vec[j].E == tempE) ? E_M_FLAG : E_E_FLAG;
+            //     mode |= (curr_sM_G_D_vec[j].F == tempF) ? F_M_FLAG : F_F_FLAG;
+            //     mode |= H;   
+            // } else {
+            mode |= (curr_sM_G_D_vec[j].E == tempE) ? E_M_FLAG : E_E_FLAG;
+            mode |= (curr_sM_G_D_vec[j].F == tempF) ? F_M_FLAG : F_F_FLAG;
+            mode |= (curr_sM_G_D_vec[j].H == tempH) ? H : (curr_sM_G_D_vec[j].H == curr_sM_G_D_vec[j].E) ? E : F;
+            // }
             // mode = (curr_sM_G_D_vec[j].H == 0) ? B : mode;
             btMatrix[i * query_length + (j - 1)] = mode;
 

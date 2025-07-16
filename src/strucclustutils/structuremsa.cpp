@@ -248,96 +248,96 @@ Matcher::result_t pairwiseAlignment(
         }
     }
     
-    float **similarity = new float * [querySeqLen];
-    float **softmax_row = new float * [querySeqLen];
-    float **softmax_col = new float * [querySeqLen];
-    float **sim_sm = new float * [querySeqLen];
-    for (int32_t j = 0; j < querySeqLen; j++) {
-        similarity[j] = new float [target_aa->L];
-        softmax_row[j] = new float [target_aa->L];
-        softmax_col[j] = new float [target_aa->L];
-        sim_sm[j] = new float [target_aa->L];
-    }
+    // float **similarity = new float * [querySeqLen];
+    // float **softmax_row = new float * [querySeqLen];
+    // float **softmax_col = new float * [querySeqLen];
+    // float **sim_sm = new float * [querySeqLen];
+    // for (int32_t j = 0; j < querySeqLen; j++) {
+    //     similarity[j] = new float [target_aa->L];
+    //     softmax_row[j] = new float [target_aa->L];
+    //     softmax_col[j] = new float [target_aa->L];
+    //     sim_sm[j] = new float [target_aa->L];
+    // }
     
     
-    // Get cosine similarities of PSSM columns
-    float scale = 20.0f;
-    for (int32_t i = 0; i < querySeqLen; i++) {
-        for (int32_t j = 0; j < target_aa->L; j++) {
-            float score_aa  = prob_cosine_similarity_inline(query_profile_scores_aa, target_profile_scores_aa, j, i);
-            float score_3di = prob_cosine_similarity_inline(query_profile_scores_3di, target_profile_scores_3di, j, i);
-            // score_aa = std::pow(2.0f, static_cast<float>(query_profile_scores_aa[target_aa_seq[j]][j] + target_profile_scores_aa[query_aa_seq[i]][i]));
-            // score_3di = std::pow(2.0f, static_cast<float>(query_profile_scores_3di[target_3di_seq[j]][j] + target_profile_scores_3di[query_3di_seq[i]][i]));
-            similarity[i][j] = (score_aa + score_3di) / 2;
-            // similarity[i][j] = scale * (score_aa + score_3di - 1.0f);
-            // std::cout << std::fixed << std::setprecision(2) << similarity[i][j] << '\t';
-        }
-        // std::cout << '\n';
-    }
-    // std::cout << '\n';
+    // // Get cosine similarities of PSSM columns
+    // float scale = 20.0f;
+    // for (int32_t i = 0; i < querySeqLen; i++) {
+    //     for (int32_t j = 0; j < target_aa->L; j++) {
+    //         float score_aa  = prob_cosine_similarity_inline(query_profile_scores_aa, target_profile_scores_aa, j, i);
+    //         float score_3di = prob_cosine_similarity_inline(query_profile_scores_3di, target_profile_scores_3di, j, i);
+    //         // score_aa = std::pow(2.0f, static_cast<float>(query_profile_scores_aa[target_aa_seq[j]][j] + target_profile_scores_aa[query_aa_seq[i]][i]));
+    //         // score_3di = std::pow(2.0f, static_cast<float>(query_profile_scores_3di[target_3di_seq[j]][j] + target_profile_scores_3di[query_3di_seq[i]][i]));
+    //         similarity[i][j] = (score_aa + score_3di) / 2;
+    //         // similarity[i][j] = scale * (score_aa + score_3di - 1.0f);
+    //         // std::cout << std::fixed << std::setprecision(2) << similarity[i][j] << '\t';
+    //     }
+    //     // std::cout << '\n';
+    // }
+    // // std::cout << '\n';
 
-    // row softmax
-    for (size_t i = 0; i < querySeqLen; ++i) {
-        float rowmax = -std::numeric_limits<float>::infinity();
-        for (size_t j = 0; j < target_aa->L; ++j) {
-            rowmax = std::max(rowmax, similarity[i][j]); 
-        }
-        float sum = 0;
-        for (size_t j = 0; j < target_aa->L; ++j) {
-            float e = std::expf(similarity[i][j] - rowmax);
-            softmax_row[i][j] = e;
-            sum += e;
-        }
-        for (size_t j = 0; j < target_aa->L; ++j) {
-            softmax_row[i][j] /= sum;
-        }
-    }
+    // // row softmax
+    // for (size_t i = 0; i < querySeqLen; ++i) {
+    //     float rowmax = -std::numeric_limits<float>::infinity();
+    //     for (size_t j = 0; j < target_aa->L; ++j) {
+    //         rowmax = std::max(rowmax, similarity[i][j]); 
+    //     }
+    //     float sum = 0;
+    //     for (size_t j = 0; j < target_aa->L; ++j) {
+    //         float e = std::expf(similarity[i][j] - rowmax);
+    //         softmax_row[i][j] = e;
+    //         sum += e;
+    //     }
+    //     for (size_t j = 0; j < target_aa->L; ++j) {
+    //         softmax_row[i][j] /= sum;
+    //     }
+    // }
 
-    // column softmax
-    for (size_t j = 0; j < target_aa->L; ++j) {
-        float colmax = -std::numeric_limits<float>::infinity();
-        for (size_t i = 0; i < querySeqLen; ++i) {
-            colmax = std::max(colmax, similarity[i][j]); 
-        }
-        float sum = 0;
-        for (size_t i = 0; i < querySeqLen; ++i) {
-            float e = std::expf(similarity[i][j] - colmax);
-            softmax_col[i][j] = e;
-            sum += e;
-        }
-        for (size_t i = 0; i < querySeqLen; ++i) {
-            softmax_col[i][j] /= sum;
-        }
-    }
+    // // column softmax
+    // for (size_t j = 0; j < target_aa->L; ++j) {
+    //     float colmax = -std::numeric_limits<float>::infinity();
+    //     for (size_t i = 0; i < querySeqLen; ++i) {
+    //         colmax = std::max(colmax, similarity[i][j]); 
+    //     }
+    //     float sum = 0;
+    //     for (size_t i = 0; i < querySeqLen; ++i) {
+    //         float e = std::expf(similarity[i][j] - colmax);
+    //         softmax_col[i][j] = e;
+    //         sum += e;
+    //     }
+    //     for (size_t i = 0; i < querySeqLen; ++i) {
+    //         softmax_col[i][j] /= sum;
+    //     }
+    // }
     
-    /* Just store top 10 values then zero out cells < 10th */
-    using Entry = float;
-    std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> minHeap;
+    // /* Just store top 10 values then zero out cells < 10th */
+    // using Entry = float;
+    // std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> minHeap;
 
-    for (size_t i = 0; i < querySeqLen; ++i) {
-        for (size_t j = 0; j < target_aa->L; ++j) {
-            sim_sm[i][j] = std::sqrt(softmax_row[i][j] * softmax_col[i][j]);
-            if (minHeap.size() < static_cast<size_t>(10)) {
-                minHeap.push(sim_sm[i][j]);
-            } else if (sim_sm[i][j] > minHeap.top()) {
-                minHeap.pop();
-                minHeap.push(sim_sm[i][j]);
-            }
-            // float val = sim_sm[i][j];
-            // std::cout << std::fixed << std::setprecision(4) << val << '\t';
-            // std::cout << std::fixed << std::setprecision(0) << (val > 0.5f ? 1 : 0) << '\t';
-        }
-        // std::cout << '\n';
-    }
-    // std::cout << '\n';
+    // for (size_t i = 0; i < querySeqLen; ++i) {
+    //     for (size_t j = 0; j < target_aa->L; ++j) {
+    //         sim_sm[i][j] = std::sqrt(softmax_row[i][j] * softmax_col[i][j]);
+    //         if (minHeap.size() < static_cast<size_t>(10)) {
+    //             minHeap.push(sim_sm[i][j]);
+    //         } else if (sim_sm[i][j] > minHeap.top()) {
+    //             minHeap.pop();
+    //             minHeap.push(sim_sm[i][j]);
+    //         }
+    //         // float val = sim_sm[i][j];
+    //         // std::cout << std::fixed << std::setprecision(4) << val << '\t';
+    //         // std::cout << std::fixed << std::setprecision(0) << (val > 0.5f ? 1 : 0) << '\t';
+    //     }
+    //     // std::cout << '\n';
+    // }
+    // // std::cout << '\n';
 
-    for (size_t i = 0; i < querySeqLen; ++i) {
-        for (size_t j = 0; j < target_aa->L; ++j) {
-            if (sim_sm[i][j] < minHeap.top()) {
-                sim_sm[i][j] = -10.0f;
-            }
-        }
-    }
+    // for (size_t i = 0; i < querySeqLen; ++i) {
+    //     for (size_t j = 0; j < target_aa->L; ++j) {
+    //         if (sim_sm[i][j] < minHeap.top()) {
+    //             sim_sm[i][j] = -10.0f;
+    //         }
+    //     }
+    // }
 
 
     delete[] composition_bias_aa;
@@ -356,20 +356,20 @@ Matcher::result_t pairwiseAlignment(
         target_aa->L,
         gapOpen,
         gapExtend,
-        sim_sm
-        // lddtScoreMap
+        // sim_sm
+        lddtScoreMap
     );
     
-    for (int32_t j = 0; j < querySeqLen; j++) {
-        delete[] similarity[j];
-        delete[] softmax_row[j];
-        delete[] softmax_col[j];
-        delete[] sim_sm[j];
-    }
-    delete[] similarity;
-    delete[] softmax_row;
-    delete[] softmax_col;
-    delete[] sim_sm;
+    // for (int32_t j = 0; j < querySeqLen; j++) {
+    //     delete[] similarity[j];
+    //     delete[] softmax_row[j];
+    //     delete[] softmax_col[j];
+    //     delete[] sim_sm[j];
+    // }
+    // delete[] similarity;
+    // delete[] softmax_row;
+    // delete[] softmax_col;
+    // delete[] sim_sm;
 
     
     for (int32_t i = 0; i < alphabetSize; i++) {
@@ -605,6 +605,35 @@ void updateAllScores(
     );
     std::vector<AlnSimple> threadHits;
     
+    std::vector<short> selfScores(sequenceCnt);
+    for (unsigned int i = 0; i < sequenceCnt; i++) {
+        unsigned int mergedKey = seqDbrAA.getDbKey(i);
+        if (cluDbr != NULL && cluDbr->getId(mergedKey) == UINT_MAX) {
+            // If we have a cluster db and this structure is NOT in it, skip
+            // Should only align the representatives
+            continue;
+        }
+        size_t mergedId  = seqDbrAA.getId(mergedKey);
+        seqMergedAa.mapSequence(mergedId, mergedKey, seqDbrAA.getData(mergedId, thread_idx), seqDbrAA.getSeqLen(mergedId));
+        mergedId = seqDbr3Di.getId(mergedKey);
+        seqMergedSs.mapSequence(mergedId, mergedKey, seqDbr3Di.getData(mergedId, thread_idx), seqDbr3Di.getSeqLen(mergedId));
+        structureSmithWaterman.ssw_init(
+            &seqMergedAa,
+            &seqMergedSs,
+            tinySubMatAA,
+            tinySubMat3Di,
+            subMat_aa
+        );
+        StructureSmithWaterman::s_align self_aln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
+            seqMergedAa.numSequence,
+            seqMergedSs.numSequence,
+            seqMergedAa.L,
+            go, ge,
+            seqMergedAa.L/2
+        );
+        selfScores[i] = self_aln.score1;
+    }
+
 #pragma omp for schedule(dynamic, 10)
     for (unsigned int i = 0; i < sequenceCnt; i++) {
         unsigned int mergedKey = seqDbrAA.getDbKey(i);
@@ -625,7 +654,7 @@ void updateAllScores(
             tinySubMat3Di,
             subMat_aa
         );
-
+        
         for (size_t j = i + 1; j < sequenceCnt; j++) {
             size_t targetKey = seqDbrAA.getDbKey(j);
             if (cluDbr != NULL && cluDbr->getId(targetKey) == UINT_MAX) {
@@ -648,9 +677,9 @@ void updateAllScores(
                     go, ge,
                     seqMergedAa.L/2
             );
-            aln.score = saln.score1;
+            float score = (1.0f - (2 * saln.score1) / static_cast<float>(selfScores[i] + selfScores[j])) * 1000.0f; 
+            aln.score = static_cast<short>(score);
 
-            
             threadHits.push_back(aln);     
             progress.updateProgress();
         }
@@ -673,8 +702,6 @@ int findRoot(int vertex, std::vector<int>& parent) {
 
 void mst(std::vector<AlnSimple>& hits, int n) {
     UnionFind uf(n);
-    std::vector<AlnSimple> edges;
-    edges.reserve(n - 1);
     size_t mstEdges = 0;
     for (size_t i = 0; i < hits.size(); i++) {
         unsigned int root1 = uf.find(hits[i].queryId);
@@ -690,6 +717,195 @@ void mst(std::vector<AlnSimple>& hits, int n) {
     }
     hits.resize(mstEdges);
 }
+
+void neighbour_joining(std::vector<AlnSimple>& hits, int n)
+{
+    const float INF = 1e30f;
+    std::vector<std::vector<float>> score(n, std::vector<float>(n, -INF));
+    float maxScore = -INF;
+    for (const AlnSimple h : hits) maxScore = std::max(maxScore, static_cast<float>(h.score));
+    std::vector<std::vector<float>> dist(n, std::vector<float>(n, INF));
+    for (const auto& h : hits) {
+        score[h.queryId][h.targetId] = score[h.targetId][h.queryId] = h.score;
+        float d = maxScore - h.score;            // higher score → smaller dist
+        dist [h.queryId][h.targetId] = dist [h.targetId][h.queryId] = d;
+    }
+    for (int i = 0; i < n; ++i) dist[i][i] = 0.0f;
+    struct Info { int size; bool alive; };
+    std::vector<Info> info(n, {1, true});
+    std::vector<float> r(n);              // Σ distances, recalculated each step
+    std::vector<AlnSimple> out; out.reserve(n - 1);
+    int active = n;
+    while (active > 1) {
+        for (int i = 0; i < n; ++i) {
+            if (!info[i].alive) continue;
+            float sum = 0.0f;
+            for (int j = 0; j < n; ++j)
+                if (info[j].alive) sum += dist[std::min(i,j)][std::max(i,j)];
+            r[i] = sum;
+        }
+        float bestQ = INF; int a = -1, b = -1;
+        for (int i = 0; i < n; ++i)
+            if (info[i].alive)
+                for (int j = i + 1; j < n; ++j)
+                    if (info[j].alive) {
+                        float q = (active - 2) *
+                                  dist[i][j] - r[i] - r[j];
+                        if (q < bestQ) { bestQ = q; a = i; b = j; }
+                    }
+        int repA = std::min(a, b);
+        int repB = std::max(a, b);
+        out.push_back({static_cast<unsigned>(repA),
+                       static_cast<unsigned>(repB),
+                       static_cast<unsigned short>(score[repA][repB])});
+        for (int k = 0; k < n; ++k)
+            if (info[k].alive && k != repA && k != repB) {
+                float dik = dist[std::min(repA,k)][std::max(repA,k)];
+                float djk = dist[std::min(repB,k)][std::max(repB,k)];
+                float dij = dist[repA][repB];
+                float newD = 0.5f * (dik + djk - dij);
+                dist[ std::min(repA,k) ][ std::max(repA,k) ] = newD;
+                float bestS = std::max(score[std::min(repA,k)][std::max(repA,k)],
+                                      score[std::min(repB,k)][std::max(repB,k)]);
+                score[ std::min(repA,k) ][ std::max(repA,k) ] = bestS;
+            }
+        info[repA].size += info[repB].size;
+        info[repB].alive = false;
+        --active;
+    }
+    hits.swap(out);
+}
+
+void upgma(std::vector<AlnSimple>& hits, int n) {
+    const float INF = 1e30f;
+    std::vector<std::vector<float>> score(n, std::vector<float>(n, -INF));
+    std::vector<float> weights(n, 0.0f);
+    float maxScore = -INF;
+    for (const auto& h : hits) {
+        maxScore = std::max(maxScore, static_cast<float>(h.score));
+    }
+    std::vector<std::vector<float>> dist(n, std::vector<float>(n, INF));
+    for (const auto& h : hits) {
+        score[h.queryId][h.targetId] = score[h.targetId][h.queryId] = h.score;
+        float d = h.score;
+        dist[h.queryId][h.targetId] = dist[h.targetId][h.queryId] = d;
+    }
+    for (int i = 0; i < n; ++i) dist[i][i] = 0.0f;
+    struct Info { int size; bool alive; };
+    std::vector<Info> info(n, {1, true});
+    std::vector<AlnSimple> out; out.reserve(n - 1);
+    for (int step = 0; step < n - 1; ++step) {
+        float bestD = INF;
+        int   a = -1, b = -1;
+        for (int i = 0; i < n; ++i)
+            if (info[i].alive)
+                for (int j = i + 1; j < n; ++j)
+                    if (info[j].alive && dist[i][j] < bestD) {
+                        bestD = dist[i][j]; 
+                        a = i; 
+                        b = j;
+                    }
+        int repA = std::min(a, b);
+        int repB = std::max(a, b);
+        out.push_back({static_cast<unsigned>(repA),
+                       static_cast<unsigned>(repB),
+                       static_cast<unsigned short>(dist[repA][repB])});
+        int sizeA = info[repA].size;
+        int sizeB = info[repB].size;
+        for (int k = 0; k < n; ++k)
+            if (info[k].alive && k != repA && k != repB) {
+                float dkA = dist[std::min(k,repA)][std::max(k,repA)];
+                float dkB = dist[std::min(k,repB)][std::max(k,repB)];
+                float newD = (dkA * sizeA + dkB * sizeB) / float(sizeA + sizeB);
+                dist[std::min(k,repA)][std::max(k,repA)] = newD;
+            }
+        info[repA].size += info[repB].size;
+        info[repB].alive = false;
+    }
+    hits.swap(out);
+}
+
+
+std::vector<AlnEdge> makeEdges(const std::vector<AlnSimple>& hits, int n) {
+    int m = hits.size();
+    int total = n + m;
+    int nextId = n;
+
+    std::vector<double> height(total, 0.0f);
+
+    std::vector<AlnEdge> edges;
+    edges.reserve(2*m);
+
+    std::vector<int> rep(total);
+    std::iota(rep.begin(), rep.begin() + n, 0);
+
+    for (const AlnSimple &aln : hits) {
+        unsigned int p = nextId++;
+        unsigned int rA = rep[aln.queryId];
+        unsigned int rB = rep[aln.targetId];
+        double hp = 0.5f * static_cast<double>(aln.score);
+        double lenA = hp - height[rA];
+        double lenB = hp - height[rB];
+        edges.push_back({p, rA, lenA});
+        edges.push_back({p, rB, lenB});
+        height[p] = hp;
+        rep[aln.queryId] = rep[aln.targetId] = p;
+    }
+    return edges;
+}
+
+std::vector<int> subtreeSize(int n, const std::vector<AlnEdge>& edges) {
+    int total = n + edges.size() / 2;
+    std::vector<std::vector<unsigned int> > child(total);
+    for (const AlnEdge& e : edges) {
+        child[e.parentId].push_back(e.childId);
+    }
+    std::vector<int> size(total, 0);
+    for (int i = 0; i < n; ++i) {
+        size[i] = 1;
+    }
+    for (int v = n; v < total; ++v) {
+        for (auto c : child[v]) {
+            size[v] += size[c];
+        }
+    }
+    return size;
+}
+
+std::vector<double> treeWeights(int n, const std::vector<AlnEdge>& edges, const std::vector<int>& size) {
+    int m     = edges.size()/2;
+    int total = n + m;
+
+    std::vector<std::vector<std::pair<int,double>>> tree(total);
+    for (auto& e : edges) {
+      tree[e.parentId].push_back({e.childId, e.length});
+    }
+
+    std::vector<double> w(total, 0.0);
+
+    std::function<void(int,double)> dfs = [&](int v, double acc) {
+      if (v < n) {
+        w[v] = acc;
+        return;
+      }
+      for (auto& [c, len] : tree[v]) {
+        double contrib = len / size[c];
+        dfs(c, acc + contrib);
+      }
+    };
+
+    int root = total - 1;
+    dfs(root, 0.0);
+
+    // normalize to mean = 1
+    double mean = 0;
+    for (int i = 0; i < n; ++i) mean += w[i];
+    mean /= n;
+    for (int i = 0; i < n; ++i) w[i] /= mean;
+
+    return w;
+}
+
 
 void balanceTree(std::vector<AlnSimple>& hits, std::vector<size_t>& merges, int n) {
     UnionFind uf(n);
@@ -875,8 +1091,6 @@ std::vector<int> parseQidString(std::string qid) {
     std::sort(qid_vec.begin(), qid_vec.end());
     return qid_vec;
 }
-
-// Generate PSSM from CIGARs and a MSA mask
 std::string msa2profile(
     std::vector<size_t> &indices,
     std::vector<std::vector<Instruction> > &cigars,
@@ -958,6 +1172,115 @@ std::string msa2profile(
         wg,
         // FIXME
         0.6
+    );
+    
+    if (compBiasCorrection) {
+        SubstitutionMatrix::calcGlobalAaBiasCorrection(
+            &subMat,
+            pssmRes.pssm,
+            pNullBuffer,
+            Sequence::PROFILE_AA_SIZE,
+            lengthWithMask
+        );
+    }
+    unsigned char * consensus = new unsigned char[lengthWithMask];
+    for (int i = 0; i < lengthWithMask; ++i)
+        consensus[i] = subMat.aa2num[pssmRes.consensus[i]];
+    std::string result;
+    pssmRes.toBuffer(consensus, lengthWithMask, subMat, result);
+
+    delete[] pNullBuffer;
+    free(msaSequences[0]);
+    delete[] msaSequences;
+    delete[] consensus;
+    
+    return result;
+}
+// Generate PSSM from CIGARs and a MSA mask
+std::string msa2profile(
+    std::vector<size_t> &indices,
+    std::vector<std::vector<Instruction> > &cigars,
+    std::string mask,
+    PSSMCalculator &pssmCalculator,
+    MsaFilter &filter,
+    SubstitutionMatrix &subMat,
+    bool filterMsa,
+    bool compBiasCorrection,
+    std::string & qid,
+    float filterMaxSeqId,
+    float Ndiff,
+    float covMSAThr,
+    float qsc,
+    int filterMinEnable,
+    bool wg,
+    std::vector<double> branchWeights
+) {
+    // length of sequences after masking
+    int lengthWithMask = 0;
+    for (char c : mask) {
+        if (c == '0') lengthWithMask++;
+    }
+
+    float *pNullBuffer = new float[lengthWithMask];
+
+    // build reduced MSA
+    char **msaSequences = MultipleAlignment::initX(lengthWithMask + 1, indices.size());
+    for (size_t i = 0; i < indices.size(); i++) {
+        msaSequences[i][lengthWithMask] = '\0';
+        int seqIndex = 0;
+        int msaIndex = 0;
+        for (Instruction &ins : cigars[indices[i]]) {
+            if (ins.isSeq()) {
+                const unsigned int c = subMat.aa2num[static_cast<int>(ins.getCharacter())];
+                if (mask[seqIndex] == '0') {
+                    msaSequences[i][msaIndex] = c;
+                    msaIndex++;
+                }
+                seqIndex++;
+            } else {
+                for (size_t j = 0; j < ins.bits.count; j++) {
+                    if (mask[seqIndex] == '0') {
+                        msaSequences[i][msaIndex] = (int)MultipleAlignment::GAP;
+                        msaIndex++;
+                    }
+                    seqIndex++;
+                }
+            }
+        }
+        assert(msaIndex == lengthWithMask);
+    }
+    
+    MultipleAlignment::MSAResult msaResult(lengthWithMask, lengthWithMask, indices.size(), msaSequences);
+
+    size_t filteredSetSize = indices.size();
+    if (filterMsa == 1) {
+        std::vector<int> qid_vec = parseQidString(qid);
+        filteredSetSize = filter.filter(
+            indices.size(),
+            lengthWithMask,
+            static_cast<int>(covMSAThr * 100),
+            qid_vec,
+            qsc,
+            static_cast<int>(filterMaxSeqId * 100),
+            Ndiff,
+            filterMinEnable,
+            (const char **) msaSequences,
+            true
+        );
+    }
+
+    PSSMCalculator::Profile pssmRes = pssmCalculator.computePSSMFromMSA(
+        filteredSetSize,
+        msaResult.centerLength,
+        (const char **) msaResult.msaSequence,
+#ifdef GAP_POS_SCORING
+        alnResults,
+#endif
+        wg,
+        // FIXME
+        0.0,
+        branchWeights,
+        indices
     );
     
     if (compBiasCorrection) {
@@ -1599,6 +1922,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     std::string tree;
     std::vector<AlnSimple> hits;
     std::vector<size_t> merges;
+    std::vector<double> weights;
 
     if (par.guideTree != "") {
         std::string line;
@@ -1689,11 +2013,19 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         sortHitsByScore(hits);
 
         Debug(Debug::INFO) << "Generating guide tree\n";
-        mst(hits, sequenceCnt);
+        upgma(hits, sequenceCnt);
+        // mst(hits, sequenceCnt);
+        // neighbour_joining(hits, sequenceCnt);
+
         // assert(hits.size() == sequenceCnt - 1);  // should be n-1 edges
 
         Debug(Debug::INFO) << "Optimising merge order\n";
-        balanceTree(hits, merges, sequenceCnt);
+        // balanceTree(hits, merges, sequenceCnt);
+        merges.assign(sequenceCnt - 1, 1);
+
+        std::vector<AlnEdge> edges = makeEdges(hits, sequenceCnt);
+        std::vector<int> sizes = subtreeSize(sequenceCnt, edges);
+        weights = treeWeights(sequenceCnt, edges, sizes);
 
         std::string nw = makeNewick(hits, sequenceCnt, &qdbrH);
         std::string treeFile = par.filenames[par.filenames.size()-1] + ".nw";
@@ -2104,8 +2436,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             if (!(i == merges.size() - 1 && j == merges[i] - 1)) {
                 newSubMSA->mask = computeProfileMask(
                     newSubMSA->members,
-                    msa.cigars_aa,
-                    subMat_aa,
+                    msa.cigars_ss,
+                    subMat_3di,
                     par.matchRatio
                 );
                 newSubMSA->profile_aa = msa2profile(
@@ -2123,7 +2455,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     par.covMSAThr,
                     par.qsc,
                     par.filterMinEnable,
-                    par.wg
+                    par.wg,
+                    weights
                 );
                 newSubMSA->profile_ss = msa2profile(
                     newSubMSA->members,
@@ -2140,7 +2473,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     par.covMSAThr,
                     par.qsc,
                     par.filterMinEnable,
-                    par.wg
+                    par.wg,
+                    weights
                 );
             }
 

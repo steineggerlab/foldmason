@@ -47,6 +47,7 @@ public:
 
     ~PSSMCalculator();
 
+    Profile computePSSMFromMSA(size_t setSize, size_t queryLength, const char **msaSeqs, bool wg, float scoreBias, std::vector<double> branchWeights, std::vector<size_t> &indices); 
     Profile computePSSMFromMSA(size_t setSize, size_t queryLength, const char **msaSeqs, bool wg, float scoreBias);
 #ifdef GAP_POS_SCORING
     Profile computePSSMFromMSA(size_t setSize, size_t queryLength, const char **msaSeqs, const std::vector<Matcher::result_t> &alnResults, bool wg, float scoreBias);

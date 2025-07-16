@@ -13,6 +13,12 @@ struct __attribute__((__packed__)) AlnSimple {
     unsigned short score;
 };
 
+struct __attribute__((__packed__)) AlnEdge {
+    unsigned int parentId;
+    unsigned int childId;
+    double length;
+};
+
 class NewickParser {
 public:
     struct Node {
