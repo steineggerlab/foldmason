@@ -1126,7 +1126,6 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
             curr_sM_G_D_vec[j].F = std::max(tempF, static_cast<short>(tempFF));
             curr_sM_G_D_vec[j].H = std::max(tempH, curr_sM_G_D_vec[j].E);
             curr_sM_G_D_vec[j].H = std::max(curr_sM_G_D_vec[j].H, curr_sM_G_D_vec[j].F);
-            curr_sM_G_D_vec[j].H = std::max(curr_sM_G_D_vec[j].H, static_cast<short>(0));
             
             // std::cout << curr_sM_G_D_vec[j].H << '\t';
 

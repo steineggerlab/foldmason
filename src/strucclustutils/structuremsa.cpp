@@ -20,6 +20,7 @@
 #include <cassert>
 #include <cmath>
 #include <tuple>
+#include <deque>
 #include <set>
 #include <fstream>
 #include <iostream>
@@ -543,6 +544,128 @@ inline size_t get1dIndex(size_t i, size_t j, size_t N) {
     return j + i * (2 * N - i - 1) / 2 - i - 1;
 }
 
+void updateAllScoresRealign(
+    MSAContainer& msa,
+    Sequence& seqMergedAaAa,
+    Sequence& seqMergedAaPr,
+    Sequence& seqMergedSsAa,
+    Sequence& seqMergedSsPr,
+    Sequence& seqTargetAaAa,
+    Sequence& seqTargetAaPr,
+    Sequence& seqTargetSsAa,
+    Sequence& seqTargetSsPr,
+    std::vector<AlnSimple>& hits,
+    DBReader<unsigned int> &seqDbrAA,
+    DBReader<unsigned int> &seqDbr3Di,
+    int8_t * tinySubMatAA,
+    int8_t * tinySubMat3Di,
+    SubstitutionMatrix * subMat_aa,
+    SubstitutionMatrix * subMat_3di,
+    int maxSeqLen,
+    int alphabetSize,
+    int compBiasCorrection,
+    int compBiasCorrectionScale
+) {
+    // for qsubmsa in msa
+    //     init aa/3di sequences for qsubmsa 
+    //     init ssw on qsubmsa
+    //         for tsubmsa in msa != qsubmsa
+    //             align qsubmsa tsubmsa
+    //             save hit
+
+    unsigned int thread_idx = 0;
+    
+    Sequence* seqMergedAa;
+    Sequence* seqMergedSs;
+    Sequence* seqTargetAa;
+    Sequence* seqTargetSs;
+    
+    StructureSmithWaterman structureSmithWaterman(
+        maxSeqLen,
+        alphabetSize,
+        compBiasCorrection,
+        compBiasCorrectionScale,
+        subMat_aa,
+        subMat_3di
+    );
+    
+    const size_t n_submsas = msa.size();
+    const size_t n_sequences = msa.cigars_aa.size();
+
+    int go = 10;
+    int ge = 1;
+    for (size_t i = 0; i < n_submsas; ++i) {
+        SubMSA& q = msa[i];
+        size_t mergedId = q.id;
+        seqMergedAaPr.mapSequence(i, i, q.profile_aa.c_str(), q.profile_aa.length() / Sequence::PROFILE_READIN_SIZE);
+        seqMergedSsPr.mapSequence(i, i, q.profile_ss.c_str(), q.profile_ss.length() / Sequence::PROFILE_READIN_SIZE);
+        seqMergedAa = &seqMergedAaPr;
+        seqMergedSs = &seqMergedSsPr;
+        structureSmithWaterman.ssw_init(
+            seqMergedAa,
+            seqMergedSs,
+            tinySubMatAA,
+            tinySubMat3Di,
+            subMat_aa
+        );
+        // std::cout << "Aligning profile " << q.id << '\n';
+        
+        // Profile-profile alignments
+        for (size_t j = i + 1; j < n_submsas; ++j) {
+            // if (msa.isProfile(j) || msa.dbIdToSubMSAVec[j] == i) continue;
+            SubMSA& t = msa[j];
+            size_t targetId = t.id;
+            seqTargetAaPr.mapSequence(j, j, t.profile_aa.c_str(), t.profile_aa.length() / Sequence::PROFILE_READIN_SIZE);
+            seqTargetSsPr.mapSequence(j, j, t.profile_ss.c_str(), t.profile_ss.length() / Sequence::PROFILE_READIN_SIZE);
+            seqTargetAa = &seqTargetAaPr;
+            seqTargetSs = &seqTargetSsPr;
+            StructureSmithWaterman::s_align saln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
+                    seqTargetAa->numConsensusSequence,
+                    seqTargetSs->numConsensusSequence,
+                    seqTargetAa->L,
+                    go,
+                    ge,
+                    seqMergedAa->L/2
+            );
+            AlnSimple aln;
+            aln.queryId = mergedId;
+            aln.targetId = targetId;
+            aln.score = saln.score1;
+            // std::cout << "  " << "profile" << '\t' << aln.queryId << '\t' << aln.targetId << '\t' << aln.score << '\n';
+            hits.push_back(aln);
+        }
+        
+        // Profile-sequence alignments
+        for (size_t j = 0; j < n_sequences; ++j) {
+            if (msa.isProfile(j)) continue;
+            size_t targetId;
+            unsigned int dbKey = msa.dbKeys[j];
+            size_t dbId = seqDbrAA.getId(dbKey);
+            size_t length = seqDbrAA.getSeqLen(dbId);
+            seqTargetAaAa.mapSequence(dbId, dbId, seqDbrAA.getData(dbId, thread_idx), length);
+            dbId = seqDbr3Di.getId(dbKey);
+            seqTargetSsAa.mapSequence(dbId, dbId, seqDbr3Di.getData(dbId, thread_idx), length);
+            seqTargetAa = &seqTargetAaAa;
+            seqTargetSs = &seqTargetSsAa;
+            targetId = dbId;
+            AlnSimple aln;
+            aln.queryId = mergedId;
+            aln.targetId = targetId;
+            StructureSmithWaterman::s_align saln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
+                    seqTargetAa->numSequence,
+                    seqTargetSs->numSequence,
+                    seqTargetAa->L,
+                    go,
+                    ge,
+                    seqMergedAa->L/2
+            );
+            aln.score = saln.score1;
+            // std::cout << "  " << "sequence" << '\t' << aln.queryId << '\t' << aln.targetId << '\t' << aln.score << '\n';
+            hits.push_back(aln);
+        }
+    }
+}
+
 void updateAllScores(
     std::vector<AlnSimple>& hits,
     DBReader<unsigned int> &seqDbrAA,
@@ -570,7 +693,7 @@ void updateAllScores(
         hits.reserve(n);
         progress.reset(n);
     }
-    
+
     int go = 10; int ge = 1;
     if (const char* s = std::getenv("PCA")) {
         try { go = std::stoi(s); }
@@ -580,7 +703,6 @@ void updateAllScores(
         try { ge = std::stoi(s); }
         catch(...) { std::cerr << "Warning: invalid PCB='" << s << "', using default\n"; }
     }
-    
 
 #pragma omp parallel
 {
@@ -604,35 +726,35 @@ void updateAllScores(
         subMat_3di
     );
     std::vector<AlnSimple> threadHits;
-    
-    std::vector<short> selfScores(sequenceCnt);
-    for (unsigned int i = 0; i < sequenceCnt; i++) {
-        unsigned int mergedKey = seqDbrAA.getDbKey(i);
-        if (cluDbr != NULL && cluDbr->getId(mergedKey) == UINT_MAX) {
-            // If we have a cluster db and this structure is NOT in it, skip
-            // Should only align the representatives
-            continue;
-        }
-        size_t mergedId  = seqDbrAA.getId(mergedKey);
-        seqMergedAa.mapSequence(mergedId, mergedKey, seqDbrAA.getData(mergedId, thread_idx), seqDbrAA.getSeqLen(mergedId));
-        mergedId = seqDbr3Di.getId(mergedKey);
-        seqMergedSs.mapSequence(mergedId, mergedKey, seqDbr3Di.getData(mergedId, thread_idx), seqDbr3Di.getSeqLen(mergedId));
-        structureSmithWaterman.ssw_init(
-            &seqMergedAa,
-            &seqMergedSs,
-            tinySubMatAA,
-            tinySubMat3Di,
-            subMat_aa
-        );
-        StructureSmithWaterman::s_align self_aln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
-            seqMergedAa.numSequence,
-            seqMergedSs.numSequence,
-            seqMergedAa.L,
-            go, ge,
-            seqMergedAa.L/2
-        );
-        selfScores[i] = self_aln.score1;
-    }
+
+    // std::vector<short> selfScores(sequenceCnt);
+    // for (unsigned int i = 0; i < sequenceCnt; i++) {
+    //     unsigned int mergedKey = seqDbrAA.getDbKey(i);
+    //     if (cluDbr != NULL && cluDbr->getId(mergedKey) == UINT_MAX) {
+    //         // If we have a cluster db and this structure is NOT in it, skip
+    //         // Should only align the representatives
+    //         continue;
+    //     }
+    //     size_t mergedId  = seqDbrAA.getId(mergedKey);
+    //     seqMergedAa.mapSequence(mergedId, mergedKey, seqDbrAA.getData(mergedId, thread_idx), seqDbrAA.getSeqLen(mergedId));
+    //     mergedId = seqDbr3Di.getId(mergedKey);
+    //     seqMergedSs.mapSequence(mergedId, mergedKey, seqDbr3Di.getData(mergedId, thread_idx), seqDbr3Di.getSeqLen(mergedId));
+    //     structureSmithWaterman.ssw_init(
+    //         &seqMergedAa,
+    //         &seqMergedSs,
+    //         tinySubMatAA,
+    //         tinySubMat3Di,
+    //         subMat_aa
+    //     );
+    //     StructureSmithWaterman::s_align self_aln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
+    //         seqMergedAa.numSequence,
+    //         seqMergedSs.numSequence,
+    //         seqMergedAa.L,
+    //         go, ge,
+    //         seqMergedAa.L/2
+    //     );
+    //     selfScores[i] = self_aln.score1;
+    // }
 
 #pragma omp for schedule(dynamic, 10)
     for (unsigned int i = 0; i < sequenceCnt; i++) {
@@ -654,8 +776,8 @@ void updateAllScores(
             tinySubMat3Di,
             subMat_aa
         );
-        
-        for (size_t j = i + 1; j < sequenceCnt; j++) {
+
+       for (size_t j = i + 1; j < sequenceCnt; j++) {
             size_t targetKey = seqDbrAA.getDbKey(j);
             if (cluDbr != NULL && cluDbr->getId(targetKey) == UINT_MAX) {
                 continue;
@@ -677,8 +799,10 @@ void updateAllScores(
                     go, ge,
                     seqMergedAa.L/2
             );
-            float score = (1.0f - (2 * saln.score1) / static_cast<float>(selfScores[i] + selfScores[j])) * 1000.0f; 
-            aln.score = static_cast<short>(score);
+            aln.score = saln.score1;
+            // float score = (1.0f - (2 * saln.score1) / static_cast<float>(selfScores[i] + selfScores[j])) * 1000.0f; 
+            // aln.score = static_cast<short>(score);
+            // aln.score = structureSmithWaterman.ungapped_alignment(seqTargetAa.numSequence, seqTargetSs.numSequence, seqTargetAa.L);
 
             threadHits.push_back(aln);     
             progress.updateProgress();
@@ -700,7 +824,8 @@ int findRoot(int vertex, std::vector<int>& parent) {
     return vertex;
 }
 
-void mst(std::vector<AlnSimple>& hits, int n) {
+void mst2(std::vector<AlnSimple>& hits, int n) {
+    size_t k = static_cast<size_t>(std::sqrt(static_cast<float>(n)));
     UnionFind uf(n);
     size_t mstEdges = 0;
     for (size_t i = 0; i < hits.size(); i++) {
@@ -718,7 +843,113 @@ void mst(std::vector<AlnSimple>& hits, int n) {
     hits.resize(mstEdges);
 }
 
-void neighbour_joining(std::vector<AlnSimple>& hits, int n)
+void mst(const std::vector<AlnSimple>& hits, std::vector<AlnSimple>& tree, int n) {
+    UnionFind uf(n);
+    tree.clear();
+    tree.reserve(n - 1);
+    // size_t mstEdges = 0;
+    for (size_t i = 0; i < hits.size(); i++) {
+        unsigned int root1 = uf.find(hits[i].queryId);
+        unsigned int root2 = uf.find(hits[i].targetId);
+        if (root1 != root2) {
+            tree.push_back(hits[i]);
+            // std::swap(hits[mstEdges], hits[i]);
+            uf.unionSets(root1, root2);
+            // ++mstEdges;
+        }
+        if (tree.size() == static_cast<size_t>(n - 1)) {
+            break;
+        }
+    }
+    // hits.resize(mstEdges);
+}
+
+std::vector<std::vector<int>> buildAdjList(const std::vector<AlnSimple>& edges, int n) {
+    std::vector<std::vector<int>> adj(n);
+    for (const auto& e : edges) {
+        adj[e.queryId].push_back(e.targetId);
+        adj[e.targetId].push_back(e.queryId);
+    }
+    return adj;
+}
+
+std::vector<int> findLongestPath(const std::vector<std::vector<int>>& adj, int start) {
+    std::vector<int> parent(adj.size(), -1);
+    std::queue<int> q;
+    q.push(start);
+
+    int last = start;
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        last = u;
+        for (int v : adj[u]) {
+            if (parent[v] == -1 && v != start) {
+                parent[v] = u;
+                q.push(v);
+            }
+        }
+    }
+
+    std::vector<int> path;
+    while (last != -1) {
+        path.push_back(last);
+        last = parent[last];
+    }
+    std::reverse(path.begin(), path.end());
+    return path;
+}
+
+int findMidpointRoot(const std::vector<AlnSimple>& edges, int n) {
+    auto adj = buildAdjList(edges, n);
+    auto path1 = findLongestPath(adj, 0);
+    auto path2 = findLongestPath(adj, path1.back());
+    return path2[path2.size() / 2];  // midpoint
+}
+
+void dfsBuildLinkage(
+    int node,
+    int parent,
+    const std::vector<std::vector<int>>& adj,
+    std::vector<AlnSimple>& merges,
+    std::vector<int>& nodeToCluster,
+    int& nextClusterId
+) {
+    std::vector<int> childClusters;
+
+    for (int neighbor : adj[node]) {
+        if (neighbor == parent) continue;
+
+        dfsBuildLinkage(neighbor, node, adj, merges, nodeToCluster, nextClusterId);
+        childClusters.push_back(nodeToCluster[neighbor]);
+    }
+
+    if (childClusters.empty()) {
+        nodeToCluster[node] = node;  // Leaf node
+        AlnSimple newhit;
+        newhit.queryId = node;
+        newhit.targetId = parent;
+        merges.push_back(newhit);
+        return;
+    }
+
+    // Binarize if more than 2 children
+    while (childClusters.size() > 1) {
+        int a = childClusters.back(); childClusters.pop_back();
+        int b = childClusters.back(); childClusters.pop_back();
+
+        AlnSimple newhit;
+        newhit.queryId = a;
+        newhit.targetId = b;
+        merges.push_back(newhit);
+        childClusters.push_back(a);
+    }
+
+    nodeToCluster[node] = childClusters.front();
+}
+
+
+// FIXME: potentially broken
+void neighbour_joining(std::vector<AlnSimple>& hits, std::vector<AlnSimple>& out, int n)
 {
     const float INF = 1e30f;
     std::vector<std::vector<float>> score(n, std::vector<float>(n, -INF));
@@ -734,7 +965,9 @@ void neighbour_joining(std::vector<AlnSimple>& hits, int n)
     struct Info { int size; bool alive; };
     std::vector<Info> info(n, {1, true});
     std::vector<float> r(n);              // Σ distances, recalculated each step
-    std::vector<AlnSimple> out; out.reserve(n - 1);
+    // std::vector<AlnSimple> out;
+    out.clear();
+    out.reserve(n - 1);
     int active = n;
     while (active > 1) {
         for (int i = 0; i < n; ++i) {
@@ -776,7 +1009,8 @@ void neighbour_joining(std::vector<AlnSimple>& hits, int n)
     hits.swap(out);
 }
 
-void upgma(std::vector<AlnSimple>& hits, int n) {
+// FIXME: potentially broken
+void upgma(const std::vector<AlnSimple>& hits, std::vector<AlnSimple>& out, int n) {
     const float INF = 1e30f;
     std::vector<std::vector<float>> score(n, std::vector<float>(n, -INF));
     std::vector<float> weights(n, 0.0f);
@@ -793,7 +1027,9 @@ void upgma(std::vector<AlnSimple>& hits, int n) {
     for (int i = 0; i < n; ++i) dist[i][i] = 0.0f;
     struct Info { int size; bool alive; };
     std::vector<Info> info(n, {1, true});
-    std::vector<AlnSimple> out; out.reserve(n - 1);
+    out.clear();
+    out.reserve(n - 1);
+    // std::vector<AlnSimple> out; out.reserve(n - 1);
     for (int step = 0; step < n - 1; ++step) {
         float bestD = INF;
         int   a = -1, b = -1;
@@ -822,7 +1058,7 @@ void upgma(std::vector<AlnSimple>& hits, int n) {
         info[repA].size += info[repB].size;
         info[repB].alive = false;
     }
-    hits.swap(out);
+    // out.swap(out);
 }
 
 
@@ -875,14 +1111,11 @@ std::vector<int> subtreeSize(int n, const std::vector<AlnEdge>& edges) {
 std::vector<double> treeWeights(int n, const std::vector<AlnEdge>& edges, const std::vector<int>& size) {
     int m     = edges.size()/2;
     int total = n + m;
-
     std::vector<std::vector<std::pair<int,double>>> tree(total);
     for (auto& e : edges) {
       tree[e.parentId].push_back({e.childId, e.length});
     }
-
     std::vector<double> w(total, 0.0);
-
     std::function<void(int,double)> dfs = [&](int v, double acc) {
       if (v < n) {
         w[v] = acc;
@@ -902,11 +1135,11 @@ std::vector<double> treeWeights(int n, const std::vector<AlnEdge>& edges, const 
     for (int i = 0; i < n; ++i) mean += w[i];
     mean /= n;
     for (int i = 0; i < n; ++i) w[i] /= mean;
-
     return w;
 }
 
 
+// TODO: if we recompute trees every merge round, this should only return the first merge count
 void balanceTree(std::vector<AlnSimple>& hits, std::vector<size_t>& merges, int n) {
     UnionFind uf(n);
     std::vector<int> counts(n, 0);
@@ -932,6 +1165,31 @@ void balanceTree(std::vector<AlnSimple>& hits, std::vector<size_t>& merges, int 
         merges.push_back(mergeCount);
         partitionStart = partitionPoint;
     }
+    // TODO: this is likely unimportant
+    for (size_t i = 0, offset = 0; i < merges.size(); ++i) {
+        std::sort(hits.begin() + offset,
+                  hits.begin() + offset + merges[i],
+                  [](const AlnSimple& a, const AlnSimple& b) {
+                      return std::tie(a.queryId, a.targetId) < std::tie(b.queryId, b.targetId);
+                  });
+        offset += merges[i];
+    }
+}
+
+// Removes edges containing previously aligned sequences.
+// Assume tree from mst + balanceTree, mergeCount == merges[0]
+void removeStaleEdges(const std::vector<AlnSimple>& tree, const int mergeCount, std::vector<AlnSimple>& hits) {
+    std::set<size_t> seen;
+    for (size_t i = 0; i < mergeCount; ++i) {
+        seen.insert(tree[i].queryId);
+        seen.insert(tree[i].targetId);
+    }
+    hits.erase(
+        std::remove_if(hits.begin(), hits.end(), [&](const AlnSimple& aln){
+            return seen.count(aln.queryId) || seen.count(aln.targetId);
+        }),
+        hits.end()
+    );
 }
 
 std::string getHeader(unsigned int& headerId, IndexReader* hdrDb) {
@@ -960,6 +1218,50 @@ std::string makeNewick(const std::vector<AlnSimple>& edges, int n, IndexReader* 
     int root = uf.find(edges[0].queryId);
     return nodeNewick[root] + ";";
 }
+
+std::string joinStr(const std::vector<std::string>& vec, const std::string& sep) {
+    std::ostringstream oss;
+    for (size_t i = 0; i < vec.size(); ++i) {
+        if (i > 0) oss << sep;
+        oss << vec[i];
+    }
+    return oss.str();
+
+}
+
+
+std::string makeNewickFromParentTree(
+    const std::vector<int>& parent, // This parent array comes from the BFS on the rooted tree
+    int root,
+    int sequenceCnt, // Original number of sequences (0 to sequenceCnt-1 are leaves)
+    IndexReader* headers
+) {
+    int totalNodes = parent.size(); // Should be sequenceCnt + 1 (including virtual root)
+    std::vector<std::vector<int>> children(totalNodes);
+    for (int i = 0; i < totalNodes; ++i) {
+        if (parent[i] != -1) { // If it has a parent (i.e., not the root of this tree)
+            children[parent[i]].push_back(i);
+        }
+    }
+    std::function<std::string(int)> dfsNewick = [&](int node) -> std::string {
+        if (node < sequenceCnt) {
+            return Util::parseFastaHeader(headers->sequenceReader->getData(node, 0));
+        }
+        std::vector<std::string> subtrees;
+        for (int c : children[node]) {
+            std::string childNewick = dfsNewick(c);
+            if (!childNewick.empty()) { // Only add if the child's subtree is not empty
+                subtrees.push_back(childNewick);
+            }
+        }
+        if (subtrees.empty()) {
+            return ""; // For internal nodes with no children, or the virtual root if it has no children (error case)
+        }
+        return "(" + joinStr(subtrees, ",") + ")";
+    };
+    return dfsNewick(root) + ";";
+}
+
 
 int cigarLength(const std::vector<Instruction>& cigar, bool withGaps) {
     int count = 0;
@@ -1170,117 +1472,7 @@ std::string msa2profile(
         alnResults,
 #endif
         wg,
-        // FIXME
-        0.6
-    );
-    
-    if (compBiasCorrection) {
-        SubstitutionMatrix::calcGlobalAaBiasCorrection(
-            &subMat,
-            pssmRes.pssm,
-            pNullBuffer,
-            Sequence::PROFILE_AA_SIZE,
-            lengthWithMask
-        );
-    }
-    unsigned char * consensus = new unsigned char[lengthWithMask];
-    for (int i = 0; i < lengthWithMask; ++i)
-        consensus[i] = subMat.aa2num[pssmRes.consensus[i]];
-    std::string result;
-    pssmRes.toBuffer(consensus, lengthWithMask, subMat, result);
-
-    delete[] pNullBuffer;
-    free(msaSequences[0]);
-    delete[] msaSequences;
-    delete[] consensus;
-    
-    return result;
-}
-// Generate PSSM from CIGARs and a MSA mask
-std::string msa2profile(
-    std::vector<size_t> &indices,
-    std::vector<std::vector<Instruction> > &cigars,
-    std::string mask,
-    PSSMCalculator &pssmCalculator,
-    MsaFilter &filter,
-    SubstitutionMatrix &subMat,
-    bool filterMsa,
-    bool compBiasCorrection,
-    std::string & qid,
-    float filterMaxSeqId,
-    float Ndiff,
-    float covMSAThr,
-    float qsc,
-    int filterMinEnable,
-    bool wg,
-    std::vector<double> branchWeights
-) {
-    // length of sequences after masking
-    int lengthWithMask = 0;
-    for (char c : mask) {
-        if (c == '0') lengthWithMask++;
-    }
-
-    float *pNullBuffer = new float[lengthWithMask];
-
-    // build reduced MSA
-    char **msaSequences = MultipleAlignment::initX(lengthWithMask + 1, indices.size());
-    for (size_t i = 0; i < indices.size(); i++) {
-        msaSequences[i][lengthWithMask] = '\0';
-        int seqIndex = 0;
-        int msaIndex = 0;
-        for (Instruction &ins : cigars[indices[i]]) {
-            if (ins.isSeq()) {
-                const unsigned int c = subMat.aa2num[static_cast<int>(ins.getCharacter())];
-                if (mask[seqIndex] == '0') {
-                    msaSequences[i][msaIndex] = c;
-                    msaIndex++;
-                }
-                seqIndex++;
-            } else {
-                for (size_t j = 0; j < ins.bits.count; j++) {
-                    if (mask[seqIndex] == '0') {
-                        msaSequences[i][msaIndex] = (int)MultipleAlignment::GAP;
-                        msaIndex++;
-                    }
-                    seqIndex++;
-                }
-            }
-        }
-        assert(msaIndex == lengthWithMask);
-    }
-    
-    MultipleAlignment::MSAResult msaResult(lengthWithMask, lengthWithMask, indices.size(), msaSequences);
-
-    size_t filteredSetSize = indices.size();
-    if (filterMsa == 1) {
-        std::vector<int> qid_vec = parseQidString(qid);
-        filteredSetSize = filter.filter(
-            indices.size(),
-            lengthWithMask,
-            static_cast<int>(covMSAThr * 100),
-            qid_vec,
-            qsc,
-            static_cast<int>(filterMaxSeqId * 100),
-            Ndiff,
-            filterMinEnable,
-            (const char **) msaSequences,
-            true
-        );
-    }
-
-    PSSMCalculator::Profile pssmRes = pssmCalculator.computePSSMFromMSA(
-        filteredSetSize,
-        msaResult.centerLength,
-        (const char **) msaResult.msaSequence,
-#ifdef GAP_POS_SCORING
-        alnResults,
-#endif
-        wg,
-        // FIXME
-        0.0,
-        branchWeights,
-        indices
+        0.0
     );
     
     if (compBiasCorrection) {
@@ -1828,6 +2020,113 @@ void mergeAndExtendAnchors(
 }
 
 
+std::vector<std::vector<std::pair<int, float>>> buildAdjacencyList(const std::vector<AlnSimple>& edges, int numNodes) {
+    std::vector<std::vector<std::pair<int, float>>> adj(numNodes);
+    for (const AlnSimple& edge : edges) {
+        adj[edge.queryId].emplace_back(edge.targetId, edge.score);
+        adj[edge.targetId].emplace_back(edge.queryId, edge.score);
+    }
+    return adj;
+}
+
+void convertToDistance(std::vector<AlnSimple>& edges) {
+    unsigned short maxScore = 0;
+    for (AlnSimple& edge : edges) {
+        maxScore = std::max(edge.score, maxScore);
+    }
+    for (AlnSimple& edge : edges) {
+        edge.score = maxScore - edge.score;
+    }
+}
+
+void dfs(
+    int node,
+    int parent,
+    float currDist,
+    const std::vector<std::vector<std::pair<int, float>>>& adj,
+    std::vector<std::pair<int, float>>& info,
+    int& farthest,
+    float& maxDist
+) {
+    info[node].first = parent;
+    info[node].second = currDist;
+    if (currDist > maxDist) {
+        maxDist = currDist;
+        farthest = node;
+    }
+    for (const std::pair<int, float>& neighbour : adj[node]) {
+        if (neighbour.first != parent) {
+            dfs(neighbour.first, node, currDist + neighbour.second, adj, info, farthest, maxDist);
+        }
+    }
+}
+
+void dfsRootedTree(
+    int node,
+    int parent,
+    std::vector<std::vector<std::pair<int, float>>>& adj,
+    std::vector<AlnSimple>& rootedEdges
+) {
+    std::vector<std::pair<int, float>> children;
+    for (const auto& [child, weight] : adj.at(node)) {
+        if (child == parent) continue;
+        children.emplace_back(child, weight);
+    }
+    std::sort(children.begin(), children.end(), [](auto& a, auto& b) {
+        return a.second > b.second;
+    });
+    for (const auto& [child, weight] : children) {
+        dfsRootedTree(child, node, adj, rootedEdges);
+        AlnSimple aln;
+        aln.queryId = node;
+        aln.targetId = child;
+        aln.score = weight;
+        rootedEdges.push_back(aln);  // directional edge
+    }
+}
+
+int pot(
+    int node,
+    int parent,
+    std::vector<std::vector<std::pair<int, float>>>& adj,
+    std::set<int>& visited,
+    std::vector<AlnSimple>& merges,
+    int& mergeCounter,
+    std::unordered_map<int, std::pair<int, int>>& internal
+) {
+    visited.insert(node);
+    std::vector<int> children;
+    for (size_t i = 0; i < adj[node].size(); ++i) {
+        if (adj[node][i].first != parent && !visited.count(adj[node][i].first)) {
+            int childrep = pot(adj[node][i].first, node, adj, visited, merges, mergeCounter, internal);
+            children.push_back(childrep);
+        }
+    }
+    if (children.empty()) return node;
+    if (children.size() == 1) return children[0];
+    int cur = children[0];
+    for (size_t i = 1; i < children.size(); ++i) {
+        int nex = children[i];
+        AlnSimple aln;
+        aln.queryId = cur;
+        aln.targetId = nex;
+        merges.push_back(aln);
+        int internalid = mergeCounter++;
+        internal.emplace(internalid, std::make_pair(cur, nex));
+        // cur = internalid;
+    }
+    return cur;
+}
+
+std::vector<AlnSimple> getEdges(int root, std::vector<std::vector<std::pair<int, float>>>& adj) {
+    std::vector<AlnSimple> merges;
+    std::set<int> visited;
+    std::unordered_map<int, std::pair<int, int>> internal;
+    int mergeCounter = root + 1;
+    int finalrep = pot(root, -1, adj, visited, merges, mergeCounter, internal);
+    return merges;
+}
+
 int structuremsa(int argc, const char **argv, const Command& command, bool preCluster) {
     FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
 
@@ -1921,8 +2220,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     // Try parse --> read if non-empty, otherwise generate one and write
     std::string tree;
     std::vector<AlnSimple> hits;
+    std::vector<AlnSimple> treeEdges;
     std::vector<size_t> merges;
-    std::vector<double> weights;
+    std::vector<double> weights(sequenceCnt, 1.0f);
 
     if (par.guideTree != "") {
         std::string line;
@@ -2013,28 +2313,253 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         sortHitsByScore(hits);
 
         Debug(Debug::INFO) << "Generating guide tree\n";
-        upgma(hits, sequenceCnt);
-        // mst(hits, sequenceCnt);
-        // neighbour_joining(hits, sequenceCnt);
+        // neighbour_joining(hits, treeEdges, sequenceCnt);
+        // upgma(hits, treeEdges, sequenceCnt);
+        mst(hits, treeEdges, sequenceCnt);
+        // convertToDistance(hits);
+        // std::vector<std::vector<std::pair<int, float>>> adj = buildAdjacencyList(hits, sequenceCnt);
+        // // for (int i = 0; i < adj.size(); ++i) {
+        // //     for (auto& [a, b] : adj[i]) {
+        // //         std::cout << i << '\t' << a << '\t' << b << '\n';
+        // //     }
+        // // }
+
+        // std::vector<std::pair<int, float>> infoA(sequenceCnt);
+        // int A = 0;
+        // float dummy = 0.0f;
+        // dfs(0, -1, 0.0f, adj, infoA, A, dummy);
+
+        // std::vector<std::pair<int, float>> infoB(sequenceCnt);
+        // int B = 0;
+        // float longestDist = 0.0f;
+        // dfs(A, -1, 0.0f, adj, infoB, B, longestDist);
+        
+        // std::vector<int> path;
+        // for (int cur = B; cur != -1; cur = infoB[cur].first) {
+        //     path.push_back(cur);
+        // }
+        // std::reverse(path.begin(), path.end());
+        
+        // float total = 0.0f;
+        // std::vector<float> edgeWeights;
+
+        // for (size_t i = 1; i < path.size(); ++i) {
+        //     int u = path[i - 1];
+        //     int v = path[i];
+        //     // Find weight in adj[u]
+        //     float w = -1;
+        //     for (const auto& neighbor : adj[u]) {
+        //         if (neighbor.first == v) {
+        //             w = neighbor.second;
+        //             break;
+        //         }
+        //     }
+        //     if (w < 0) {
+        //         std::cerr << "❌ Edge weight missing between " << u << " and " << v << "\n";
+        //         exit(1);
+        //     }
+        //     edgeWeights.push_back(w);
+        //     total += w;
+        // } 
+        // float half = total / 2.0f;
+        // float acc = 0.0f;
+        // int midU = -1;
+        // int midV = -1;
+
+        // for (size_t i = 0; i < edgeWeights.size(); ++i) {
+        //     acc += edgeWeights[i];
+        //     if (acc >= half) {
+        //         midU = path[i];
+        //         midV = path[i + 1];
+        //         break;
+        //     }
+        // }
+
+        // int virtualRoot = sequenceCnt;
+        // int totalNodes = sequenceCnt + 1;
+        
+        
+        // std::vector<std::vector<std::pair<int, float>>> newAdj(totalNodes);
+        // for (size_t i = 0; i < adj.size(); ++i) {
+        //     for (size_t j = 0; j < adj[i].size(); ++j) {
+        //         if ((i == midU && adj[i][j].first == midV) ||
+        //             (i == midV && adj[i][j].first == midU)) {
+        //                 continue;
+        //         }
+        //         newAdj[i].emplace_back(adj[i][j].first, adj[i][j].second);
+        //     }
+        // }
+        // newAdj.emplace_back();
+        // newAdj[virtualRoot].emplace_back(midU, 1.0f);
+        // newAdj[virtualRoot].emplace_back(midV, 1.0f);
+        // newAdj[midU].emplace_back(virtualRoot, 1.0f);
+        // newAdj[midV].emplace_back(virtualRoot, 1.0f);
+
+        // std::vector<std::vector<std::pair<int, float>>> rootedAdj(totalNodes);
+        // std::set<int> visited;
+        // visited.insert(virtualRoot);
+        // std::deque<int> q;
+        // q.push_front(midU);
+        // q.push_back(midV);
+        // while (q.size() > 0) {
+        //     int cur = q.front();
+        //     q.pop_front();
+        //     if (visited.count(cur)) {
+        //         continue;
+        //     }
+        //     visited.insert(cur);
+        //     for (auto nei : newAdj[cur]) {
+        //         if (!visited.count(nei.first)) {
+        //             rootedAdj[cur].push_back(nei);
+        //             q.push_back(nei.first);
+        //         }
+        //     }
+        // }
+        // rootedAdj[virtualRoot].emplace_back(midU, 1.0f);
+        // rootedAdj[virtualRoot].emplace_back(midV, 1.0f);
+ 
+        // std::vector<AlnSimple> blah = getEdges(virtualRoot, rootedAdj);
+        // std::vector<AlnSimple> rootedEdges;
+        // std::map<int, int> mapping;
+        // for (size_t i = 0; i < totalNodes; ++i) {
+        //     mapping[i] = i;
+        // }
+        // int mergeCounter = sequenceCnt;
+        // visited.clear();
+
+        // dfsRootedTree(midU, virtualRoot, rootedAdj, rootedEdges);
+        // dfsRootedTree(midV, virtualRoot, rootedAdj, rootedEdges);
+
+
+        // for (int i = 0; i < rootedAdj.size(); ++i) {
+        //     for (auto& [a, b] : rootedAdj[i]) {
+        //         AlnSimple aln;
+        //         aln.queryId = i;
+        //         aln.targetId = a;
+        //         aln.score = b;
+        //         rootedEdges.push_back(aln);
+        //     }
+        // }
+        // AlnSimple rootaln;
+        // rootaln.queryId = midU;
+        // rootaln.targetId = midV;
+        // rootedEdges.push_back(rootaln);
+        // std::reverse(rootedEdges.begin(), rootedEdges.end());
+        // std::swap(hits, rootedEdges);
+       
+        // std::vector<std::pair<int, float>>& vecA = adj[midU];
+        // vecA.erase(std::remove_if(vecA.begin(), vecA.end(),
+        //     [&](const std::pair<int, float>& p) { return p.first == midV; }), vecA.end());       
+
+        // std::vector<std::pair<int, float>>& vecB = adj[midV];
+        // vecB.erase(std::remove_if(vecB.begin(), vecB.end(),
+        //     [&](const std::pair<int, float>& p) { return p.first == midU; }), vecB.end());       
+
+        // adj.emplace_back();
+        // adj[virtualRoot].emplace_back(midU, 1.0f);
+        // adj[virtualRoot].emplace_back(midV, 1.0f);
+        // adj[midU].emplace_back(virtualRoot, 1.0f);
+        // adj[midV].emplace_back(virtualRoot, 1.0f);
+
+        // int midpoint = path[path.size() / 2];
+        
+        
+
+        // std::vector<AlnSimple> rootedEdges;
+        // int mergeCounter = sequenceCnt;
+        // std::set<int> visited;
+        
+        // int left = postorderBalanced(midU, midV, adj, rootedEdges, mergeCounter);
+        // int right = postorderBalanced(midV, midU, adj, rootedEdges, mergeCounter);
+        // AlnSimple finalEdge;
+        // finalEdge.queryId = left;
+        // finalEdge.targetId = right;
+        // rootedEdges.push_back(finalEdge);
+        // rootedEdges.erase(std::remove_if(rootedEdges.begin(), rootedEdges.end(),
+        //     [&](const AlnSimple& aln){ return aln.queryId == virtualRoot || aln.targetId == virtualRoot; }),
+        //     rootedEdges.end());
+
+        
+        // std::vector<AlnSimple> rootedEdges;
+        // dfsRootedTree(midU, virtualRoot, adj, rootedEdges);
+        // dfsRootedTree(midV, virtualRoot, adj, rootedEdges);
+        // AlnSimple finalEdge;
+        // finalEdge.queryId = midU;
+        // finalEdge.targetId = midV;
+        // rootedEdges.push_back(finalEdge);
+        
+        // for (int i = 0; i < rootedEdges.size(); ++i) {
+        //     AlnSimple& aln = rootedEdges[i];
+        //     std::cout << aln.queryId << '\t' << aln.targetId << '\n';
+        // }
+        
+        // std::swap(hits, rootedEdges);
+
+
+        // NewickParser::Node* nwtree = NewickParser::buildTree(hits);
+        // std::pair<NewickParser::Node*, int> blah = NewickParser::findFarthest(nwtree);
+        // std::pair<NewickParser::Node*, int> blah2 = NewickParser::findFarthest(blah.first);
+        // std::vector<NewickParser::Node*> path = NewickParser::findPath(blah.first, blah2.first);
+        // int pathLen = path.size();
+        // NewickParser::Node* newRoot = new NewickParser::Node(999);
+        // NewickParser::Node* prev = new NewickParser::Node();
+        // if (pathLen % 2 == 0) {
+        //     NewickParser::Node* mid1 = path[pathLen / 2 - 1];
+        //     NewickParser::Node* mid2 = path[pathLen / 2];
+        //     auto& ch1 = mid1->children;
+        //     ch1.erase(std::remove(ch1.begin(), ch1.end(), mid2), ch1.end());
+        //     NewickParser::orientTree(mid1, nullptr);
+        //     auto& ch2 = mid2->children;
+        //     ch2.erase(std::remove(ch2.begin(), ch2.end(), mid1), ch2.end());
+        //     NewickParser::orientTree(mid2, nullptr);
+        //     newRoot->children.push_back(mid1);
+        //     newRoot->children.push_back(mid2);
+        //     NewickParser::orientTree(newRoot, nullptr);
+        // } else {
+        //     newRoot = path[pathLen/2];
+        //     NewickParser::orientTree(newRoot, nullptr);
+        // }
+        // std::set<size_t> seen;
+        // NewickParser::enforceBinary(newRoot);
+        // NewickParser::printTree(newRoot, "", false);
+        
+        // std::vector<AlnSimple> post;
+        // NewickParser::postOrder2(newRoot, post);
+        // std::swap(hits, post);
+
+        
+        // auto adjList = buildAdjList(hits, sequenceCnt);
+        // int root = findMidpointRoot(hits, sequenceCnt);
+        
+        // std::vector<std::pair<int, int>> merges2;
+        // std::vector<int> nodeToCluster(sequenceCnt);  // maps node id to current cluster id
+        // int nextClusterId = sequenceCnt; // cluster ids start after leaf nodes
+
+        // std::vector<AlnSimple> midhits;
+        // dfsBuildLinkage(root, -1, adjList, midhits, nodeToCluster, nextClusterId);
 
         // assert(hits.size() == sequenceCnt - 1);  // should be n-1 edges
 
         Debug(Debug::INFO) << "Optimising merge order\n";
-        // balanceTree(hits, merges, sequenceCnt);
-        merges.assign(sequenceCnt - 1, 1);
+        // merges.assign(sequenceCnt - 1, 1);
+        balanceTree(treeEdges, merges, sequenceCnt);
+        removeStaleEdges(treeEdges, merges[0], hits);
 
-        std::vector<AlnEdge> edges = makeEdges(hits, sequenceCnt);
-        std::vector<int> sizes = subtreeSize(sequenceCnt, edges);
-        weights = treeWeights(sequenceCnt, edges, sizes);
+        // std::vector<AlnEdge> edges = makeEdges(hits, sequenceCnt);
+        // std::vector<int> sizes = subtreeSize(sequenceCnt, edges);
+        // weights = treeWeights(sequenceCnt, edges, sizes);
 
-        std::string nw = makeNewick(hits, sequenceCnt, &qdbrH);
+        std::string nw = makeNewick(treeEdges, sequenceCnt, &qdbrH);
+        // std::string nw2 = makeNewickFromParentTree(parent, virtualRoot, sequenceCnt, &qdbrH);
+        std::cout << nw << '\n';
+        // std::cout << nw2 << '\n';
         std::string treeFile = par.filenames[par.filenames.size()-1] + ".nw";
         Debug(Debug::INFO) << "Writing guide tree to: " << treeFile << '\n';
         std::ofstream guideTree(treeFile, std::ofstream::out);
         guideTree << nw;
         guideTree.close();
     }
-   
+
     if (par.verbosity > Debug::INFO) {
         int idx = 0;
         size_t qHeaderId, tHeaderId;
@@ -2068,6 +2593,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     
     Debug::Progress progress;
     progress.reset(sequenceCnt - 1);
+    int mergeCount = sequenceCnt - 1;
 
 #pragma omp parallel num_threads(maxThreads)
 {
@@ -2113,15 +2639,51 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     // thread-local vectors
     std::vector<SubMSA> subMSAs;
     std::vector<size_t> toRemove;
+    int submsacount = 0;
 
-    for (size_t i = 0; i < merges.size(); i++) {
-        subMSAs.reserve(merges[i]);
+    // for (size_t i = 0; i < merges.size(); i++) {
+    bool firstRound = true;
+    while (mergeCount > 1) {
+        if (!firstRound && merges.size() > 1) {
+            updateAllScoresRealign(
+                msa,
+                seqMergedAaAa,
+                seqMergedAaPr,
+                seqMergedSsAa,
+                seqMergedSsPr,
+                seqTargetAaAa,
+                seqTargetAaPr,
+                seqTargetSsAa,
+                seqTargetSsPr,
+                hits,
+                seqDbrAA, seqDbr3Di, tinySubMatAA, tinySubMat3Di,
+                &subMat_aa,
+                &subMat_3di,
+                par.maxSeqLen, 
+                subMat_3di.alphabetSize,
+                par.compBiasCorrection,
+                par.compBiasCorrectionScale
+            );
+            sortHitsByScore(hits);
+            // upgma(hits, treeEdges, sequenceCnt);
+            mst(hits, treeEdges, sequenceCnt);
+            std::vector<size_t> merges_realign;
+            balanceTree(treeEdges, merges_realign, sequenceCnt);
+            removeStaleEdges(treeEdges, merges_realign[0], hits);
+            std::swap(merges, merges_realign);
+            mergeCount = 0;
+            for (size_t cnt : merges) mergeCount += cnt;
+        }
+        firstRound = false;
+
+        subMSAs.reserve(merges[0]);
+        submsacount = 0;
 
 #pragma omp for schedule(static, 1)
-        for (size_t j = 0; j < merges[i]; j++) {
+        for (size_t j = 0; j < merges[0]; j++) {
 
-            size_t mergedId = hits[index + j].queryId;
-            size_t targetId = hits[index + j].targetId;
+            size_t mergedId = treeEdges[index + j].queryId;
+            size_t targetId = treeEdges[index + j].targetId;
             if (mergedId == targetId) {
                 continue;
             }
@@ -2205,6 +2767,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 std::swap(qMembers, tMembers);
                 std::swap(map1, map2);
             }
+            
+            // std::cout << "#Prog aligning " << mergedId << '\t' << targetId << '\n';
 
             // Since we will update the query subMSA, need to remove the target one 
             if (targetIsProfile) {
@@ -2375,6 +2939,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             
             // Identify anchors
             // >0.8 LDDT, >10 residues?
+            // TODO these currently are not used
             mergeAndExtendAnchors(anchors, seqMergedAa->L, seqTargetAa->L, 5);
 
 
@@ -2433,11 +2998,11 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             }
             
             // Don't need to make profiles on final alignment
-            if (!(i == merges.size() - 1 && j == merges[i] - 1)) {
+            // if (!(i == merges.size() - 1 && j == merges[i] - 1)) {
                 newSubMSA->mask = computeProfileMask(
                     newSubMSA->members,
-                    msa.cigars_ss,
-                    subMat_3di,
+                    msa.cigars_aa,
+                    subMat_aa,
                     par.matchRatio
                 );
                 newSubMSA->profile_aa = msa2profile(
@@ -2455,8 +3020,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     par.covMSAThr,
                     par.qsc,
                     par.filterMinEnable,
-                    par.wg,
-                    weights
+                    par.wg
                 );
                 newSubMSA->profile_ss = msa2profile(
                     newSubMSA->members,
@@ -2473,16 +3037,17 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     par.covMSAThr,
                     par.qsc,
                     par.filterMinEnable,
-                    par.wg,
-                    weights
+                    par.wg
                 );
-            }
+            // }
 
             // progress.updateProgress();
         }
+        submsacount += subMSAs.size();
 
 #pragma omp critical
         {
+            mergeCount -= submsacount;
             globalSubMSAs.insert(globalSubMSAs.end(), subMSAs.begin(), subMSAs.end());
             globalToRemove.insert(globalToRemove.end(), toRemove.begin(), toRemove.end());
             subMSAs.clear();
@@ -2494,7 +3059,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             msa.update(globalSubMSAs, globalToRemove);
             globalSubMSAs.clear();
             globalToRemove.clear();
-            index += merges[i];
+            // index += merges[0];
         }
 #pragma omp barrier
     }
