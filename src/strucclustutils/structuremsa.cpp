@@ -1472,7 +1472,7 @@ std::string msa2profile(
         alnResults,
 #endif
         wg,
-        0.0
+        0.6
     );
     
     if (compBiasCorrection) {
@@ -2541,8 +2541,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         // assert(hits.size() == sequenceCnt - 1);  // should be n-1 edges
 
         Debug(Debug::INFO) << "Optimising merge order\n";
-        // merges.assign(sequenceCnt - 1, 1);
-        balanceTree(treeEdges, merges, sequenceCnt);
+        merges.assign(sequenceCnt - 1, 1);
+        // balanceTree(treeEdges, merges, sequenceCnt);
         removeStaleEdges(treeEdges, merges[0], hits);
 
         // std::vector<AlnEdge> edges = makeEdges(hits, sequenceCnt);
@@ -2643,8 +2643,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
     // for (size_t i = 0; i < merges.size(); i++) {
     bool firstRound = true;
-    while (mergeCount > 1) {
-        if (!firstRound && merges.size() > 1) {
+    size_t roundCount = 0;
+    int mergeCount = 0;
+    for (size_t cnt : merges) {
+        mergeCount += cnt;
+    }
+    while (merges.size() > 0) {
+        if (!firstRound && mergeCount > 1) {
             updateAllScoresRealign(
                 msa,
                 seqMergedAaAa,
@@ -2668,12 +2673,19 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             // upgma(hits, treeEdges, sequenceCnt);
             mst(hits, treeEdges, sequenceCnt);
             std::vector<size_t> merges_realign;
-            balanceTree(treeEdges, merges_realign, sequenceCnt);
+            // balanceTree(treeEdges, merges_realign, sequenceCnt);
+            merges_realign.assign(treeEdges.size(), 1);
             removeStaleEdges(treeEdges, merges_realign[0], hits);
             std::swap(merges, merges_realign);
+            index = 0;
             mergeCount = 0;
             for (size_t cnt : merges) mergeCount += cnt;
         }
+        // if (mergeCount == 1) {
+        //     merges.clear();
+        //     merges.push_back(1);
+        // }
+        
         firstRound = false;
 
         subMSAs.reserve(merges[0]);
@@ -3059,7 +3071,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             msa.update(globalSubMSAs, globalToRemove);
             globalSubMSAs.clear();
             globalToRemove.clear();
-            // index += merges[0];
+            index += merges[0];
+            merges.erase(merges.begin());
         }
 #pragma omp barrier
     }
