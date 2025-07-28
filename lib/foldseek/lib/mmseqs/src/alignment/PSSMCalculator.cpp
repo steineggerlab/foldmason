@@ -223,9 +223,9 @@ PSSMCalculator::Profile PSSMCalculator::computePSSMFromMSA(
     increaseSetSize(setSize);
     // Quick and dirty calculation of the weight per sequence wg[k]
     computeSequenceWeights(seqWeight, queryLength, setSize, msaSeqs);
-    for (size_t i = 0; i < setSize; ++i) {
-        seqWeight[i] *= (branchWeights[indices[i]] + 1.0f);
-    }
+    // for (size_t i = 0; i < setSize; ++i) {
+    //     seqWeight[i] *= (branchWeights[indices[i]] + 1.0f);
+    // }
     seqWeightTotal = 0.0; // TODO: MathUtil::NormalizeTo1 computes the same sum again, could be optimized?
     for (size_t i = 0; i < setSize; ++i) {
         seqWeightTotal += seqWeight[i];

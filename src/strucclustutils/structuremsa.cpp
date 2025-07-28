@@ -215,6 +215,8 @@ Matcher::result_t pairwiseAlignment(
             for (int32_t j = 0; j < alphabetSize; j++) {
                 query_profile_scores_aa[j][i]  = query_aa->profile_for_alignment[j * querySeqLen + i];
                 query_profile_scores_3di[j][i] = query_3di->profile_for_alignment[j * querySeqLen + i];
+                // query_profile_scores_aa[j][i]  = query_aa->profile_for_alignment[j * querySeqLen + i] / 2.0f * 1.1f;
+                // query_profile_scores_3di[j][i] = query_3di->profile_for_alignment[j * querySeqLen + i] / 2.0f * 2.1f;
             }
         }
     } else {
@@ -237,6 +239,8 @@ Matcher::result_t pairwiseAlignment(
             for (int32_t j = 0; j < alphabetSize; j++) {
                 target_profile_scores_aa[j][i]  = target_aa->profile_for_alignment[j * target_aa->L + i];
                 target_profile_scores_3di[j][i] = target_3di->profile_for_alignment[j * target_aa->L + i];
+                // target_profile_scores_aa[j][i]  = target_aa->profile_for_alignment[j * target_aa->L + i] / 2.0f * 1.1f;
+                // target_profile_scores_3di[j][i] = target_3di->profile_for_alignment[j * target_aa->L + i] / 2.0f * 2.1f;
             }
         }
     } else {
@@ -605,34 +609,34 @@ void updateAllScores(
     );
     std::vector<AlnSimple> threadHits;
     
-    std::vector<short> selfScores(sequenceCnt);
-    for (unsigned int i = 0; i < sequenceCnt; i++) {
-        unsigned int mergedKey = seqDbrAA.getDbKey(i);
-        if (cluDbr != NULL && cluDbr->getId(mergedKey) == UINT_MAX) {
-            // If we have a cluster db and this structure is NOT in it, skip
-            // Should only align the representatives
-            continue;
-        }
-        size_t mergedId  = seqDbrAA.getId(mergedKey);
-        seqMergedAa.mapSequence(mergedId, mergedKey, seqDbrAA.getData(mergedId, thread_idx), seqDbrAA.getSeqLen(mergedId));
-        mergedId = seqDbr3Di.getId(mergedKey);
-        seqMergedSs.mapSequence(mergedId, mergedKey, seqDbr3Di.getData(mergedId, thread_idx), seqDbr3Di.getSeqLen(mergedId));
-        structureSmithWaterman.ssw_init(
-            &seqMergedAa,
-            &seqMergedSs,
-            tinySubMatAA,
-            tinySubMat3Di,
-            subMat_aa
-        );
-        StructureSmithWaterman::s_align self_aln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
-            seqMergedAa.numSequence,
-            seqMergedSs.numSequence,
-            seqMergedAa.L,
-            go, ge,
-            seqMergedAa.L/2
-        );
-        selfScores[i] = self_aln.score1;
-    }
+    // std::vector<short> selfScores(sequenceCnt);
+    // for (unsigned int i = 0; i < sequenceCnt; i++) {
+    //     unsigned int mergedKey = seqDbrAA.getDbKey(i);
+    //     if (cluDbr != NULL && cluDbr->getId(mergedKey) == UINT_MAX) {
+    //         // If we have a cluster db and this structure is NOT in it, skip
+    //         // Should only align the representatives
+    //         continue;
+    //     }
+    //     size_t mergedId  = seqDbrAA.getId(mergedKey);
+    //     seqMergedAa.mapSequence(mergedId, mergedKey, seqDbrAA.getData(mergedId, thread_idx), seqDbrAA.getSeqLen(mergedId));
+    //     mergedId = seqDbr3Di.getId(mergedKey);
+    //     seqMergedSs.mapSequence(mergedId, mergedKey, seqDbr3Di.getData(mergedId, thread_idx), seqDbr3Di.getSeqLen(mergedId));
+    //     structureSmithWaterman.ssw_init(
+    //         &seqMergedAa,
+    //         &seqMergedSs,
+    //         tinySubMatAA,
+    //         tinySubMat3Di,
+    //         subMat_aa
+    //     );
+    //     StructureSmithWaterman::s_align self_aln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
+    //         seqMergedAa.numSequence,
+    //         seqMergedSs.numSequence,
+    //         seqMergedAa.L,
+    //         go, ge,
+    //         seqMergedAa.L/2
+    //     );
+    //     selfScores[i] = self_aln.score1;
+    // }
 
 #pragma omp for schedule(dynamic, 10)
     for (unsigned int i = 0; i < sequenceCnt; i++) {
@@ -677,8 +681,9 @@ void updateAllScores(
                     go, ge,
                     seqMergedAa.L/2
             );
-            float score = (1.0f - (2 * saln.score1) / static_cast<float>(selfScores[i] + selfScores[j])) * 1000.0f; 
-            aln.score = static_cast<short>(score);
+            // float score = (1.0f - (2 * saln.score1) / static_cast<float>(selfScores[i] + selfScores[j])) * 1000.0f; 
+            // aln.score = static_cast<short>(score);
+            aln.score = saln.score1;
 
             threadHits.push_back(aln);     
             progress.updateProgress();
@@ -1278,7 +1283,7 @@ std::string msa2profile(
 #endif
         wg,
         // FIXME
-        0.0,
+        0.6,
         branchWeights,
         indices
     );
@@ -2013,19 +2018,19 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         sortHitsByScore(hits);
 
         Debug(Debug::INFO) << "Generating guide tree\n";
-        upgma(hits, sequenceCnt);
-        // mst(hits, sequenceCnt);
+        // upgma(hits, sequenceCnt);
+        mst(hits, sequenceCnt);
         // neighbour_joining(hits, sequenceCnt);
 
         // assert(hits.size() == sequenceCnt - 1);  // should be n-1 edges
 
         Debug(Debug::INFO) << "Optimising merge order\n";
-        // balanceTree(hits, merges, sequenceCnt);
-        merges.assign(sequenceCnt - 1, 1);
+        balanceTree(hits, merges, sequenceCnt);
+        // merges.assign(sequenceCnt - 1, 1);
 
-        std::vector<AlnEdge> edges = makeEdges(hits, sequenceCnt);
-        std::vector<int> sizes = subtreeSize(sequenceCnt, edges);
-        weights = treeWeights(sequenceCnt, edges, sizes);
+        // std::vector<AlnEdge> edges = makeEdges(hits, sequenceCnt);
+        // std::vector<int> sizes = subtreeSize(sequenceCnt, edges);
+        // weights = treeWeights(sequenceCnt, edges, sizes);
 
         std::string nw = makeNewick(hits, sequenceCnt, &qdbrH);
         std::string treeFile = par.filenames[par.filenames.size()-1] + ".nw";
@@ -2431,13 +2436,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 newSubMSA->concat(qMembers);
                 newSubMSA->concat(tMembers);
             }
-            
+
             // Don't need to make profiles on final alignment
             if (!(i == merges.size() - 1 && j == merges[i] - 1)) {
                 newSubMSA->mask = computeProfileMask(
                     newSubMSA->members,
-                    msa.cigars_ss,
-                    subMat_3di,
+                    msa.cigars_aa,
+                    subMat_aa,
                     par.matchRatio
                 );
                 newSubMSA->profile_aa = msa2profile(
