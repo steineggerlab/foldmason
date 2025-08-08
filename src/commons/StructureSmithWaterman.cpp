@@ -1153,10 +1153,16 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
             short biasAATbl[21] = { 0, 0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
             short lddtBias = ceil(lddtScoreMap[j-1][i]);
             short subScore = ceil((((query_profile_aa[j-1] + target_profile_aa[i]) / 2
-                + (query_profile_3di[j-1] + target_profile_3di[i]) / 2))
-                + ceil(lddtScoreMap[j-1][i]))
+                + (query_profile_3di[j-1] + target_profile_3di[i]) / 2)))
+                + ceil(lddtScoreMap[j-1][i])
                 + bias3DiTbl[agree3Di] + biasAATbl[agreeAA] + ((strongAgree >= 19) ? 2 : 0)
                 ; 
+            // short subScore = ceil(
+            //     static_cast<float>(
+            //         ((query_profile_aa[j-1] + target_profile_aa[i]) / 2 + (query_profile_3di[j-1] + target_profile_3di[i]) / 2)
+            //         + bias3DiTbl[agree3Di] + biasAATbl[agreeAA] + ((strongAgree >= 19) ? 2 : 0)
+            //     ) * lddtScoreMap[j-1][i])
+            //     ; 
             
             // std::cout << query_profile_aa[j-1] << '\t' << target_profile_aa[i]
             //     << '\t' << query_profile_3di[j-1] << '\t' << target_profile_3di[i]
@@ -1176,6 +1182,7 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
 
             // std::cout << curr_sM_G_D_vec[j].H << '\t';
             // std::cout << lddtBias << '\t';
+            // std::cout << -diagPenalty << '\t';
 
             uint8_t mode = 0;
             mode |= (curr_sM_G_D_vec[j].E == tempE) ? E_M_FLAG : E_E_FLAG;
