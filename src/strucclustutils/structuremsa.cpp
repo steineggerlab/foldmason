@@ -2091,18 +2091,60 @@ float score_continuous(float x, float k, float p, float min_score) {
     return min_score + (1.0f - min_score) * decay;
 }
 
+inline bool root_diff(float sum_ab, float prod4, float T) {
+    float s = sum_ab - T;
+    return (s < 0.0f) || (prod4 > s * s);
+}
 
-float score_binned(float ang_diff, float idx_diff) {
+inline float score_binned(float ang1, float ang2, float idx1, float idx2) {
     float sum = 0.0f;
-    if (ang_diff < 0.5f) sum += 1.0f;
-    else if (ang_diff < 1.0f) sum += 0.6f;
-    else if (ang_diff < 2.0f) sum += 0.4f;
-    else if (ang_diff < 4.0f) sum += 0.2f;
+    float sum_ab = ang1 + ang2;
+    float prod4 = 4.0f * ang1 * ang2;
+    if      (root_diff(sum_ab, prod4, 0.25f)) sum += 1.0f;
+    else if (root_diff(sum_ab, prod4, 1.0f)) sum += 0.6f;
+    else if (root_diff(sum_ab, prod4, 4.0f)) sum += 0.4f;
+    else if (root_diff(sum_ab, prod4, 16.0f)) sum += 0.2f;
+    float idx_diff = std::fabsf(idx1 - idx2);
     if (idx_diff < 2.0f) sum += 1.0f;
     else if (idx_diff < 4.0f) sum += 0.6f;
     else if (idx_diff < 8.0f) sum += 0.4f;
     else if (idx_diff < 12.0f) sum += 0.2f;
     return sum;
+}
+
+struct Neighbour {
+    Neighbour() : j(0), k(0), distance(0.0f) {}
+    Neighbour(size_t j, size_t k, float distance) : j(j), k(k), distance(distance) {}
+    bool empty() { return j == k; }
+    size_t j;
+    size_t k;
+    float distance;
+};
+
+template<size_t K>
+inline void insert_topk(
+    size_t rowBase,
+    uint8_t& count,
+    size_t owner_j,
+    size_t nb_k,
+    float d2,
+    std::vector<Neighbour>& out
+) {
+    if (count < K) {
+        out[rowBase + count] = Neighbour{ owner_j, nb_k, d2 };
+        ++count;
+        return;
+    }
+    // find worst (max d^2) among current K
+    size_t worst = rowBase;
+    float  wval  = out[worst].distance;
+    for (size_t t = 1; t < K; ++t) {
+        float v = out[rowBase + t].distance;
+        if (v > wval) { wval = v; worst = rowBase + t; }
+    }
+    if (d2 < wval) {
+        out[worst] = Neighbour{ owner_j, nb_k, d2 };
+    }
 }
 
 
@@ -2156,6 +2198,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     // Initialise MSAs, Sequence objects
     size_t sequenceCnt = seqDbrAA.getSize();
     int maxSeqLength = par.maxSeqLen;
+    size_t totalResidues = 0;
     MSAContainer msa(sequenceCnt);
     for (size_t i = 0; i < sequenceCnt; i++) {
         unsigned int seqKeyAA = seqDbrAA.getDbKey(i);
@@ -2163,54 +2206,73 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         size_t seqIdAA = seqDbrAA.getId(seqKeyAA);
         size_t seqId3Di = seqDbr3Di.getId(seqKey3Di);
         size_t length = seqDbrAA.getSeqLen(seqIdAA);
+        totalResidues += length;
         msa.addStructure(seqIdAA, seqKeyAA, length, seqDbrAA.getData(seqIdAA, 0), seqDbr3Di.getData(seqId3Di, 0));
         maxSeqLength = std::max(maxSeqLength, static_cast<int>(length));
     }
-    
-    
+   
     // Map neighbours per residue per structure
-    std::vector<std::vector<std::pair<int, float>>> neighbourDistances;
-    std::vector<size_t> neighbourOffsets;
-    size_t offset = 0;
+    const size_t neighbours = 21;
+    const float thresh = 15.0f;
+    const float thresh_sq = thresh * thresh;
+
+    std::vector<Neighbour> neighbourData(totalResidues * neighbours);
+    std::vector<size_t> proteinOffsets;
+    proteinOffsets.push_back(0);
+
+    size_t baseOut = 0;
     Coordinate16 tcoords;
-    float thresh = 15.0f;
+
     for (size_t i = 0; i < sequenceCnt; i++) {
         unsigned int seqKeyAA = seqDbrAA.getDbKey(i);
-        unsigned int seqKey3Di = seqDbr3Di.getDbKey(i);
         size_t seqIdAA = seqDbrAA.getId(seqKeyAA);
-        size_t seqId3Di = seqDbr3Di.getId(seqKey3Di);
         size_t length = seqDbrAA.getSeqLen(seqIdAA);
         
         char *tcadata = seqDbrCA->getData(seqIdAA, 0);
         size_t tCaLength = seqDbrCA->getEntryLen(seqIdAA);
         float *targetCaData = tcoords.read(tcadata, length, tCaLength);
-
-        std::vector<std::vector<std::pair<int, float>>> localDistances(length);
+        
+        const float* x = targetCaData;
+        const float* y = targetCaData + length;
+        const float* z = targetCaData + length * 2;
+        
+        std::vector<uint8_t> count(length, 0);
         for (size_t j = 0; j < length; ++j) {
+            const float xj = x[j], yj = y[j], zj = z[j];
+            const size_t rowBaseJ = baseOut + j * neighbours;
             for (size_t k = j + 1; k < length; ++k) {
-                float dx = targetCaData[j] - targetCaData[k];
-                float dy = targetCaData[j + length] - targetCaData[k + length];
-                float dz = targetCaData[j + length * 2] - targetCaData[k + length * 2];
-                float dist = std::sqrtf(dx * dx + dy * dy + dz * dz);
-                if (dist < thresh) {
-                    localDistances[j].emplace_back(k, dist);
-                    localDistances[k].emplace_back(j, dist);
+                float dx = xj - x[k];
+                float dist = dx * dx;
+                if (dist > thresh_sq) continue; 
+                float dy = yj - y[k];
+                dist += dy * dy;
+                if (dist > thresh_sq) continue; 
+                float dz = zj - z[k];
+                dist += dz * dz;
+                if (dist < thresh_sq) {
+                    insert_topk<neighbours>(rowBaseJ, count[j], static_cast<int>(j), static_cast<int>(k), dist, neighbourData); 
+                    const size_t rowBaseK = baseOut + k * neighbours;
+                    insert_topk<neighbours>(rowBaseK, count[k], static_cast<int>(k), static_cast<int>(j), dist, neighbourData); 
                 }
             }
         }
-        
         for (size_t j = 0; j < length; ++j) {
-            std::sort(localDistances[j].begin(), localDistances[j].end(), [](auto& a, auto& b){
-                return a.second < b.second;
-            });
+            const size_t rowBase = baseOut + j * neighbours;
+            const uint8_t c = count[j];
+            std::sort(
+                &neighbourData[rowBase],
+                &neighbourData[rowBase + c],
+                [](const Neighbour& a, const Neighbour& b) {
+                    return a.distance < b.distance;
+                }
+            );
+            for (size_t t = c; t < neighbours; ++t) {  // padding
+                neighbourData[rowBase + t] = Neighbour{j, j, 0.0f};
+            }
         }
-        neighbourOffsets.push_back(offset); 
-        offset += localDistances.size();
-        neighbourDistances.insert(neighbourDistances.end(), localDistances.begin(), localDistances.end());
-
+        baseOut += length * neighbours;
+        proteinOffsets.push_back(baseOut);
     }
-    
-    
    
     Debug(Debug::INFO) << "Initialised MSAs, Sequence objects\n";
 
@@ -2709,90 +2771,48 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                                 continue;
                             }
 
-                            size_t qOffset = neighbourOffsets[qMember];
-                            size_t tOffset = neighbourOffsets[tMember];
+                            size_t qOffset = proteinOffsets[qMember];
+                            size_t tOffset = proteinOffsets[tMember];
 
-                            auto& qDists = neighbourDistances[qOffset + qResId];
-                            auto& tDists = neighbourDistances[tOffset + tResId];
+                            size_t qIdx = qOffset + qResId * neighbours;
+                            size_t tIdx = tOffset + tResId * neighbours;
+                            // auto& qDists = neighbourData[qIdx];
+                            // auto& tDists = neighbourData[tIdx];
                             float sum = 0.0f;
-                            float minDistSize = std::min(qDists.size(), tDists.size());
-                            float denom = std::min(20.0f, minDistSize);
-                            for (size_t n = 0; n < denom; ++n) {
-                                float ang_diff = std::abs(qDists[n].second - tDists[n].second);
-                                if (ang_diff < 0.5f) sum += 1.0f;
-                                else if (ang_diff < 1.0f) sum += 0.6f;
-                                else if (ang_diff < 2.0f) sum += 0.4f;
-                                else if (ang_diff < 4.0f) sum += 0.2f;
-                                float idx_diff = std::abs((static_cast<int>(qResId) - qDists[n].first) - (static_cast<int>(tResId) - tDists[n].first));
-                                if (idx_diff < 2.0f) sum += 1.0f;
-                                else if (idx_diff < 4.0f) sum += 0.6f;
-                                else if (idx_diff < 8.0f) sum += 0.4f;
-                                else if (idx_diff < 12.0f) sum += 0.2f;
-                            }
-                            
-                            
-                            // std::vector<std::vector<float>> dp(denom+1, std::vector<float>(denom+1));
-                            // size_t max_i = 0, max_j = 0;
-                            // float max_score = std::numeric_limits<float>::min();
-                            // float gap = -0.5;
-                            // // for (size_t n = 0; n <= denom; ++n) {
-                            // //     dp[n][0] = n * gap;
-                            // //     dp[0][n] = n * gap;
-                            // // }
-                            // for (size_t n = 0; n < denom; ++n) {
-                            //     for (size_t m = 0; m < denom; ++m) {
-                            //         float ang_diff = std::abs(qDists[n].second - tDists[m].second);
-                            //         float idx_diff = std::abs((static_cast<int>(qResId) - qDists[n].first) - (static_cast<int>(tResId) - tDists[m].first));
-                            //         float score = score_binned(ang_diff, idx_diff);
-                            //         float match = dp[n][m] + score;
-                            //         float ins = dp[n][m+1] + gap;
-                            //         float del = dp[n+1][m] + gap;
-                            //         dp[n+1][m+1] = std::max({ 0.0f, match, ins, del });
-                            //         if (dp[n+1][m+1] > max_score) {
-                            //             max_i = n+1;
-                            //             max_j = m+1;
-                            //             max_score = dp[n+1][m+1];
-                            //         }
-                            //     }
-                            // }
-                            // float dpsum = 0.0f;
-                            // float pathlen = 0.0f;
-                            // while (dp[max_i][max_j] > 0) {
-                            //     // float match = dp[max_i-1][max_j-1];
-                            //     // float ins = dp[max_i-1][max_j];
-                            //     // float del = dp[max_i][max_j-1];
-                            //     float ang_diff = std::abs(qDists[max_i-1].second - tDists[max_j-1].second);
-                            //     float idx_diff = std::abs((static_cast<int>(qResId) - qDists[max_i-1].first) - (static_cast<int>(tResId) - tDists[max_j-1].first));
-                            //     float score = score_binned(ang_diff, idx_diff);
-                            //     float match = dp[max_i-1][max_j-1] + score;
-                            //     float ins = dp[max_i-1][max_j] + gap;
-                            //     float del = dp[max_i][max_j-1] + gap;
-                            //     if (dp[max_i][max_j] == match) {
-                            //         dpsum += score;
-                            //         pathlen++;
-                            //         --max_i;
-                            //         --max_j;
-                            //     } else if (dp[max_i][max_j] == ins) {
-                            //         --max_i;
-                            //     } else {
-                            //         --max_j;
-                            //     }
-                            // }
-                            // dpsum /= (pathlen*2);
-                            // std::cout << '\n';
-                            // std::cout << "DP score: " << dpsum << '\n';
+                            float norm = 0.0f;
+                            // float minDistSize = std::min(qDists.size(), tDists.size());
+                            // float denom = std::min(20.0f, minDistSize);
+                            for (size_t n = 0; n < neighbours; ++n) {
+                                Neighbour& qDist = neighbourData[qIdx + n];
+                                Neighbour& tDist = neighbourData[tIdx + n];
+                                if (qDist.empty() || tDist.empty()) break;
 
-                            float score = std::abs(sum / (denom * 2));
-                            // score = dpsum;
-                            // std::cout << score << '\n';
-                            //     << qMSAId << '\t' << tMSAId << '\t'
-                            //     << sum << '\t' << denom << '\t' << score << '\n';
+                                sum += score_binned(
+                                    qDist.distance,
+                                    tDist.distance,
+                                    (static_cast<int>(qDist.j) - static_cast<int>(qDist.k)),
+                                    (static_cast<int>(tDist.j) - static_cast<int>(tDist.k))
+                                );
+
+                                // float ang_diff = std::fabsf(std::sqrtf(qDist.distance) - std::sqrtf(tDist.distance));
+                                // float idx_diff = std::abs((static_cast<int>(qDist.j) - static_cast<int>(qDist.k)) - (static_cast<int>(tDist.j) - static_cast<int>(tDist.k)));
+                                // if (ang_diff < 0.5f) sum += 1.0f;
+                                // else if (ang_diff < 1.0f) sum += 0.6f;
+                                // else if (ang_diff < 2.0f) sum += 0.4f;
+                                // else if (ang_diff < 4.0f) sum += 0.2f;
+                                // if (idx_diff < 2.0f) sum += 1.0f;
+                                // else if (idx_diff < 4.0f) sum += 0.6f;
+                                // else if (idx_diff < 8.0f) sum += 0.4f;
+                                // else if (idx_diff < 12.0f) sum += 0.2f;
+
+                                norm += 2.0f;
+                            }
+                            float score = std::abs(sum / norm);
                             lddtSums[qMSAId][tMSAId] += score;
                             lddtCounts[qMSAId][tMSAId]++;
                             tSeqId++;
                             tResId++;
                         }
-
                         qSeqId++;
                         qResId++;
                     }
@@ -2862,8 +2882,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 for (size_t y = 0; y < seqMergedAa->L; ++y) {
                     for (size_t z = 0; z < seqTargetAa->L; ++z) {
                         lddtSums[y][z] = (lddtSums[y][z] * lddtSums[y][z]) / (rowMax[y] * colMax[z]);
-                        // lddtSums[y][z] -= (0.00001f * (y - z) * (y - z));
-                        lddtSums[y][z] = (lddtSums[y][z] < 0.7f) ? 0.0f : lddtSums[y][z] * 6;
+                        lddtSums[y][z] = (lddtSums[y][z] < 0.5f) ? 0.0f : lddtSums[y][z] * 6;
                     }
                 }
             }
