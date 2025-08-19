@@ -678,11 +678,11 @@ void updateAllScores(
     }
     
     int go = 10; int ge = 1;
-    if (const char* s = std::getenv("PCA")) {
+    if (const char* s = std::getenv("SW_GO")) {
         try { go = std::stoi(s); }
         catch(...) { std::cerr << "Warning: invalid PCA='" << s << "', using default\n"; }
     }
-    if (const char* s = std::getenv("PCB")) {
+    if (const char* s = std::getenv("SW_GE")) {
         try { ge = std::stoi(s); }
         catch(...) { std::cerr << "Warning: invalid PCB='" << s << "', using default\n"; }
     }
@@ -2109,8 +2109,63 @@ inline float score_binned(float ang1, float ang2, float idx1, float idx2) {
     else if (idx_diff < 4.0f) sum += 0.6f;
     else if (idx_diff < 8.0f) sum += 0.4f;
     else if (idx_diff < 12.0f) sum += 0.2f;
+    
+    // float sum2 = 0.0f;
+    // float sigma_d = 1.3f;
+    // float sigma_i = 4.0f;
+    // float r_d = std::fabsf(ang1 - ang2) / sigma_d;
+    // float r_i = std::fabsf(idx1 - idx2) / sigma_i;
+    // sum2 += 1.0f / (1.0f + r_d * r_d);
+    // sum2 += 1.0f / (1.0f + r_i * r_i);
+    // std::cout << std::fixed << std::setprecision(4) << sum << '\t' << sum2 << '\n';
+    
+    // float sum3 = 0.0f;
+    // sum3 += std::max(0.2f, std::min(1.0f, 0.628f * std::powf(std::fabsf(ang1 - ang2), -0.387f)));
+    // sum3 += std::max(0.2f, std::min(1.0f, 0.91f * std::powf(std::fabsf(idx1 - idx2), -0.61f)));
+    // std::cout << std::fixed << std::setprecision(4) << sum << '\t' << sum2 << '\t' << sum3 << '\n';
+    
     return sum;
 }
+
+inline float score_binned_manual(
+    float ang1,
+    float ang2,
+    float idx1,
+    float idx2,
+    float ang_sc1,
+    float ang_sc2,
+    float ang_sc3,
+    float ang_sc4,
+    float ang_thr1,
+    float ang_thr2,
+    float ang_thr3,
+    float ang_thr4,
+    float idx_sc1,
+    float idx_sc2,
+    float idx_sc3,
+    float idx_sc4,
+    float idx_thr1,
+    float idx_thr2,
+    float idx_thr3,
+    float idx_thr4
+) {
+    float sum = 0.0f;
+    float sum_ab = ang1 + ang2;
+    float prod4 = 4.0f * ang1 * ang2;
+    if      (root_diff(sum_ab, prod4, ang_thr1)) sum += ang_sc1;
+    else if (root_diff(sum_ab, prod4, ang_thr2)) sum += ang_sc2;
+    else if (root_diff(sum_ab, prod4, ang_thr3)) sum += ang_sc3;
+    else if (root_diff(sum_ab, prod4, ang_thr4)) sum += ang_sc4;
+    float idx_diff = std::fabsf(idx1 - idx2);
+    if      (idx_diff < idx_thr1) sum += idx_sc1;
+    else if (idx_diff < idx_thr2) sum += idx_sc2;
+    else if (idx_diff < idx_thr3) sum += idx_sc3;
+    else if (idx_diff < idx_thr4) sum += idx_sc4;
+    return sum;
+}
+
+
+
 
 struct Neighbour {
     Neighbour() : j(0), k(0), distance(0.0f) {}
@@ -2121,14 +2176,14 @@ struct Neighbour {
     float distance;
 };
 
-template<size_t K>
 inline void insert_topk(
     size_t rowBase,
     uint8_t& count,
     size_t owner_j,
     size_t nb_k,
     float d2,
-    std::vector<Neighbour>& out
+    std::vector<Neighbour>& out,
+    size_t K
 ) {
     if (count < K) {
         out[rowBase + count] = Neighbour{ owner_j, nb_k, d2 };
@@ -2144,6 +2199,15 @@ inline void insert_topk(
     }
     if (d2 < wval) {
         out[worst] = Neighbour{ owner_j, nb_k, d2 };
+    }
+}
+
+
+template<typename T>
+void get_param_from_env(const char* param, T& value) {
+    if (const char* s = std::getenv(param)) {
+        try { value = std::stoi(s); }
+        catch(...) { std::cerr << "Warning: invalid " << param << "='" << s << "', using default\n"; }
     }
 }
 
@@ -2212,8 +2276,53 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     }
    
     // Map neighbours per residue per structure
-    const size_t neighbours = 21;
-    const float thresh = 15.0f;
+    size_t neighbours = 21;
+    float thresh = 15.0f;
+    float nb_multiplier = 6.0f;
+    float nb_low_cut = 0.5f;
+    float nb_ang_sc1 = 1.0f;
+    float nb_ang_sc2 = 0.6f;
+    float nb_ang_sc3 = 0.4f;
+    float nb_ang_sc4 = 0.2f;
+    float nb_ang_thr1 = 0.5f;  // these should be squared
+    float nb_ang_thr2 = 1.0f;
+    float nb_ang_thr3 = 2.0f;
+    float nb_ang_thr4 = 4.0f;
+    float nb_idx_sc1 = 1.0f;
+    float nb_idx_sc2 = 0.6f;
+    float nb_idx_sc3 = 0.4f;
+    float nb_idx_sc4 = 0.2f;
+    float nb_idx_thr1 = 2.0f;
+    float nb_idx_thr2 = 4.0f;
+    float nb_idx_thr3 = 8.0f;
+    float nb_idx_thr4 = 12.0f;
+
+    get_param_from_env("NB_TOTAL", neighbours);
+    get_param_from_env("NB_ANG_CUT", thresh);
+    get_param_from_env("NB_MULT", nb_multiplier);
+    get_param_from_env("NB_LOW_CUT", nb_low_cut);
+    get_param_from_env("NB_ANG_SC1", nb_ang_sc1);
+    get_param_from_env("NB_ANG_SC2", nb_ang_sc2);
+    get_param_from_env("NB_ANG_SC3", nb_ang_sc3);
+    get_param_from_env("NB_ANG_SC4", nb_ang_sc4);
+    get_param_from_env("NB_ANG_THR1", nb_ang_thr1);
+    get_param_from_env("NB_ANG_THR2", nb_ang_thr2);
+    get_param_from_env("NB_ANG_THR3", nb_ang_thr3);
+    get_param_from_env("NB_ANG_THR4", nb_ang_thr4);
+    get_param_from_env("NB_IDX_SC1", nb_idx_sc1);
+    get_param_from_env("NB_IDX_SC2", nb_idx_sc2);
+    get_param_from_env("NB_IDX_SC3", nb_idx_sc3);
+    get_param_from_env("NB_IDX_SC4", nb_idx_sc4);
+    get_param_from_env("NB_IDX_THR1", nb_idx_thr1);
+    get_param_from_env("NB_IDX_THR2", nb_idx_thr2);
+    get_param_from_env("NB_IDX_THR3", nb_idx_thr3);
+    get_param_from_env("NB_IDX_THR4", nb_idx_thr4);
+    
+    nb_ang_thr1 *= nb_ang_thr1;
+    nb_ang_thr2 *= nb_ang_thr2;
+    nb_ang_thr3 *= nb_ang_thr3;
+    nb_ang_thr4 *= nb_ang_thr4;
+
     const float thresh_sq = thresh * thresh;
 
     std::vector<Neighbour> neighbourData(totalResidues * neighbours);
@@ -2250,9 +2359,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 float dz = zj - z[k];
                 dist += dz * dz;
                 if (dist < thresh_sq) {
-                    insert_topk<neighbours>(rowBaseJ, count[j], static_cast<int>(j), static_cast<int>(k), dist, neighbourData); 
+                    insert_topk(rowBaseJ, count[j], static_cast<int>(j), static_cast<int>(k), dist, neighbourData, neighbours); 
                     const size_t rowBaseK = baseOut + k * neighbours;
-                    insert_topk<neighbours>(rowBaseK, count[k], static_cast<int>(k), static_cast<int>(j), dist, neighbourData); 
+                    insert_topk(rowBaseK, count[k], static_cast<int>(k), static_cast<int>(j), dist, neighbourData, neighbours); 
                 }
             }
         }
@@ -2787,11 +2896,27 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                                 Neighbour& tDist = neighbourData[tIdx + n];
                                 if (qDist.empty() || tDist.empty()) break;
 
-                                sum += score_binned(
+                                sum += score_binned_manual(
                                     qDist.distance,
                                     tDist.distance,
                                     (static_cast<int>(qDist.j) - static_cast<int>(qDist.k)),
-                                    (static_cast<int>(tDist.j) - static_cast<int>(tDist.k))
+                                    (static_cast<int>(tDist.j) - static_cast<int>(tDist.k)),
+                                    nb_ang_sc1,
+                                    nb_ang_sc2,
+                                    nb_ang_sc3,
+                                    nb_ang_sc4,
+                                    nb_ang_thr1,
+                                    nb_ang_thr2,
+                                    nb_ang_thr3,
+                                    nb_ang_thr4,
+                                    nb_idx_sc1,
+                                    nb_idx_sc2,
+                                    nb_idx_sc3,
+                                    nb_idx_sc4,
+                                    nb_idx_thr1,
+                                    nb_idx_thr2,
+                                    nb_idx_thr3,
+                                    nb_idx_thr4
                                 );
 
                                 // float ang_diff = std::fabsf(std::sqrtf(qDist.distance) - std::sqrtf(tDist.distance));
@@ -2882,7 +3007,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 for (size_t y = 0; y < seqMergedAa->L; ++y) {
                     for (size_t z = 0; z < seqTargetAa->L; ++z) {
                         lddtSums[y][z] = (lddtSums[y][z] * lddtSums[y][z]) / (rowMax[y] * colMax[z]);
-                        lddtSums[y][z] = (lddtSums[y][z] < 0.5f) ? 0.0f : lddtSums[y][z] * 6;
+                        lddtSums[y][z] = (lddtSums[y][z] < nb_low_cut) ? 0.0f : lddtSums[y][z] * nb_multiplier;
                     }
                 }
             }
