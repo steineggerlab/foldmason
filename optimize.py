@@ -36,6 +36,9 @@ def objective(trial):
     sw_ge = trial.suggest_int("SW_GE", 0, 10)
     sw_go = trial.suggest_int("SW_GO", 1, 30)
     wg = trial.suggest_categorical("WG", [0, 1])
+    filter_msa = trial.suggest_categorical("FILTER_MSA", [0, 1])
+    bitfactor_aa = trial.suggest_float("BITFACTOR_AA", 0.0, 5.0)
+    bitfactor_3di = trial.suggest_float("BITFACTOR_3DI", 0.0, 5.0)
     
     ang_thresholds = [nb_ang_thr1, nb_ang_thr2, nb_ang_thr3, nb_ang_thr4]
     idx_thresholds = [nb_idx_thr1, nb_idx_thr2, nb_idx_thr3, nb_idx_thr4]
@@ -73,6 +76,9 @@ def objective(trial):
         "SW_GE": str(sw_ge),
         "SW_GO": str(sw_go),
         "WG": str(wg),
+        "FILTER_MSA": str(filter_msa),
+        "BITFACTOR_AA": str(bitfactor_aa),
+        "BITFACTOR_3DI": str(bitfactor_3di),
         "THREADS": "8"
     })
     
@@ -109,7 +115,7 @@ if __name__ == "__main__":
         direction="maximize",
         storage="sqlite:///db.sqlite3"
     )
-    n_calls = 500
+    n_calls = 100000
     
     # Run with default params first as baseline
     defaults = {
@@ -140,7 +146,10 @@ if __name__ == "__main__":
         "SCORE_BIAS": 0.6,
         "SW_GE": 1,
         "SW_GO": 10,
-        "WG": 0,
+        "WG": 1,
+        "FILTER_MSA": 0,
+        "BITFACTOR_AA": 1.1,
+        "BITFACTOR_3DI": 2.1,
         "THREADS": 8
     }
     study.enqueue_trial(defaults)

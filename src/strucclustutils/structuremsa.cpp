@@ -679,14 +679,11 @@ void updateAllScores(
     
     int go = 10; int ge = 1;
     if (const char* s = std::getenv("SW_GO")) {
-        try { go = std::stoi(s); }
-        catch(...) { std::cerr << "Warning: invalid PCA='" << s << "', using default\n"; }
+        go = std::stoi(s);
     }
     if (const char* s = std::getenv("SW_GE")) {
-        try { ge = std::stoi(s); }
-        catch(...) { std::cerr << "Warning: invalid PCB='" << s << "', using default\n"; }
+        ge = std::stoi(s);
     }
-    
 
 #pragma omp parallel
 {
@@ -2104,7 +2101,7 @@ inline float score_binned(float ang1, float ang2, float idx1, float idx2) {
     else if (root_diff(sum_ab, prod4, 1.0f)) sum += 0.6f;
     else if (root_diff(sum_ab, prod4, 4.0f)) sum += 0.4f;
     else if (root_diff(sum_ab, prod4, 16.0f)) sum += 0.2f;
-    float idx_diff = std::fabsf(idx1 - idx2);
+    float idx_diff = std::fabs(idx1 - idx2);
     if (idx_diff < 2.0f) sum += 1.0f;
     else if (idx_diff < 4.0f) sum += 0.6f;
     else if (idx_diff < 8.0f) sum += 0.4f;
@@ -2156,15 +2153,13 @@ inline float score_binned_manual(
     else if (root_diff(sum_ab, prod4, ang_thr2)) sum += ang_sc2;
     else if (root_diff(sum_ab, prod4, ang_thr3)) sum += ang_sc3;
     else if (root_diff(sum_ab, prod4, ang_thr4)) sum += ang_sc4;
-    float idx_diff = std::fabsf(idx1 - idx2);
+    float idx_diff = std::fabs(idx1 - idx2);
     if      (idx_diff < idx_thr1) sum += idx_sc1;
     else if (idx_diff < idx_thr2) sum += idx_sc2;
     else if (idx_diff < idx_thr3) sum += idx_sc3;
     else if (idx_diff < idx_thr4) sum += idx_sc4;
     return sum;
 }
-
-
 
 
 struct Neighbour {
@@ -2206,8 +2201,9 @@ inline void insert_topk(
 template<typename T>
 void get_param_from_env(const char* param, T& value) {
     if (const char* s = std::getenv(param)) {
-        try { value = std::stoi(s); }
-        catch(...) { std::cerr << "Warning: invalid " << param << "='" << s << "', using default\n"; }
+        value = std::stof(s);
+        // try { value = std::stof(s); }
+        // catch(...) { std::cerr << "Warning: invalid " << param << "='" << s << "', using default\n"; }
     }
 }
 
@@ -2317,6 +2313,28 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     get_param_from_env("NB_IDX_THR2", nb_idx_thr2);
     get_param_from_env("NB_IDX_THR3", nb_idx_thr3);
     get_param_from_env("NB_IDX_THR4", nb_idx_thr4);
+    
+    // std::cout
+    //     << "NB_TOTAL=" <<  neighbours << '\t'
+    //     << "NB_ANG_CUT=" <<  thresh << '\t'
+    //     << "NB_MULT=" <<  nb_multiplier << '\t'
+    //     << "NB_LOW_CUT=" <<  nb_low_cut << '\t'
+    //     << "NB_ANG_SC1=" <<  nb_ang_sc1 << '\t'
+    //     << "NB_ANG_SC2=" <<  nb_ang_sc2 << '\t'
+    //     << "NB_ANG_SC3=" <<  nb_ang_sc3 << '\t'
+    //     << "NB_ANG_SC4=" <<  nb_ang_sc4 << '\t'
+    //     << "NB_ANG_THR1=" <<  nb_ang_thr1 << '\t'
+    //     << "NB_ANG_THR2=" <<  nb_ang_thr2 << '\t'
+    //     << "NB_ANG_THR3=" <<  nb_ang_thr3 << '\t'
+    //     << "NB_ANG_THR4=" <<  nb_ang_thr4 << '\t'
+    //     << "NB_IDX_SC1=" <<  nb_idx_sc1 << '\t'
+    //     << "NB_IDX_SC2=" <<  nb_idx_sc2 << '\t'
+    //     << "NB_IDX_SC3=" <<  nb_idx_sc3 << '\t'
+    //     << "NB_IDX_SC4=" <<  nb_idx_sc4 << '\t'
+    //     << "NB_IDX_THR1=" <<  nb_idx_thr1 << '\t'
+    //     << "NB_IDX_THR2=" <<  nb_idx_thr2 << '\t'
+    //     << "NB_IDX_THR3=" <<  nb_idx_thr3 << '\t'
+    //     << "NB_IDX_THR4=" <<  nb_idx_thr4 << '\n';
     
     nb_ang_thr1 *= nb_ang_thr1;
     nb_ang_thr2 *= nb_ang_thr2;

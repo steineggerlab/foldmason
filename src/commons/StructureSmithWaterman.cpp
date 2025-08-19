@@ -813,15 +813,6 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
     // Define and initialize the backtrace matrix
     uint8_t * btMatrix = new uint8_t[query_length * target_length];
     
-    std::vector<std::tuple<int32_t, int32_t, short>> highscores;
-    auto cmp = [](auto& a, auto& b) {
-        return std::get<2>(a) > std::get<2>(b);
-    };
-    std::priority_queue<
-        std::tuple<int32_t, int32_t, short>,
-        std::vector<std::tuple<int32_t, int32_t, short>
-    >, decltype(cmp)> topKCells(cmp);
-
     scores *workspace = new scores[query_length * 2 + 2];
     scores *curr_sM_G_D_vec = &workspace[0];
     scores *prev_sM_G_D_vec = &workspace[query_length + 1];
@@ -908,19 +899,11 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
             // mode = (curr_sM_G_D_vec[j].H == 0) ? B : mode;
             btMatrix[i * query_length + (j - 1)] = mode;
             
-            if (topKCells.size() < 50) {
-                topKCells.emplace(static_cast<int32_t>(i), static_cast<int32_t>(j - 1), curr_sM_G_D_vec[j].H);
-            } else if (result.score > std::get<2>(topKCells.top())) {
-                topKCells.pop();
-                topKCells.emplace(static_cast<int32_t>(i), static_cast<int32_t>(j - 1), curr_sM_G_D_vec[j].H);
-            }
-
             // if (curr_sM_G_D_vec[j].H > result.score) {
             if (i == target_length - 1 && curr_sM_G_D_vec[j].H > result.score) {
                 result.ref = static_cast<int32_t> (i);
                 result.read = static_cast<int32_t> (j - 1);
                 result.score = curr_sM_G_D_vec[j].H;
-                highscores.emplace_back(result.ref, result.read, result.score);
             }
         }
 
@@ -928,7 +911,6 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
             result.ref = static_cast<int32_t> (i);
             result.read = static_cast<int32_t> (query_length - 1);
             result.score = curr_sM_G_D_vec[query_length].H;
-            highscores.emplace_back(result.ref, result.read, result.score);
         }
 
         // swap rows
@@ -937,30 +919,6 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
         curr_sM_G_D_vec = tmpPtr;
     }
         
-    // std::sort(highscores.begin(), highscores.end(), [](auto a, auto b){ return std::get<2>(a) > std::get<2>(b); });
-    highscores.clear();
-    while(!topKCells.empty()) {
-        highscores.push_back(topKCells.top());
-        topKCells.pop();
-    }
-    std::sort(highscores.rbegin(), highscores.rend());
-    // for (auto sc : highscores) {
-    //     std::cout << std::get<0>(sc) << ", " << std::get<1>(sc) << ", " << std::get<2>(sc) << '\n';
-    // }
-        
-    // for (int i = 0; i < query_length; i++) {
-    //     for (int j = 0; j < target_length; j++) {
-    //         uint8_t mode = btMatrix[j * query_length + i];
-    //         std::string mode_s;
-    //         if (mode & H) mode_s = "M"; 
-    //         else if (mode & E) mode_s = "E";
-    //         else if (mode & F) mode_s = "F";
-    //         else if (mode & B) mode_s = "B";
-    //         std::cout << mode_s << '\t';
-    //     }
-    //     std::cout << '\n';
-    // }
-
     // Perform the backtrace
     std::string cigar;
     
@@ -973,60 +931,28 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
     int qEnd = result.read;
 
     uint8_t mode = btMatrix[i  * query_length + j];
-    // while (i >= 0 && j >= 0) {
-    //     if (mode & H) {
-    //         cigar.push_back('M');
-    //         mode = btMatrix[i  * query_length + j];
-    //         qStart = j;
-    //         dbStart = i;
-    //         j--;
-    //         i--;
-    //     } else if (mode & E) {
-    //         cigar.push_back('I');
-    //         mode = (btMatrix[i  * query_length + j] & E_M_FLAG) ? H : E;
-    //         j--;
-    //     } else if (mode & F) {
-    //         cigar.push_back('D');
-    //         mode = (btMatrix[i  * query_length + j] & F_M_FLAG) ? H : F;
-    //         i--;
-    //     } else {
-    //     // } else if (mode & B) {
-    //         break;
-    //     }
-    // }
-
-    int numCigars = 5;
-    std::vector<std::string> cigars;
-    cigars.reserve(numCigars);
-    for (size_t z = 0; z < numCigars; ++z) {
-        std::string cig = "";
-        i = std::get<0>(highscores[z]); // result.ref;
-        j = std::get<1>(highscores[z]); // result.read;
-        uint8_t mode = btMatrix[i  * query_length + j];
-        while (i >= 0 && j >= 0) {
-            if (mode & H) {
-                cig.push_back('M');
-                mode = btMatrix[i  * query_length + j];
-                qStart = j;
-                dbStart = i;
-                j--;
-                i--;
-            } else if (mode & E) {
-                cig.push_back('I');
-                mode = (btMatrix[i  * query_length + j] & E_M_FLAG) ? H : E;
-                j--;
-            } else if (mode & F) {
-                cig.push_back('D');
-                mode = (btMatrix[i  * query_length + j] & F_M_FLAG) ? H : F;
-                i--;
-            } else {
-                break;
-            }
+    while (i >= 0 && j >= 0) {
+        if (mode & H) {
+            cigar.push_back('M');
+            mode = btMatrix[i  * query_length + j];
+            qStart = j;
+            dbStart = i;
+            j--;
+            i--;
+        } else if (mode & E) {
+            cigar.push_back('I');
+            mode = (btMatrix[i  * query_length + j] & E_M_FLAG) ? H : E;
+            j--;
+        } else if (mode & F) {
+            cigar.push_back('D');
+            mode = (btMatrix[i  * query_length + j] & F_M_FLAG) ? H : F;
+            i--;
+        } else {
+        // } else if (mode & B) {
+            break;
         }
-        cigars.push_back(cig);
     }
-    cigar = cigars[0];
-    
+
     // std::cout << "Backtrace: " << cigar << '\n';
     // for (size_t z = 1; z < cigars.size(); ++z) {
     //     std::cout << "    Alt " << z << ": " << cigars[z] << '\n';
@@ -1152,9 +1078,11 @@ Matcher::result_t StructureSmithWaterman::simpleGotoh(
             short bias3DiTbl[21] = { -1, 0,0,0,0, 0, 0, 0, 1, 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5};
             short biasAATbl[21] = { 0, 0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
             short lddtBias = ceil(lddtScoreMap[j-1][i]);
+            short diagPenalty = ceil(0.005f * std::abs(j-1 - i));
             short subScore = ceil((((query_profile_aa[j-1] + target_profile_aa[i]) / 2
                 + (query_profile_3di[j-1] + target_profile_3di[i]) / 2)))
                 + ceil(lddtScoreMap[j-1][i])
+                // - diagPenalty
                 + bias3DiTbl[agree3Di] + biasAATbl[agreeAA] + ((strongAgree >= 19) ? 2 : 0)
                 ; 
             // short subScore = ceil(
