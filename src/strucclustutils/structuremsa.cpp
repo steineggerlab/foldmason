@@ -53,6 +53,18 @@ KSEQ_INIT(kseq_buffer_t*, kseq_buffer_reader)
 
 #define	EXIT_FAILURE	1
 #define	EXIT_SUCCESS	0
+    
+
+template<typename T>
+void get_param_from_env(const char* param, T& value) {
+    if (const char* s = std::getenv(param)) {
+        value = std::stof(s);
+        // try { value = std::stof(s); }
+        // catch(...) { std::cerr << "Warning: invalid " << param << "='" << s << "', using default\n"; }
+    }
+}
+
+
 
 GapData getGapData(const Matcher::result_t &res, const std::vector<size_t>& qMap, const std::vector<size_t>& tMap) {
     GapData data;
@@ -1510,6 +1522,9 @@ std::string msa2profile(
             true
         );
     }
+    
+    float scorebias = 0.0f;
+    get_param_from_env("SCORE_BIAS_PSSM", scorebias);
 
     PSSMCalculator::Profile pssmRes = pssmCalculator.computePSSMFromMSA(
         filteredSetSize,
@@ -1520,7 +1535,7 @@ std::string msa2profile(
 #endif
         wg,
         // FIXME
-        0.0,
+        scorebias,
         branchWeights,
         indices
     );
@@ -2194,16 +2209,6 @@ inline void insert_topk(
     }
     if (d2 < wval) {
         out[worst] = Neighbour{ owner_j, nb_k, d2 };
-    }
-}
-
-
-template<typename T>
-void get_param_from_env(const char* param, T& value) {
-    if (const char* s = std::getenv(param)) {
-        value = std::stof(s);
-        // try { value = std::stof(s); }
-        // catch(...) { std::cerr << "Warning: invalid " << param << "='" << s << "', using default\n"; }
     }
 }
 

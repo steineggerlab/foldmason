@@ -3,6 +3,11 @@
 export MAX_N_PID_4_TCOFFEE=99998
 
 THREADS="${THREADS:=8}"
+RUN_UID="${RUN_UID:=1}"
+export HOMSTRAD_SCORES="homstrad_scores_${RUN_UID}.tsv"
+export AFDB_SCORES="afdb_scores_${RUN_UID}.tsv"
+export MSA_PREFIX="fm_probs_${RUN_UID}"
+export MSA_NAME="${MSA_PREFIX}_aa.fa"
 
 export COMP_BIAS="${COMP_BIAS:=0}"
 export GOTOH_GE="${GOTOH_GE:=0}"
@@ -29,6 +34,7 @@ export NB_LOW_CUT="${NB_LOW_CUT:=0.5}"  # discard neighbour scores under thresho
 export NB_MULT="${NB_MULT:=6}"
 export NB_TOTAL="${NB_TOTAL:=21}"
 export SCORE_BIAS="${SCORE_BIAS:=0.6}"
+export SCORE_BIAS_PSSM="${SCORE_BIAS_PSSM:=0.0}"
 export SW_GE="${SW_GE:=1}"
 export SW_GO="${SW_GO:=10}"
 export WG="${WG:=1}"
@@ -174,28 +180,43 @@ compute_score () {
 }
 
 process_path() {
-	if [ -e "${1}/tmp" ]; then rm -r "${1}/tmp"; fi
-	/Users/gamcil/repos/foldmason/build_vscode/src/foldmason easy-msa \
-		"${1}/pdbs" "${1}/fm_probs" "${1}/tmp" \
-		--gap-open "${GOTOH_GO}" \
-		--gap-extend "${GOTOH_GE}" \
-		--comp-bias-corr "${COMP_BIAS}" \
-		--match-ratio "${MATCH_RATIO}" \
-		--bitfactor-aa "${BITFACTOR_AA}" \
-		--bitfactor-3di "${BITFACTOR_3DI}" \
-		--filter-msa "${FILTER_MSA}" \
-		--threads 1 \
-		--wg "${WG}" \
-		-v 0 \
-		--score-bias "${SCORE_BIAS}"
+	if [ -e "${1}/tmp/latest/structures" ]; then
+		/Users/gamcil/repos/foldmason/build_vscode/src/foldmason structuremsa \
+			"${1}/tmp/latest/structures" "${1}/${MSA_PREFIX}" \
+			--gap-open "${GOTOH_GO}" \
+			--gap-extend "${GOTOH_GE}" \
+			--comp-bias-corr "${COMP_BIAS}" \
+			--match-ratio "${MATCH_RATIO}" \
+			--bitfactor-aa "${BITFACTOR_AA}" \
+			--bitfactor-3di "${BITFACTOR_3DI}" \
+			--filter-msa "${FILTER_MSA}" \
+			--threads 1 \
+			--wg "${WG}" \
+			-v 0 \
+			--score-bias "${SCORE_BIAS}"
+	else
+		/Users/gamcil/repos/foldmason/build_vscode/src/foldmason easy-msa \
+			"${1}/pdbs" "${1}/${MSA_PREFIX}" "${1}/tmp" \
+			--gap-open "${GOTOH_GO}" \
+			--gap-extend "${GOTOH_GE}" \
+			--comp-bias-corr "${COMP_BIAS}" \
+			--match-ratio "${MATCH_RATIO}" \
+			--bitfactor-aa "${BITFACTOR_AA}" \
+			--bitfactor-3di "${BITFACTOR_3DI}" \
+			--filter-msa "${FILTER_MSA}" \
+			--threads 1 \
+			--wg "${WG}" \
+			-v 0 \
+			--score-bias "${SCORE_BIAS}"
+	fi
 	FAM=$(basename "${1}")
 	if [[ "${1}" =~ ^homstrad ]]; then
-		SCORES=$(compute_score "${1}/${FAM}_msa.fasta" "${1}/fm_probs_aa.fa")
-		printf "%s\t%s\n" "$FAM" "$SCORES" >> homstrad_scores.tsv
+		SCORES=$(compute_score "${1}/${FAM}_msa.fasta" "${1}/${MSA_NAME}")
+		printf "%s\t%s\n" "$FAM" "$SCORES" >> "$HOMSTRAD_SCORES"
 	elif [[ "${1}" =~ ^afdb_clusters ]]; then
-		LDDT=$(/Users/gamcil/repos/foldmason/build_vscode/src/foldmason msa2lddt "${1}/tmp/latest/structures" "${1}/fm_probs_aa.fa" --threads 1 | awk '/Average MSA LDDT/ { print $4 }')
-		LDDT_OSC=$(/Users/gamcil/repos/foldmason/build_vscode/src/foldmason msa2lddt "${1}/tmp/latest/structures" "${1}/fm_probs_aa.fa" --threads 1 --only-scoring-cols | awk '/Average MSA LDDT/ { print $4 }')
-		printf "%s\t%f\t%f\n" "$FAM" "$LDDT" "$LDDT_OSC" >> afdb_scores.tsv
+		LDDT=$(/Users/gamcil/repos/foldmason/build_vscode/src/foldmason msa2lddt "${1}/tmp/latest/structures" "${1}/${MSA_NAME}" --threads 1 | awk '/Average MSA LDDT/ { print $4 }')
+		LDDT_OSC=$(/Users/gamcil/repos/foldmason/build_vscode/src/foldmason msa2lddt "${1}/tmp/latest/structures" "${1}/${MSA_NAME}" --threads 1 --only-scoring-cols | awk '/Average MSA LDDT/ { print $4 }')
+		printf "%s\t%f\t%f\n" "$FAM" "$LDDT" "$LDDT_OSC" >> "$AFDB_SCORES"
 	fi
 }
 
@@ -203,8 +224,8 @@ process_path() {
 export -f compute_score
 export -f process_path
 
-if [ -e "homstrad_scores.tsv" ]; then rm "homstrad_scores.tsv"; fi
-if [ -e "afdb_scores.tsv" ]; then rm "afdb_scores.tsv"; fi
+if [ -e "$HOMSTRAD_SCORES" ]; then rm "$HOMSTRAD_SCORES"; fi
+if [ -e "$AFDB_SCORES" ]; then rm "$AFDB_SCORES"; fi
 
 printf '%s\0' "${PATHS[@]}" |\
 	xargs -0 -I{} -P"${THREADS}" bash -c 'process_path "$@"' - '{}'
@@ -212,6 +233,6 @@ printf '%s\0' "${PATHS[@]}" |\
 compute_f1() {
 	awk -v mult="$2" '{ sum_a+=$2; sum_b+=$3; total+=1; } END { a=sum_a/total; b=sum_b/total; print mult*a, mult*b, mult*(2*a*b)/(a+b); }' "$1"
 }
-HOMSTRAD_F1=$(compute_f1 "homstrad_scores.tsv" 1)
-AFDB_F1=$(compute_f1 "afdb_scores.tsv" 100)
+HOMSTRAD_F1=$(compute_f1 "$HOMSTRAD_SCORES" 1)
+AFDB_F1=$(compute_f1 "$AFDB_SCORES" 100)
 echo $HOMSTRAD_F1 $AFDB_F1 | awk '{ print $1, $2, $3, $4, $5, $6, (2*$3*$6)/($3+$6) }'
