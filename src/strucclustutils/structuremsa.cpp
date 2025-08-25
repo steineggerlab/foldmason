@@ -2176,10 +2176,19 @@ inline float score_binned_manual(
     return sum;
 }
 
-inline float sim(float d, float sigma) {
-    float x = d * sigma;
-    float t = x * x;
-    return expf(-t);
+inline float delta2_norm(float a, float b) {
+    float num = (a - b) * (a - b);
+    float den = a + b + 1e-12f;
+    return num / den;
+}
+
+inline float sim_gauss(float a, float b, float sigma) {
+    return expf(-delta2_norm(a, b) * sigma);
+}
+
+inline float sim(float i1, float i2, float sigma) {
+    float x = fabsf(i1 - i2) * sigma;
+    return expf(-(x * x));
 }
 
 inline float score_continuous(
@@ -2189,10 +2198,8 @@ inline float score_continuous(
     float sigma_i,
     float alpha, float beta
 ) {
-    // float r1 = std::sqrtf(std::fmax(0.f, ang1_sq));
-    // float r2 = std::sqrtf(std::fmax(0.f, ang2_sq));
-    float Sr = sim(fabsf(ang1_sq - ang2_sq), sigma_r);
-    float Si = sim(fabsf(idx1 - idx2), sigma_i);
+    float Sr = sim_gauss(ang1_sq, ang2_sq, sigma_r);
+    float Si = sim(idx1, idx2, sigma_i);
     return alpha * Sr + beta * Si;
 }
 
@@ -2320,7 +2327,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     
     
     // continuous scoring vars
-    float nb_sigma_r = 3.0f;
+    float nb_sigma_r = 9.0f;
     float nb_sigma_i = 5.0f;
     float nb_alpha = 1.0f;
     float nb_beta = 1.0f;
@@ -2329,8 +2336,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     get_param_from_env("NB_ALPHA", nb_alpha);
     get_param_from_env("NB_BETA", nb_beta);
     
-    nb_sigma_r = 1 / nb_sigma_r;
-    nb_sigma_i = 1 / nb_sigma_i;
+    nb_sigma_r = 1.0f / nb_sigma_r;
+    nb_sigma_i = 1.0f / nb_sigma_i;
 
     get_param_from_env("NB_TOTAL", neighbours);
     get_param_from_env("NB_ANG_CUT", thresh);
@@ -2441,9 +2448,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     }
     
     // FIXME precompute here, maybe unavoidable
-    for (Neighbour& n : neighbourData) {
-        n.distance = sqrtf(std::max(0.f, n.distance));
-    }
+    // for (Neighbour& n : neighbourData) {
+    //     n.distance = std::sqrt(std::max(0.f, n.distance));
+    // }
    
     Debug(Debug::INFO) << "Initialised MSAs, Sequence objects\n";
 
@@ -2984,8 +2991,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                                 sum += score_continuous(
                                     qDist.distance,
                                     tDist.distance,
-                                    (static_cast<int>(qDist.j) - static_cast<int>(qDist.k)),
-                                    (static_cast<int>(tDist.j) - static_cast<int>(tDist.k)),
+                                    (static_cast<float>(qDist.j) - static_cast<float>(qDist.k)),
+                                    (static_cast<float>(tDist.j) - static_cast<float>(tDist.k)),
                                     nb_sigma_r,
                                     nb_sigma_i,
                                     nb_alpha, nb_beta
