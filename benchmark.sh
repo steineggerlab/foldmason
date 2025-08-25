@@ -1,7 +1,9 @@
 #/usr/bin/bash -e
 
 export MAX_N_PID_4_TCOFFEE=99998
+#export MAX_N_PID_4_TCOFFEE=$(cat /proc/sys/kernel/pid_max)
 
+export FOLDMASON="/Users/gamcil/repos/foldmason/build_vscode/src/foldmason"
 THREADS="${THREADS:=8}"
 RUN_UID="${RUN_UID:=1}"
 export HOMSTRAD_SCORES="homstrad_scores_${RUN_UID}.tsv"
@@ -14,22 +16,31 @@ export GOTOH_GE="${GOTOH_GE:=0}"
 export GOTOH_GO="${GOTOH_GO:=21}"
 export MATCH_RATIO="${MATCH_RATIO:=0.5}"
 export NB_ANG_CUT="${NB_ANG_CUT:=15.0}"  # angstrom cutoff
-export NB_ANG_SC1="${NB_ANG_SC1:=1.0}"
-export NB_ANG_SC2="${NB_ANG_SC2:=0.6}"
-export NB_ANG_SC3="${NB_ANG_SC3:=0.4}"
-export NB_ANG_SC4="${NB_ANG_SC4:=0.2}"
-export NB_ANG_THR1="${NB_ANG_THR1:=0.5}"
-export NB_ANG_THR2="${NB_ANG_THR2:=1.0}"
-export NB_ANG_THR3="${NB_ANG_THR3:=2.0}"
-export NB_ANG_THR4="${NB_ANG_THR4:=4.0}"
-export NB_IDX_SC1="${NB_IDX_SC1:=1.0}"
-export NB_IDX_SC2="${NB_IDX_SC2:=0.6}"
-export NB_IDX_SC3="${NB_IDX_SC3:=0.4}"
-export NB_IDX_SC4="${NB_IDX_SC4:=0.2}"
-export NB_IDX_THR1="${NB_IDX_THR1:=2.0}"
-export NB_IDX_THR2="${NB_IDX_THR2:=4.0}"
-export NB_IDX_THR3="${NB_IDX_THR3:=8.0}"
-export NB_IDX_THR4="${NB_IDX_THR4:=12.0}"
+
+export NB_SIGMA_R="${NB_SIGMA_R:=3.0}"
+export NB_SIGMA_I="${NB_SIGMA_I:=5.0}"
+export NB_P="${NB_P:=2.0}"
+export NB_Q="${NB_Q:=2.0}"
+export NB_ALPHA="${NB_ALPHA:=1.0}"
+export NB_BETA="${NB_BETA:=1.0}"
+
+# export NB_ANG_SC1="${NB_ANG_SC1:=1.0}"
+# export NB_ANG_SC2="${NB_ANG_SC2:=0.6}"
+# export NB_ANG_SC3="${NB_ANG_SC3:=0.4}"
+# export NB_ANG_SC4="${NB_ANG_SC4:=0.2}"
+# export NB_ANG_THR1="${NB_ANG_THR1:=0.5}"
+# export NB_ANG_THR2="${NB_ANG_THR2:=1.0}"
+# export NB_ANG_THR3="${NB_ANG_THR3:=2.0}"
+# export NB_ANG_THR4="${NB_ANG_THR4:=4.0}"
+# export NB_IDX_SC1="${NB_IDX_SC1:=1.0}"
+# export NB_IDX_SC2="${NB_IDX_SC2:=0.6}"
+# export NB_IDX_SC3="${NB_IDX_SC3:=0.4}"
+# export NB_IDX_SC4="${NB_IDX_SC4:=0.2}"
+# export NB_IDX_THR1="${NB_IDX_THR1:=2.0}"
+# export NB_IDX_THR2="${NB_IDX_THR2:=4.0}"
+# export NB_IDX_THR3="${NB_IDX_THR3:=8.0}"
+# export NB_IDX_THR4="${NB_IDX_THR4:=12.0}"
+
 export NB_LOW_CUT="${NB_LOW_CUT:=0.5}"  # discard neighbour scores under threshold
 export NB_MULT="${NB_MULT:=6}"
 export NB_TOTAL="${NB_TOTAL:=21}"
@@ -42,10 +53,18 @@ export BITFACTOR_AA="${BITFACTOR_AA:=1.1}"
 export BITFACTOR_3DI="${BITFACTOR_3DI:=2.1}"
 export FILTER_MSA="${FILTER_MSA:=0}"
 
-# echo COMP_BIAS = "${COMP_BIAS}"
-# echo GOTOH_GE = "${GOTOH_GE}"
-# echo GOTOH_GO = "${GOTOH_GO}"
-# echo MATCH_RATIO = "${MATCH_RATIO}"
+echo COMP_BIAS = "${COMP_BIAS}"
+echo GOTOH_GE = "${GOTOH_GE}"
+echo GOTOH_GO = "${GOTOH_GO}"
+echo MATCH_RATIO = "${MATCH_RATIO}"
+
+echo NB_SIGMA_R = "${NB_SIGMA_R}"
+echo NB_SIGMA_I = "${NB_SIGMA_I}"
+echo NB_P = "${NB_P}"
+echo NB_Q = "${NB_Q}"
+echo NB_ALPHA = "${NB_ALPHA}"
+echo NB_BETA = "${NB_BETA}"
+
 # echo NB_ANG_CUT = "${NB_ANG_CUT}"  # angstrom cutoff
 # echo NB_ANG_SC1 = "${NB_ANG_SC1}"
 # echo NB_ANG_SC2 = "${NB_ANG_SC2}"
@@ -63,16 +82,18 @@ export FILTER_MSA="${FILTER_MSA:=0}"
 # echo NB_IDX_THR2 = "${NB_IDX_THR2}"
 # echo NB_IDX_THR3 = "${NB_IDX_THR3}"
 # echo NB_IDX_THR4 = "${NB_IDX_THR4}"
-# echo NB_LOW_CUT = "${NB_LOW_CUT}"  # discard neighbour scores under threshold
-# echo NB_MULT = "${NB_MULT}"
-# echo NB_TOTAL = "${NB_TOTAL}"
-# echo SCORE_BIAS = "${SCORE_BIAS}"
-# echo SW_GE = "${SW_GE}"
-# echo SW_GO = "${SW_GO}"
-# echo WG = "${WG}"
-# echo BITFACTOR_AA = "${BITFACTOR_AA}"
-# echo BITFACTOR_3DI = "${BITFACTOR_3DI}"
-# echo FILTER_MSA = "${FILTER_MSA}"
+
+echo NB_LOW_CUT = "${NB_LOW_CUT}"  # discard neighbour scores under threshold
+echo NB_MULT = "${NB_MULT}"
+echo NB_TOTAL = "${NB_TOTAL}"
+echo SCORE_BIAS = "${SCORE_BIAS}"
+echo SCORE_BIAS_PSSM = "${SCORE_BIAS_PSSM}"
+echo SW_GE = "${SW_GE}"
+echo SW_GO = "${SW_GO}"
+echo WG = "${WG}"
+echo BITFACTOR_AA = "${BITFACTOR_AA}"
+echo BITFACTOR_3DI = "${BITFACTOR_3DI}"
+echo FILTER_MSA = "${FILTER_MSA}"
 
 PATHS=(
 	"homstrad/ABC_tran"
@@ -181,7 +202,7 @@ compute_score () {
 
 process_path() {
 	if [ -e "${1}/tmp/latest/structures" ]; then
-		/Users/gamcil/repos/foldmason/build_vscode/src/foldmason structuremsa \
+		"$FOLDMASON" structuremsa \
 			"${1}/tmp/latest/structures" "${1}/${MSA_PREFIX}" \
 			--gap-open "${GOTOH_GO}" \
 			--gap-extend "${GOTOH_GE}" \
@@ -195,7 +216,7 @@ process_path() {
 			-v 0 \
 			--score-bias "${SCORE_BIAS}"
 	else
-		/Users/gamcil/repos/foldmason/build_vscode/src/foldmason easy-msa \
+		"$FOLDMASON" easy-msa \
 			"${1}/pdbs" "${1}/${MSA_PREFIX}" "${1}/tmp" \
 			--gap-open "${GOTOH_GO}" \
 			--gap-extend "${GOTOH_GE}" \
@@ -214,8 +235,8 @@ process_path() {
 		SCORES=$(compute_score "${1}/${FAM}_msa.fasta" "${1}/${MSA_NAME}")
 		printf "%s\t%s\n" "$FAM" "$SCORES" >> "$HOMSTRAD_SCORES"
 	elif [[ "${1}" =~ ^afdb_clusters ]]; then
-		LDDT=$(/Users/gamcil/repos/foldmason/build_vscode/src/foldmason msa2lddt "${1}/tmp/latest/structures" "${1}/${MSA_NAME}" --threads 1 | awk '/Average MSA LDDT/ { print $4 }')
-		LDDT_OSC=$(/Users/gamcil/repos/foldmason/build_vscode/src/foldmason msa2lddt "${1}/tmp/latest/structures" "${1}/${MSA_NAME}" --threads 1 --only-scoring-cols | awk '/Average MSA LDDT/ { print $4 }')
+		LDDT=$("$FOLDMASON" msa2lddt "${1}/tmp/latest/structures" "${1}/${MSA_NAME}" --threads 1 | awk '/Average MSA LDDT/ { print $4 }')
+		LDDT_OSC=$("$FOLDMASON" msa2lddt "${1}/tmp/latest/structures" "${1}/${MSA_NAME}" --threads 1 --only-scoring-cols | awk '/Average MSA LDDT/ { print $4 }')
 		printf "%s\t%f\t%f\n" "$FAM" "$LDDT" "$LDDT_OSC" >> "$AFDB_SCORES"
 	fi
 }

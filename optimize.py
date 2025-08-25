@@ -1,87 +1,90 @@
 import os
 import subprocess
 import optuna
+import math
+from optuna.samplers import TPESampler
 
 
 def objective(trial):
-    comp_bias = trial.suggest_categorical("COMP_BIAS", [0, 1])
-    gotoh_ge = trial.suggest_int("GOTOH_GE", 0, 20)
-    gotoh_go = trial.suggest_int("GOTOH_GO", 1, 40)
-    match_ratio = trial.suggest_float("MATCH_RATIO", 0.0, 1.0, step=0.1)
-    nb_ang_cut = trial.suggest_int("NB_ANG_CUT", 1, 50)
-    nb_low_cut = trial.suggest_float("NB_LOW_CUT", 0.0, 1.0, step=0.1)
-    nb_mult = trial.suggest_int("NB_MULT", 1, 20)
-    nb_total = trial.suggest_int("NB_TOTAL", 1, 50)
-
+    # comp_bias = trial.suggest_categorical("COMP_BIAS", [0, 1])
+    # gotoh_ge = trial.suggest_int("GOTOH_GE", 0, 20)
+    # gotoh_go = trial.suggest_int("GOTOH_GO", 1, 40)
+    # match_ratio = trial.suggest_float("MATCH_RATIO", 0.0, 1.0, step=0.1)
+    # nb_ang_cut = trial.suggest_int("NB_ANG_CUT", 1, 50)
+    # nb_low_cut = trial.suggest_float("NB_LOW_CUT", 0.0, 1.0, step=0.1)
+    # nb_mult = trial.suggest_int("NB_MULT", 1, 20)
+    # nb_total = trial.suggest_int("NB_TOTAL", 1, 50)
+    
     # Thresholds in increasing order by number, thr1 < thr2 < thr3 < thr4
     # Scores in decreasing order by number, sc1 > sc2 > sc3 > sc4
-    nb_ang_sc1 = trial.suggest_float("NB_ANG_SC1", 0.0, 1.0, step=0.1)
-    nb_ang_sc2 = trial.suggest_float("NB_ANG_SC2", 0.0, 1.0, step=0.1)
-    nb_ang_sc3 = trial.suggest_float("NB_ANG_SC3", 0.0, 1.0, step=0.1)
-    nb_ang_sc4 = trial.suggest_float("NB_ANG_SC4", 0.0, 1.0, step=0.1)
-    nb_ang_thrs = sorted([
-        trial.suggest_float("NB_ANG_THR1", 0.0, 10.0, step=0.1),
-        trial.suggest_float("NB_ANG_THR2", 0.0, 10.0, step=0.1),
-        trial.suggest_float("NB_ANG_THR3", 0.0, 10.0, step=0.1),
-        trial.suggest_float("NB_ANG_THR4", 0.0, 10.0, step=0.1)
-    ])
+    # nb_ang_sc1 = trial.suggest_float("NB_ANG_SC1", 0.0, 1.0, step=0.1)
+    # nb_ang_sc2 = trial.suggest_float("NB_ANG_SC2", 0.0, 1.0, step=0.1)
+    # nb_ang_sc3 = trial.suggest_float("NB_ANG_SC3", 0.0, 1.0, step=0.1)
+    # nb_ang_sc4 = trial.suggest_float("NB_ANG_SC4", 0.0, 1.0, step=0.1)
+    # nb_ang_thrs = sorted([
+    #     trial.suggest_float("NB_ANG_THR1", 0.0, 10.0, step=0.1),
+    #     trial.suggest_float("NB_ANG_THR2", 0.0, 10.0, step=0.1),
+    #     trial.suggest_float("NB_ANG_THR3", 0.0, 10.0, step=0.1),
+    #     trial.suggest_float("NB_ANG_THR4", 0.0, 10.0, step=0.1)
+    # ])
 
-    nb_idx_sc1 = trial.suggest_float("NB_IDX_SC1", 0.0, 1.0)
-    nb_idx_sc2 = trial.suggest_float("NB_IDX_SC2", 0.0, 1.0)
-    nb_idx_sc3 = trial.suggest_float("NB_IDX_SC3", 0.0, 1.0)
-    nb_idx_sc4 = trial.suggest_float("NB_IDX_SC4", 0.0, 1.0)
-    nb_idx_thrs = sorted([ 
-        trial.suggest_float("NB_IDX_THR1", 0.0, 20.0, step=0.1),
-        trial.suggest_float("NB_IDX_THR2", 0.0, 20.0, step=0.1),
-        trial.suggest_float("NB_IDX_THR3", 0.0, 20.0, step=0.1),
-        trial.suggest_float("NB_IDX_THR4", 0.0, 20.0, step=0.1)
-    ])
+    # nb_idx_sc1 = trial.suggest_float("NB_IDX_SC1", 0.0, 1.0)
+    # nb_idx_sc2 = trial.suggest_float("NB_IDX_SC2", 0.0, 1.0)
+    # nb_idx_sc3 = trial.suggest_float("NB_IDX_SC3", 0.0, 1.0)
+    # nb_idx_sc4 = trial.suggest_float("NB_IDX_SC4", 0.0, 1.0)
+    # nb_idx_thrs = sorted([ 
+    #     trial.suggest_float("NB_IDX_THR1", 0.0, 20.0, step=0.1),
+    #     trial.suggest_float("NB_IDX_THR2", 0.0, 20.0, step=0.1),
+    #     trial.suggest_float("NB_IDX_THR3", 0.0, 20.0, step=0.1),
+    #     trial.suggest_float("NB_IDX_THR4", 0.0, 20.0, step=0.1)
+    # ])
 
-    score_bias = trial.suggest_float("SCORE_BIAS", -5.0, 5.0, step=0.1)
-    score_bias_pssm = trial.suggest_float("SCORE_BIAS_PSSM", -5.0, 5.0, step=0.1)
-    sw_ge = trial.suggest_int("SW_GE", 0, 10)
-    sw_go = trial.suggest_int("SW_GO", 1, 30)
-    wg = trial.suggest_categorical("WG", [0, 1])
-    filter_msa = trial.suggest_categorical("FILTER_MSA", [0, 1])
-    bitfactor_aa = trial.suggest_float("BITFACTOR_AA", 0.0, 5.0, step=0.1)
-    bitfactor_3di = trial.suggest_float("BITFACTOR_3DI", 0.0, 5.0, step=0.1)
+    # score_bias = trial.suggest_float("SCORE_BIAS", -5.0, 5.0, step=0.1)
+    # score_bias_pssm = trial.suggest_float("SCORE_BIAS_PSSM", -5.0, 5.0, step=0.1)
+    # sw_ge = trial.suggest_int("SW_GE", 0, 10)
+    # sw_go = trial.suggest_int("SW_GO", 1, 30)
+    # wg = trial.suggest_categorical("WG", [0, 1])
+    # filter_msa = trial.suggest_categorical("FILTER_MSA", [0, 1])
+    # bitfactor_aa = trial.suggest_float("BITFACTOR_AA", 0.0, 5.0, step=0.1)
+    # bitfactor_3di = trial.suggest_float("BITFACTOR_3DI", 0.0, 5.0, step=0.1)
+   
+    nb_sigma_r = trial.suggest_float("NB_SIGMA_R", 0.1, 12.0, log=True)
+    nb_sigma_i = trial.suggest_float("NB_SIGMA_i", 0.1, 12.0, log=True)
+    nb_p = trial.suggest_float("NB_P", 1.0, 2.0)
+    nb_q = trial.suggest_float("NB_Q", 1.0, 2.0)
+    logit_nb_alpha = trial.suggest_float("PRE_NB_ALPHA", 0.0, 1.0)
+    logit_nb_beta = trial.suggest_float("PRE_NB_BETA", 0.0, 1.0)
+    nb_alpha = logit_nb_alpha / (logit_nb_alpha + logit_nb_beta)
+    nb_beta = logit_nb_beta / (logit_nb_alpha + logit_nb_beta)
    
     env = os.environ.copy()
     env.update({
-        "COMP_BIAS": str(comp_bias),
-        "GOTOH_GE": str(gotoh_ge),
-        "GOTOH_GO": str(gotoh_go),
-        "MATCH_RATIO": str(match_ratio),
-        "NB_ANG_CUT": str(nb_ang_cut),
-        "NB_ANG_SC1": str(nb_ang_sc1),
-        "NB_ANG_SC2": str(nb_ang_sc2),
-        "NB_ANG_SC3": str(nb_ang_sc3),
-        "NB_ANG_SC4": str(nb_ang_sc4),
-        "NB_ANG_THR1": str(nb_ang_thrs[0]),
-        "NB_ANG_THR2": str(nb_ang_thrs[1]),
-        "NB_ANG_THR3": str(nb_ang_thrs[2]),
-        "NB_ANG_THR4": str(nb_ang_thrs[3]),
-        "NB_IDX_SC1": str(nb_idx_sc1),
-        "NB_IDX_SC2": str(nb_idx_sc2),
-        "NB_IDX_SC3": str(nb_idx_sc3),
-        "NB_IDX_SC4": str(nb_idx_sc4),
-        "NB_IDX_THR1": str(nb_idx_thrs[0]),
-        "NB_IDX_THR2": str(nb_idx_thrs[1]),
-        "NB_IDX_THR3": str(nb_idx_thrs[2]),
-        "NB_IDX_THR4": str(nb_idx_thrs[3]),
-        "NB_LOW_CUT": str(nb_low_cut),
-        "NB_MULT": str(nb_mult),
-        "NB_TOTAL": str(nb_total),
-        "SCORE_BIAS": str(score_bias),
-        "SCORE_BIAS_PSSM": str(score_bias_pssm),
-        "SW_GE": str(sw_ge),
-        "SW_GO": str(sw_go),
-        "WG": str(wg),
-        "FILTER_MSA": str(filter_msa),
-        "BITFACTOR_AA": str(bitfactor_aa),
-        "BITFACTOR_3DI": str(bitfactor_3di),
-        "THREADS": "8"
+        "GOTOH_GE": "3",
+        "GOTOH_GO": "32",
+        "NB_MULT": "18",
+        "NB_LOW_CUT": "0.1",
+        "NB_TOTAL": "50",
+        "NB_ANG_CUT": "20",
+        "COMP_BIAS": "1",
+        "WG": "0",
+        "FILTER_MSA": "0",
+        "SCORE_BIAS": "1.0",
+        "SCORE_BIAS_PSSM": "-1.6",
+        "SW_GO": "24",
+        "SW_GE": "8",
+        "BITFACTOR_AA": "1.1",
+        "BITFACTOR_3DI": "2.1",
+        "MATCH_RATIO": "0.9",
+        "THREADS": "128",
+        "NB_SIGMA_R": str(nb_sigma_r),
+        "NB_SIGMA_I": str(nb_sigma_i),
+        "NB_P": str(nb_p),
+        "NB_Q": str(nb_q),
+        "NB_ALPHA": str(nb_alpha),
+        "NB_BETA": str(nb_beta)
     })
+    trial.set_user_attr("NB_ALPHA", nb_alpha)
+    trial.set_user_attr("NB_BETA", nb_beta)
     
     try:
         result = subprocess.run(
@@ -118,50 +121,13 @@ def objective(trial):
 
 if __name__ == "__main__":
     study = optuna.create_study(
+        storage="",
+        study_name="foldmason_sweep2",
         direction="maximize",
-        storage="sqlite:///db.sqlite3",
-        study_name="foldmason_param_sweep",
-        load_if_exists=True
+        load_if_exists=True,
+        sampler=TPESampler()
     )
     n_calls = 100000
-    
-    # Run with default params first as baseline
-    defaults = {
-        "COMP_BIAS": 0,
-        "GOTOH_GE": 0,
-        "GOTOH_GO": 21,
-        "MATCH_RATIO": 0.5,
-        "NB_ANG_CUT": 15,
-        "NB_ANG_SC1": 1.0,
-        "NB_ANG_SC2": 0.6,
-        "NB_ANG_SC3": 0.4,
-        "NB_ANG_SC4": 0.2,
-        "NB_ANG_THR1": 0.5,
-        "NB_ANG_THR2": 1.0,
-        "NB_ANG_THR3": 2.0,
-        "NB_ANG_THR4": 4.0,
-        "NB_IDX_SC1": 1.0,
-        "NB_IDX_SC2": 0.6,
-        "NB_IDX_SC3": 0.4,
-        "NB_IDX_SC4": 0.2,
-        "NB_IDX_THR1": 2.0,
-        "NB_IDX_THR2": 4.0,
-        "NB_IDX_THR3": 8.0,
-        "NB_IDX_THR4": 12.0,
-        "NB_LOW_CUT": 0.5,
-        "NB_MULT": 6,
-        "NB_TOTAL": 21,
-        "SCORE_BIAS": 0.6,
-        "SCORE_BIAS_PSSM": 0.0,
-        "SW_GE": 1,
-        "SW_GO": 10,
-        "WG": 1,
-        "FILTER_MSA": 0,
-        "BITFACTOR_AA": 1.1,
-        "BITFACTOR_3DI": 2.1,
-        "THREADS": 8
-    }
-    study.enqueue_trial(defaults)
     study.optimize(objective, n_trials=n_calls)
     
     print("\n--- Optimization Complete ---")

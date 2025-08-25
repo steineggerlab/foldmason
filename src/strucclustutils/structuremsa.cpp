@@ -2176,6 +2176,25 @@ inline float score_binned_manual(
     return sum;
 }
 
+inline float sim(float i1, float i2, float sigma, float q) {
+    float d = std::fabs(i1 - i2);
+    float x = d / std::fmax(1e-6f, sigma);
+    return std::expf(-std::powf(x, q));
+}
+
+inline float score_continuous(
+    float ang1_sq, float ang2_sq,
+    float idx1, float idx2,
+    float sigma_r, float p,
+    float sigma_i, float q,
+    float alpha, float beta
+) {
+    float r1 = std::sqrtf(std::fmax(0.f, ang1_sq));
+    float r2 = std::sqrtf(std::fmax(0.f, ang2_sq));
+    float Sr = sim(r1, r2, sigma_r, p);
+    float Si = sim(idx1, idx2, sigma_i, q);
+    return alpha * Sr + beta * Si;
+}
 
 struct Neighbour {
     Neighbour() : j(0), k(0), distance(0.0f) {}
@@ -2297,6 +2316,21 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     float nb_idx_thr2 = 4.0f;
     float nb_idx_thr3 = 8.0f;
     float nb_idx_thr4 = 12.0f;
+    
+    
+    // continuous scoring vars
+    float nb_sigma_r = 3.0f;
+    float nb_sigma_i = 5.0f;
+    float nb_p = 2.0f;
+    float nb_q = 2.0f;
+    float nb_alpha = 1.0f;
+    float nb_beta = 1.0f;
+    get_param_from_env("NB_SIGMA_R", nb_sigma_r);
+    get_param_from_env("NB_SIGMA_I", nb_sigma_i);
+    get_param_from_env("NB_P", nb_p);
+    get_param_from_env("NB_Q", nb_q);
+    get_param_from_env("NB_ALPHA", nb_alpha);
+    get_param_from_env("NB_BETA", nb_beta);
 
     get_param_from_env("NB_TOTAL", neighbours);
     get_param_from_env("NB_ANG_CUT", thresh);
@@ -2919,27 +2953,37 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                                 Neighbour& tDist = neighbourData[tIdx + n];
                                 if (qDist.empty() || tDist.empty()) break;
 
-                                sum += score_binned_manual(
+                                // sum += score_binned_manual(
+                                //     qDist.distance,
+                                //     tDist.distance,
+                                //     (static_cast<int>(qDist.j) - static_cast<int>(qDist.k)),
+                                //     (static_cast<int>(tDist.j) - static_cast<int>(tDist.k)),
+                                //     nb_ang_sc1,
+                                //     nb_ang_sc2,
+                                //     nb_ang_sc3,
+                                //     nb_ang_sc4,
+                                //     nb_ang_thr1,
+                                //     nb_ang_thr2,
+                                //     nb_ang_thr3,
+                                //     nb_ang_thr4,
+                                //     nb_idx_sc1,
+                                //     nb_idx_sc2,
+                                //     nb_idx_sc3,
+                                //     nb_idx_sc4,
+                                //     nb_idx_thr1,
+                                //     nb_idx_thr2,
+                                //     nb_idx_thr3,
+                                //     nb_idx_thr4
+                                // );
+                                
+                                sum += score_continuous(
                                     qDist.distance,
                                     tDist.distance,
                                     (static_cast<int>(qDist.j) - static_cast<int>(qDist.k)),
                                     (static_cast<int>(tDist.j) - static_cast<int>(tDist.k)),
-                                    nb_ang_sc1,
-                                    nb_ang_sc2,
-                                    nb_ang_sc3,
-                                    nb_ang_sc4,
-                                    nb_ang_thr1,
-                                    nb_ang_thr2,
-                                    nb_ang_thr3,
-                                    nb_ang_thr4,
-                                    nb_idx_sc1,
-                                    nb_idx_sc2,
-                                    nb_idx_sc3,
-                                    nb_idx_sc4,
-                                    nb_idx_thr1,
-                                    nb_idx_thr2,
-                                    nb_idx_thr3,
-                                    nb_idx_thr4
+                                    nb_sigma_r, nb_p,
+                                    nb_sigma_i, nb_q,
+                                    nb_alpha, nb_beta
                                 );
 
                                 // float ang_diff = std::fabsf(std::sqrtf(qDist.distance) - std::sqrtf(tDist.distance));
