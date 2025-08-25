@@ -2176,23 +2176,23 @@ inline float score_binned_manual(
     return sum;
 }
 
-inline float sim(float i1, float i2, float sigma, float q) {
-    float d = std::fabs(i1 - i2);
-    float x = d / std::fmax(1e-6f, sigma);
-    return std::expf(-std::powf(x, q));
+inline float sim(float d, float sigma) {
+    float x = d * sigma;
+    float t = x * x;
+    return expf(-t);
 }
 
 inline float score_continuous(
     float ang1_sq, float ang2_sq,
     float idx1, float idx2,
-    float sigma_r, float p,
-    float sigma_i, float q,
+    float sigma_r,
+    float sigma_i,
     float alpha, float beta
 ) {
-    float r1 = std::sqrtf(std::fmax(0.f, ang1_sq));
-    float r2 = std::sqrtf(std::fmax(0.f, ang2_sq));
-    float Sr = sim(r1, r2, sigma_r, p);
-    float Si = sim(idx1, idx2, sigma_i, q);
+    // float r1 = std::sqrtf(std::fmax(0.f, ang1_sq));
+    // float r2 = std::sqrtf(std::fmax(0.f, ang2_sq));
+    float Sr = sim(fabsf(ang1_sq - ang2_sq), sigma_r);
+    float Si = sim(fabsf(idx1 - idx2), sigma_i);
     return alpha * Sr + beta * Si;
 }
 
@@ -2300,58 +2300,58 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     float thresh = 15.0f;
     float nb_multiplier = 6.0f;
     float nb_low_cut = 0.5f;
-    float nb_ang_sc1 = 1.0f;
-    float nb_ang_sc2 = 0.6f;
-    float nb_ang_sc3 = 0.4f;
-    float nb_ang_sc4 = 0.2f;
-    float nb_ang_thr1 = 0.5f;  // these should be squared
-    float nb_ang_thr2 = 1.0f;
-    float nb_ang_thr3 = 2.0f;
-    float nb_ang_thr4 = 4.0f;
-    float nb_idx_sc1 = 1.0f;
-    float nb_idx_sc2 = 0.6f;
-    float nb_idx_sc3 = 0.4f;
-    float nb_idx_sc4 = 0.2f;
-    float nb_idx_thr1 = 2.0f;
-    float nb_idx_thr2 = 4.0f;
-    float nb_idx_thr3 = 8.0f;
-    float nb_idx_thr4 = 12.0f;
+
+    // float nb_ang_sc1 = 1.0f;
+    // float nb_ang_sc2 = 0.6f;
+    // float nb_ang_sc3 = 0.4f;
+    // float nb_ang_sc4 = 0.2f;
+    // float nb_ang_thr1 = 0.5f;  // these should be squared
+    // float nb_ang_thr2 = 1.0f;
+    // float nb_ang_thr3 = 2.0f;
+    // float nb_ang_thr4 = 4.0f;
+    // float nb_idx_sc1 = 1.0f;
+    // float nb_idx_sc2 = 0.6f;
+    // float nb_idx_sc3 = 0.4f;
+    // float nb_idx_sc4 = 0.2f;
+    // float nb_idx_thr1 = 2.0f;
+    // float nb_idx_thr2 = 4.0f;
+    // float nb_idx_thr3 = 8.0f;
+    // float nb_idx_thr4 = 12.0f;
     
     
     // continuous scoring vars
     float nb_sigma_r = 3.0f;
     float nb_sigma_i = 5.0f;
-    float nb_p = 2.0f;
-    float nb_q = 2.0f;
     float nb_alpha = 1.0f;
     float nb_beta = 1.0f;
     get_param_from_env("NB_SIGMA_R", nb_sigma_r);
     get_param_from_env("NB_SIGMA_I", nb_sigma_i);
-    get_param_from_env("NB_P", nb_p);
-    get_param_from_env("NB_Q", nb_q);
     get_param_from_env("NB_ALPHA", nb_alpha);
     get_param_from_env("NB_BETA", nb_beta);
+    
+    nb_sigma_r = 1 / nb_sigma_r;
+    nb_sigma_i = 1 / nb_sigma_i;
 
     get_param_from_env("NB_TOTAL", neighbours);
     get_param_from_env("NB_ANG_CUT", thresh);
     get_param_from_env("NB_MULT", nb_multiplier);
     get_param_from_env("NB_LOW_CUT", nb_low_cut);
-    get_param_from_env("NB_ANG_SC1", nb_ang_sc1);
-    get_param_from_env("NB_ANG_SC2", nb_ang_sc2);
-    get_param_from_env("NB_ANG_SC3", nb_ang_sc3);
-    get_param_from_env("NB_ANG_SC4", nb_ang_sc4);
-    get_param_from_env("NB_ANG_THR1", nb_ang_thr1);
-    get_param_from_env("NB_ANG_THR2", nb_ang_thr2);
-    get_param_from_env("NB_ANG_THR3", nb_ang_thr3);
-    get_param_from_env("NB_ANG_THR4", nb_ang_thr4);
-    get_param_from_env("NB_IDX_SC1", nb_idx_sc1);
-    get_param_from_env("NB_IDX_SC2", nb_idx_sc2);
-    get_param_from_env("NB_IDX_SC3", nb_idx_sc3);
-    get_param_from_env("NB_IDX_SC4", nb_idx_sc4);
-    get_param_from_env("NB_IDX_THR1", nb_idx_thr1);
-    get_param_from_env("NB_IDX_THR2", nb_idx_thr2);
-    get_param_from_env("NB_IDX_THR3", nb_idx_thr3);
-    get_param_from_env("NB_IDX_THR4", nb_idx_thr4);
+    // get_param_from_env("NB_ANG_SC1", nb_ang_sc1);
+    // get_param_from_env("NB_ANG_SC2", nb_ang_sc2);
+    // get_param_from_env("NB_ANG_SC3", nb_ang_sc3);
+    // get_param_from_env("NB_ANG_SC4", nb_ang_sc4);
+    // get_param_from_env("NB_ANG_THR1", nb_ang_thr1);
+    // get_param_from_env("NB_ANG_THR2", nb_ang_thr2);
+    // get_param_from_env("NB_ANG_THR3", nb_ang_thr3);
+    // get_param_from_env("NB_ANG_THR4", nb_ang_thr4);
+    // get_param_from_env("NB_IDX_SC1", nb_idx_sc1);
+    // get_param_from_env("NB_IDX_SC2", nb_idx_sc2);
+    // get_param_from_env("NB_IDX_SC3", nb_idx_sc3);
+    // get_param_from_env("NB_IDX_SC4", nb_idx_sc4);
+    // get_param_from_env("NB_IDX_THR1", nb_idx_thr1);
+    // get_param_from_env("NB_IDX_THR2", nb_idx_thr2);
+    // get_param_from_env("NB_IDX_THR3", nb_idx_thr3);
+    // get_param_from_env("NB_IDX_THR4", nb_idx_thr4);
     
     // std::cout
     //     << "NB_TOTAL=" <<  neighbours << '\t'
@@ -2375,10 +2375,10 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     //     << "NB_IDX_THR3=" <<  nb_idx_thr3 << '\t'
     //     << "NB_IDX_THR4=" <<  nb_idx_thr4 << '\n';
     
-    nb_ang_thr1 *= nb_ang_thr1;
-    nb_ang_thr2 *= nb_ang_thr2;
-    nb_ang_thr3 *= nb_ang_thr3;
-    nb_ang_thr4 *= nb_ang_thr4;
+    // nb_ang_thr1 *= nb_ang_thr1;
+    // nb_ang_thr2 *= nb_ang_thr2;
+    // nb_ang_thr3 *= nb_ang_thr3;
+    // nb_ang_thr4 *= nb_ang_thr4;
 
     const float thresh_sq = thresh * thresh;
 
@@ -2438,6 +2438,11 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         }
         baseOut += length * neighbours;
         proteinOffsets.push_back(baseOut);
+    }
+    
+    // FIXME precompute here, maybe unavoidable
+    for (Neighbour& n : neighbourData) {
+        n.distance = sqrtf(std::max(0.f, n.distance));
     }
    
     Debug(Debug::INFO) << "Initialised MSAs, Sequence objects\n";
@@ -2981,8 +2986,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                                     tDist.distance,
                                     (static_cast<int>(qDist.j) - static_cast<int>(qDist.k)),
                                     (static_cast<int>(tDist.j) - static_cast<int>(tDist.k)),
-                                    nb_sigma_r, nb_p,
-                                    nb_sigma_i, nb_q,
+                                    nb_sigma_r,
+                                    nb_sigma_i,
                                     nb_alpha, nb_beta
                                 );
 

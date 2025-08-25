@@ -50,8 +50,6 @@ def objective(trial):
    
     nb_sigma_r = trial.suggest_float("NB_SIGMA_R", 0.1, 12.0, log=True)
     nb_sigma_i = trial.suggest_float("NB_SIGMA_i", 0.1, 12.0, log=True)
-    nb_p = trial.suggest_float("NB_P", 1.0, 2.0)
-    nb_q = trial.suggest_float("NB_Q", 1.0, 2.0)
     logit_nb_alpha = trial.suggest_float("PRE_NB_ALPHA", 0.0, 1.0)
     logit_nb_beta = trial.suggest_float("PRE_NB_BETA", 0.0, 1.0)
     nb_alpha = logit_nb_alpha / (logit_nb_alpha + logit_nb_beta)
@@ -78,8 +76,6 @@ def objective(trial):
         "THREADS": "128",
         "NB_SIGMA_R": str(nb_sigma_r),
         "NB_SIGMA_I": str(nb_sigma_i),
-        "NB_P": str(nb_p),
-        "NB_Q": str(nb_q),
         "NB_ALPHA": str(nb_alpha),
         "NB_BETA": str(nb_beta)
     })

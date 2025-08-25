@@ -3,9 +3,9 @@
 export MAX_N_PID_4_TCOFFEE=99998
 #export MAX_N_PID_4_TCOFFEE=$(cat /proc/sys/kernel/pid_max)
 
-export FOLDMASON="/Users/gamcil/repos/foldmason/build_vscode/src/foldmason"
-THREADS="${THREADS:=8}"
-RUN_UID="${RUN_UID:=1}"
+export FOLDMASON=""
+export THREADS="${THREADS:=8}"
+export RUN_UID="${RUN_UID:=1}"
 export HOMSTRAD_SCORES="homstrad_scores_${RUN_UID}.tsv"
 export AFDB_SCORES="afdb_scores_${RUN_UID}.tsv"
 export MSA_PREFIX="fm_probs_${RUN_UID}"
@@ -19,8 +19,6 @@ export NB_ANG_CUT="${NB_ANG_CUT:=15.0}"  # angstrom cutoff
 
 export NB_SIGMA_R="${NB_SIGMA_R:=3.0}"
 export NB_SIGMA_I="${NB_SIGMA_I:=5.0}"
-export NB_P="${NB_P:=2.0}"
-export NB_Q="${NB_Q:=2.0}"
 export NB_ALPHA="${NB_ALPHA:=1.0}"
 export NB_BETA="${NB_BETA:=1.0}"
 
@@ -53,17 +51,16 @@ export BITFACTOR_AA="${BITFACTOR_AA:=1.1}"
 export BITFACTOR_3DI="${BITFACTOR_3DI:=2.1}"
 export FILTER_MSA="${FILTER_MSA:=0}"
 
-echo COMP_BIAS = "${COMP_BIAS}"
-echo GOTOH_GE = "${GOTOH_GE}"
-echo GOTOH_GO = "${GOTOH_GO}"
-echo MATCH_RATIO = "${MATCH_RATIO}"
-
-echo NB_SIGMA_R = "${NB_SIGMA_R}"
-echo NB_SIGMA_I = "${NB_SIGMA_I}"
-echo NB_P = "${NB_P}"
-echo NB_Q = "${NB_Q}"
-echo NB_ALPHA = "${NB_ALPHA}"
-echo NB_BETA = "${NB_BETA}"
+# echo COMP_BIAS = "${COMP_BIAS}"
+# echo GOTOH_GE = "${GOTOH_GE}"
+# echo GOTOH_GO = "${GOTOH_GO}"
+# echo MATCH_RATIO = "${MATCH_RATIO}"
+# echo NB_SIGMA_R = "${NB_SIGMA_R}"
+# echo NB_SIGMA_I = "${NB_SIGMA_I}"
+# echo NB_P = "${NB_P}"
+# echo NB_Q = "${NB_Q}"
+# echo NB_ALPHA = "${NB_ALPHA}"
+# echo NB_BETA = "${NB_BETA}"
 
 # echo NB_ANG_CUT = "${NB_ANG_CUT}"  # angstrom cutoff
 # echo NB_ANG_SC1 = "${NB_ANG_SC1}"
@@ -83,17 +80,17 @@ echo NB_BETA = "${NB_BETA}"
 # echo NB_IDX_THR3 = "${NB_IDX_THR3}"
 # echo NB_IDX_THR4 = "${NB_IDX_THR4}"
 
-echo NB_LOW_CUT = "${NB_LOW_CUT}"  # discard neighbour scores under threshold
-echo NB_MULT = "${NB_MULT}"
-echo NB_TOTAL = "${NB_TOTAL}"
-echo SCORE_BIAS = "${SCORE_BIAS}"
-echo SCORE_BIAS_PSSM = "${SCORE_BIAS_PSSM}"
-echo SW_GE = "${SW_GE}"
-echo SW_GO = "${SW_GO}"
-echo WG = "${WG}"
-echo BITFACTOR_AA = "${BITFACTOR_AA}"
-echo BITFACTOR_3DI = "${BITFACTOR_3DI}"
-echo FILTER_MSA = "${FILTER_MSA}"
+# echo NB_LOW_CUT = "${NB_LOW_CUT}"  # discard neighbour scores under threshold
+# echo NB_MULT = "${NB_MULT}"
+# echo NB_TOTAL = "${NB_TOTAL}"
+# echo SCORE_BIAS = "${SCORE_BIAS}"
+# echo SCORE_BIAS_PSSM = "${SCORE_BIAS_PSSM}"
+# echo SW_GE = "${SW_GE}"
+# echo SW_GO = "${SW_GO}"
+# echo WG = "${WG}"
+# echo BITFACTOR_AA = "${BITFACTOR_AA}"
+# echo BITFACTOR_3DI = "${BITFACTOR_3DI}"
+# echo FILTER_MSA = "${FILTER_MSA}"
 
 PATHS=(
 	"homstrad/ABC_tran"
