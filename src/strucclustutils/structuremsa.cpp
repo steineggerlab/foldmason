@@ -149,119 +149,6 @@ inline float prob_cosine_similarity_inline(short **q, short **t, int i, int j) {
     return (denom > 0.0f) ? (dot / denom) : 0.0f;
 }
 
-Matcher::result_t alignStructure(
-    StructureSmithWaterman& structureSmithWaterman,
-    unsigned char* numSequenceAa,
-    unsigned char* numSequenceSs,
-    unsigned int querySeqLen,
-    unsigned int targetSeqLen,
-    size_t dbKey,
-    bool targetIsProfile,
-    int gapOpen,
-    int gapExtend,
-    Parameters& par
-) {
-    std::string backtrace;
-    StructureSmithWaterman::s_align align = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
-        numSequenceAa,
-        numSequenceSs,
-        targetSeqLen, gapOpen, gapExtend, querySeqLen / 2
-    );
-    bool hasLowerCoverage = !(Util::hasCoverage(par.covThr, par.covMode, align.qCov, align.tCov));
-    // if(hasLowerCoverage){
-    //     return -1;
-    // }
-    align = structureSmithWaterman.alignStartPosBacktrace<StructureSmithWaterman::PROFILE>(
-        numSequenceAa,
-        numSequenceSs,
-        targetSeqLen, gapOpen, gapExtend, 3, backtrace, align, 0, 0.0, querySeqLen
-    );
-    unsigned int alnLength = Matcher::computeAlnLength(align.qStartPos1, align.qEndPos1, align.dbStartPos1, align.dbEndPos1);
-    alnLength = backtrace.size();
-    float seqId = Util::computeSeqId(Parameters::SEQ_ID_ALN_LEN, align.identicalAACnt, querySeqLen, targetSeqLen, alnLength);
-    Matcher::result_t sw_align(
-        dbKey,
-        align.score1,
-        align.qCov, align.tCov,
-        seqId, align.evalue,
-        alnLength,
-        align.qStartPos1, align.qEndPos1, querySeqLen,
-        align.dbStartPos1, align.dbEndPos1, targetSeqLen,
-        backtrace
-    );
-    return sw_align;
-}
-
-std::vector<Matcher::result_t> computeAlternativeAlignments(
-    StructureSmithWaterman & structureSmithWaterman,
-    Sequence* seqTargetAa,
-    Sequence* seqTargetSs,
-    unsigned int querySeqLen,
-    unsigned int targetSeqLen,
-    bool targetIsProfile,
-    int gapOpen,
-    int gapExtend,
-    Parameters & par
-) {
-    const unsigned char xAAIndex = seqTargetAa->subMat->aa2num[static_cast<int>('X')];
-    const unsigned char x3DiIndex = seqTargetSs->subMat->aa2num[static_cast<int>('X')];
-    unsigned char *numSequenceAa = (unsigned char*)malloc(targetSeqLen);
-    unsigned char *numSequenceSs = (unsigned char*)malloc(targetSeqLen);
-    
-    std::vector<Matcher::result_t> altalis;
-    Matcher::result_t result;
-    bool moreAltAli = true;
-    
-    par.seqIdThr = 0.4;
-    
-    while (moreAltAli) {
-        // masking, copy to avoid needing another Sequence
-        if (altalis.size() == 0) {
-            for (unsigned int i = 0; i < targetSeqLen; ++i) {
-                numSequenceAa[i] = targetIsProfile ? seqTargetAa->numConsensusSequence[i] : seqTargetAa->numSequence[i];
-                numSequenceSs[i] = targetIsProfile ? seqTargetSs->numConsensusSequence[i] : seqTargetSs->numSequence[i];
-            }
-        } else {
-            for (unsigned int i = 0; i < targetSeqLen; ++i) {
-                if (i >= result.dbStartPos || i < result.dbEndPos) {
-                    numSequenceAa[i] = xAAIndex; 
-                    numSequenceSs[i] = x3DiIndex; 
-                } else {
-                    numSequenceAa[i] = targetIsProfile ? seqTargetAa->numConsensusSequence[i] : seqTargetAa->numSequence[i];
-                    numSequenceSs[i] = targetIsProfile ? seqTargetSs->numConsensusSequence[i] : seqTargetSs->numSequence[i];
-                }
-                // std::cout << (int)numSequenceAa[i]<< ' ';
-            }           
-            // std::cout << '\n';
-        }
-        result = alignStructure(
-            structureSmithWaterman, 
-            numSequenceAa,
-            numSequenceSs,
-            querySeqLen,
-            targetSeqLen,
-            result.dbKey,
-            targetIsProfile, gapOpen, gapExtend, par
-        );
-        // std::cout << (altalis.size() > 0 ? ">" : "" )
-        //     << "dbCov: " << result.dbcov << ", qCov: " << result.qcov
-        //     << ", " << result.seqId << ", "
-        //     << result.qStartPos << '-' << result.qEndPos << " (" << result.qLen << "), "
-        //     << result.dbStartPos << '-' << result.dbEndPos << " (" << result.dbLen << ")\n";
-        if (result.seqId < par.seqIdThr) break;
-        // if (!Alignment::checkCriteria(result, false, par.evalThr, par.seqIdThr, par.alnLenThr, par.covMode, par.covThr)) {
-        //     break;
-        // }
-        altalis.push_back(result);
-    }
-
-    free(numSequenceAa);
-    free(numSequenceSs);
-    
-    return altalis;
-}
-
-
 inline size_t upper_triangle_index(size_t i, size_t j, size_t n) {
     return (i * (2 * n - i - 1)) / 2 + (j - i - 1);
 }
@@ -277,8 +164,7 @@ Matcher::result_t pairwiseAlignment(
     SubstitutionMatrix *mat_aa,
     SubstitutionMatrix *mat_3di,
     int compBiasCorrection,
-    float** lddtScoreMap,
-    std::vector<std::tuple<size_t, size_t, size_t, size_t> > anchors
+    float** lddtScoreMap
 ) {
     std::string backtrace;
 
@@ -993,41 +879,6 @@ std::vector<int> subtreeSize(int n, const std::vector<AlnEdge>& edges) {
     return size;
 }
 
-std::vector<double> treeWeights(int n, const std::vector<AlnEdge>& edges, const std::vector<int>& size) {
-    int m     = edges.size()/2;
-    int total = n + m;
-
-    std::vector<std::vector<std::pair<int,double>>> tree(total);
-    for (auto& e : edges) {
-      tree[e.parentId].push_back({e.childId, e.length});
-    }
-
-    std::vector<double> w(total, 0.0);
-
-    std::function<void(int,double)> dfs = [&](int v, double acc) {
-      if (v < n) {
-        w[v] = acc;
-        return;
-      }
-      for (auto& [c, len] : tree[v]) {
-        double contrib = len / size[c];
-        dfs(c, acc + contrib);
-      }
-    };
-
-    int root = total - 1;
-    dfs(root, 0.0);
-
-    // normalize to mean = 1
-    double mean = 0;
-    for (int i = 0; i < n; ++i) mean += w[i];
-    mean /= n;
-    for (int i = 0; i < n; ++i) w[i] /= mean;
-
-    return w;
-}
-
-
 void balanceTree(std::vector<AlnSimple>& hits, std::vector<size_t>& merges, int n) {
     UnionFind uf(n);
     std::vector<int> counts(n, 0);
@@ -1208,8 +1059,7 @@ std::string computeProfileMask(
     std::vector<std::vector<Instruction> > &cigars_ss,
     SubstitutionMatrix &subMat_aa,
     SubstitutionMatrix &subMat_ss,
-    float matchRatio,
-    std::vector<float>& lddts
+    float matchRatio
 ) {
     int lengthWithoutGaps = cigarLength(cigars_aa[indices[0]], false);
     int lengthWithGaps = cigarLength(cigars_aa[indices[0]], true);
@@ -1221,8 +1071,7 @@ std::string computeProfileMask(
     // 0-19 residue types
     // 20   number of distinct residues
     std::vector<unsigned int> counts(Sequence::PROFILE_AA_SIZE * 2 * lengthWithGaps, 0);
-    std::vector<unsigned int> distinct_aa(lengthWithGaps, 0);
-    std::vector<unsigned int> distinct_ss(lengthWithGaps, 0);
+    std::vector<unsigned int> distinct(lengthWithGaps * 2, 0);
     for (size_t i = 0; i < indices.size(); i++) {
         int cigIndex = indices[i];
         int seqIndex = 0;
@@ -1237,7 +1086,7 @@ std::string computeProfileMask(
                     counts[ij] += 1;
                     if (counts[ij] == 1) {
                         // counts[(Sequence::PROFILE_AA_SIZE) * lengthWithGaps + seqIndex]++;
-                        distinct_aa[seqIndex]++;
+                        distinct[seqIndex]++;
                     }
                 }
                 if (c_ss < Sequence::PROFILE_AA_SIZE) {  // ignore X (20)
@@ -1245,7 +1094,7 @@ std::string computeProfileMask(
                     counts[ij] += 1;
                     if (counts[ij] == 1) {
                         // counts[(Sequence::PROFILE_AA_SIZE) * lengthWithGaps + seqIndex]++;
-                        distinct_ss[seqIndex]++;
+                        distinct[seqIndex * 2]++;
                     }
                 }
                 seqIndex++;
@@ -1270,21 +1119,17 @@ std::string computeProfileMask(
             if (ins_aa.isSeq()) {
                 const unsigned int c_aa = subMat_aa.aa2num[static_cast<int>(ins_aa.getCharacter())];
                 const unsigned int c_ss = subMat_ss.aa2num[static_cast<int>(ins_ss.getCharacter())];
-                // int distinct = distinct_aa[seqIndex] + distinct_ss[seqIndex];
-                // int distinct = counts[(Sequence::PROFILE_AA_SIZE) * lengthWithGaps + seqIndex];
                 int ij_aa = c_aa * lengthWithGaps + seqIndex;
                 int ij_ss = c_ss * 2 * lengthWithGaps + seqIndex;
                 if (
                     counts[ij_aa] > 0 &&
                     counts[ij_ss] > 0 &&
-                    distinct_aa[seqIndex] > 0 && 
-                    distinct_ss[seqIndex] > 0
+                    distinct[seqIndex] > 0 && 
+                    distinct[seqIndex * 2] > 0
                 ) {
                     seqWeights[i] += 1.0f / (
-                        static_cast<float>(counts[ij_aa])
-                        // * static_cast<float>(counts[ij_ss])
-                        * static_cast<float>(distinct_aa[seqIndex])
-                        // * static_cast<float>(distinct_ss[seqIndex])
+                        (static_cast<float>(counts[ij_aa]) + static_cast<float>(counts[ij_ss]))/2.0f
+                        * (static_cast<float>(distinct[seqIndex]) + static_cast<float>(distinct[seqIndex*2]))/2.0f
                         * (static_cast<float>(lengthWithoutGaps) + 30.0f)
                     );
                 }
@@ -1318,18 +1163,13 @@ std::string computeProfileMask(
         }
     }
     
-    // // Generate mask string
+    // Generate mask string
     std::string mask;
     for (int i = 0; i < lengthWithGaps; i++) {
-        // if (lddts[i] > 0.95f) {
-        //     mask.push_back('0');
-        // } else {
-            // mask.push_back('1');
-            float matches = colValues[i]; // * lddts[i];
-            float gaps = colValues[lengthWithGaps + i];
-            bool state = (gaps / (gaps + matches)) >= matchRatio;
-            mask.push_back(state ? '1' : '0');
-        // }
+        float matches = colValues[i];;
+        float gaps = colValues[lengthWithGaps + i];
+        bool state = (gaps / (gaps + matches)) >= matchRatio;
+        mask.push_back(state ? '1' : '0');
     }
 
     return mask;
@@ -2064,40 +1904,6 @@ void copyInstructionVectors(std::vector<std::vector<Instruction> > &one, std::ve
 }
 
 
-void mergeAndExtendAnchors(
-    std::vector<std::tuple<size_t, size_t, size_t, size_t>>& anchors,
-    size_t qlen,
-    size_t tlen,
-    size_t threshold = 5
-) {
-    if (anchors.empty()) return;
-    std::vector<std::tuple<size_t, size_t, size_t, size_t>> merged;
-    auto [qs, ts, qe, te] = anchors[0];
-    for (size_t i = 1; i < anchors.size(); ++i) {
-        auto [next_qs, next_ts, next_qe, next_te] = anchors[i];
-        if ((next_qs <= qe + threshold) && (next_ts <= te + threshold)) {
-            qe = std::max(qe, next_qe);
-            te = std::max(te, next_te);
-        } else {
-            merged.emplace_back(qs, ts, qe, te);
-            std::tie(qs, ts, qe, te) = anchors[i];
-        }
-    }
-    merged.emplace_back(qs, ts, qe, te);
-    for (auto& a : merged) {
-        auto& [qs, ts, qe, te] = a;
-        if (qs <= threshold && ts <= threshold) {
-            qs = 0;
-            ts = 0;
-        }
-        if (qe + threshold >= qlen && te + threshold >= tlen) {
-            qe = qlen - 1;
-            te = tlen - 1;
-        }
-    }
-    anchors = std::move(merged);
-}
-
 float score_continuous(float x, float k, float p, float min_score) {
     float decay = std::exp(-std::pow(x / k, p));
     return min_score + (1.0f - min_score) * decay;
@@ -2324,7 +2130,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     // float nb_idx_thr2 = 4.0f;
     // float nb_idx_thr3 = 8.0f;
     // float nb_idx_thr4 = 12.0f;
-    
     
     // continuous scoring vars
     float nb_sigma_r = 9.0f;
@@ -2576,19 +2381,14 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         sortHitsByScore(hits);
 
         Debug(Debug::INFO) << "Generating guide tree\n";
-        // upgma(hits, sequenceCnt);
         mst(hits, sequenceCnt);
+        // upgma(hits, sequenceCnt);
         // neighbour_joining(hits, sequenceCnt);
-
         // assert(hits.size() == sequenceCnt - 1);  // should be n-1 edges
 
         Debug(Debug::INFO) << "Optimising merge order\n";
         balanceTree(hits, merges, sequenceCnt);
         // merges.assign(sequenceCnt - 1, 1);
-
-        // std::vector<AlnEdge> edges = makeEdges(hits, sequenceCnt);
-        // std::vector<int> sizes = subtreeSize(sequenceCnt, edges);
-        // weights = treeWeights(sequenceCnt, edges, sizes);
 
         std::string nw = makeNewick(hits, sequenceCnt, &qdbrH);
         std::string treeFile = par.filenames[par.filenames.size()-1] + ".nw";
@@ -2806,97 +2606,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 std::cout << '\n';
             }
 
-            // int go = 10; int ge = 1;
-            // if (const char* s = std::getenv("PCA")) {
-            //     try { go = std::stoi(s); }
-            //     catch(...) { std::cerr << "Warning: invalid PCA='" << s << "', using default\n"; }
-            // }
-            // if (const char* s = std::getenv("PCB")) {
-            //     try { ge = std::stoi(s); }
-            //     catch(...) { std::cerr << "Warning: invalid PCB='" << s << "', using default\n"; }
-            // }
-
-            // std::vector<std::vector<Instruction>> copyAa;
-            // std::vector<std::vector<Instruction>> copySs;
-            // copyInstructionVectors(msa.cigars_aa, copyAa);
-            // copyInstructionVectors(msa.cigars_ss, copySs);
-            // std::string sw_backtrace = "";
-            // go = 14;
-            // ge = 0;
-
-            // std::vector<Matcher::result_t> altalis = computeAlternativeAlignments(
-            //     structureSmithWaterman, seqTargetAa, seqTargetSs, seqMergedAa->L, seqTargetAa->L,
-            //     targetIsProfile, go, ge, par);
-
-            // StructureSmithWaterman::s_align align = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
-            //     targetIsProfile ? seqTargetAa->numConsensusSequence : seqTargetAa->numSequence,
-            //     targetIsProfile ? seqTargetSs->numConsensusSequence : seqTargetSs->numSequence,
-            //     seqTargetAa->L,
-            //     go,
-            //     ge,
-            //     seqMergedAa->L / 2
-            // );
-            // StructureSmithWaterman::s_align revAlign = revStructureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
-            //     targetIsProfile ? seqTargetAa->numConsensusSequence : seqTargetAa->numSequence,
-            //     targetIsProfile ? seqTargetSs->numConsensusSequence : seqTargetSs->numSequence,
-            //     seqTargetAa->L,
-            //     go,
-            //     ge,
-            //     seqMergedAa->L / 2
-            // );
-            // align = structureSmithWaterman.alignStartPosBacktrace<StructureSmithWaterman::PROFILE>(
-            //     targetIsProfile ? seqTargetAa->numConsensusSequence : seqTargetAa->numSequence,
-            //     targetIsProfile ? seqTargetSs->numConsensusSequence : seqTargetSs->numSequence,
-            //     seqTargetAa->L,
-            //     go, ge,
-            //     3,
-            //     sw_backtrace,
-            //     align,
-            //     0,
-            //     0.0,
-            //     seqMergedAa->L
-            // );
-            // std::cout << align.qStartPos1 << '-' << align.qEndPos1 << '(' << seqMergedAa->L << "), "
-            //     << align.dbStartPos1 << '-' << align.dbEndPos1 << '(' << seqTargetAa->L << ")\n";
-
-            // align.score1 = static_cast<int32_t>(align.score1) - static_cast<int32_t>(revAlign.score1);
-            // unsigned int alnLength = Matcher::computeAlnLength(align.qStartPos1, align.qEndPos1, align.dbStartPos1, align.dbEndPos1);
-            // alnLength = sw_backtrace.size();
-            // float seqId = Util::computeSeqId(Parameters::SEQ_ID_ALN_LEN, align.identicalAACnt, seqMergedAa->L, seqTargetAa->L, alnLength); 
-            // Matcher::result_t sw_align(
-            //     seqTargetAa->getDbKey(),
-            //     align.score1,
-            //     align.qCov,
-            //     align.tCov,
-            //     seqId,
-            //     align.evalue,
-            //     alnLength,
-            //     align.qStartPos1,
-            //     align.qEndPos1,
-            //     seqMergedAa->L,
-            //     align.dbStartPos1,
-            //     align.dbEndPos1,
-            //     seqTargetAa->L,
-            //     sw_backtrace
-            // );
-            
-            // std::vector<Instruction> swqBt;
-            // std::vector<Instruction> swtBt;
-            // getMergeInstructions(sw_align, map1, map2, swqBt, swtBt);
-            // std::cout << std::setprecision(2) << mergedId << '\t' << targetId
-            //     << '\t' << sw_align.alnLength << '\t' << sw_align.seqId
-            //     << '\t' << sw_align.qStartPos << '-' << sw_align.qEndPos << " (" << sw_align.qLen << ')'
-            //     << '\t' << sw_align.dbStartPos << '-' << sw_align.dbEndPos << " (" << sw_align.dbLen << ')'
-            //     << '\t' << sw_align.backtrace << '\n';
-            // updateCIGARs(sw_align, map1, map2, copyAa, copySs, qMembers, tMembers, swqBt, swtBt);
-
-            // std::vector<size_t> members;
-            // members.insert(members.end(), qMembers.begin(), qMembers.end());
-            // members.insert(members.end(), tMembers.begin(), tMembers.end());
-            
-            // std::vector<float> lddtScores = std::get<0>(calculate_lddt(copyAa, members, msa.dbKeys, seqDbrCA, par.pairThreshold, par.onlyScoringCols));
-            // std::cout << "LDDT: " << lddtScores[0] << '\n';
-
             // 1. sw, update relevant copied cigars --> MSA
             // 2. lddt on MSA --> per col count
             // 3. iterate cigar, map msa per col lddt -> (i, j)
@@ -2906,8 +2615,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 memset(lddtScoreMap[z], 0, sizeof(float) * seqTargetAa->L);
                 // std::fill(lddtScoreMap[z], lddtScoreMap[z] + seqTargetAa->L, 0.0f);
             }
-            
-
 
             // Init n*m sum matrix, count matrix
             // For member in profile A
@@ -2958,36 +2665,10 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                             // auto& tDists = neighbourData[tIdx];
                             float sum = 0.0f;
                             float norm = 0.0f;
-                            // float minDistSize = std::min(qDists.size(), tDists.size());
-                            // float denom = std::min(20.0f, minDistSize);
                             for (size_t n = 0; n < neighbours; ++n) {
                                 Neighbour& qDist = neighbourData[qIdx + n];
                                 Neighbour& tDist = neighbourData[tIdx + n];
                                 if (qDist.empty() || tDist.empty()) break;
-
-                                // sum += score_binned_manual(
-                                //     qDist.distance,
-                                //     tDist.distance,
-                                //     (static_cast<int>(qDist.j) - static_cast<int>(qDist.k)),
-                                //     (static_cast<int>(tDist.j) - static_cast<int>(tDist.k)),
-                                //     nb_ang_sc1,
-                                //     nb_ang_sc2,
-                                //     nb_ang_sc3,
-                                //     nb_ang_sc4,
-                                //     nb_ang_thr1,
-                                //     nb_ang_thr2,
-                                //     nb_ang_thr3,
-                                //     nb_ang_thr4,
-                                //     nb_idx_sc1,
-                                //     nb_idx_sc2,
-                                //     nb_idx_sc3,
-                                //     nb_idx_sc4,
-                                //     nb_idx_thr1,
-                                //     nb_idx_thr2,
-                                //     nb_idx_thr3,
-                                //     nb_idx_thr4
-                                // );
-                                
                                 sum += score_continuous(
                                     qDist.distance,
                                     tDist.distance,
@@ -2997,18 +2678,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                                     nb_sigma_i,
                                     nb_alpha, nb_beta
                                 );
-
-                                // float ang_diff = std::fabsf(std::sqrtf(qDist.distance) - std::sqrtf(tDist.distance));
-                                // float idx_diff = std::abs((static_cast<int>(qDist.j) - static_cast<int>(qDist.k)) - (static_cast<int>(tDist.j) - static_cast<int>(tDist.k)));
-                                // if (ang_diff < 0.5f) sum += 1.0f;
-                                // else if (ang_diff < 1.0f) sum += 0.6f;
-                                // else if (ang_diff < 2.0f) sum += 0.4f;
-                                // else if (ang_diff < 4.0f) sum += 0.2f;
-                                // if (idx_diff < 2.0f) sum += 1.0f;
-                                // else if (idx_diff < 4.0f) sum += 0.6f;
-                                // else if (idx_diff < 8.0f) sum += 0.4f;
-                                // else if (idx_diff < 12.0f) sum += 0.2f;
-
                                 norm += 2.0f;
                             }
                             float score = std::abs(sum / norm);
@@ -3022,190 +2691,27 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     }
                 }
             }
-            
-            float avgscore = 0.0f;
-            if (false) {
-                std::vector<float> rowMean(seqMergedAa->L);
-                std::vector<float> colMean(seqTargetAa->L);
-                std::vector<float> colMax(seqTargetAa->L);
-                for (size_t y = 0; y < seqMergedAa->L; ++y) {
-                    float rowSum = 0.0f;
-                    for (size_t z = 0; z < seqTargetAa->L; ++z) {
-                        lddtSums[y][z] /= static_cast<float>(lddtCounts[y][z]);
-                        colMax[z] = std::max(colMax[z], lddtSums[y][z]);
-                    }
-                }
-                for (size_t y = 0; y < seqMergedAa->L; ++y) {
-                    float rowSum = 0.0f;
-                    for (size_t z = 0; z < seqTargetAa->L; ++z) {
-                        // lddtSums[y][z] = (lddtSums[y][z] / colMax[z]) : 0.0f;
-                        // lddtSums[y][z] = (colMax[z] > 0.0f) ? (lddtSums[y][z] / colMax[z]) : 0.0f;
-                        // lddtSums[y][z] /= colMax[z];
-                        rowSum += lddtSums[y][z];
-                        colMean[z] += lddtSums[y][z];
-                    }
-                    rowMean[y] = rowSum / seqTargetAa->L;
-                }
-                for (size_t z = 0; z < seqTargetAa->L; ++z) {
-                    colMean[z] /= seqMergedAa->L;
-                }
-                std::vector<float> rowStd(seqMergedAa->L);
-                std::vector<float> colStd(seqTargetAa->L);
-                for (size_t y = 0; y < seqMergedAa->L; ++y) {
-                    float rowSum = 0.0f;
-                    for (size_t z = 0; z < seqTargetAa->L; ++z) {
-                        float rdiff = lddtSums[y][z] - rowMean[y];
-                        float cdiff = lddtSums[y][z] - colMean[z];
-                        rowSum += rdiff * rdiff;
-                        colStd[z] += cdiff * cdiff;
-                    }
-                    rowStd[y] = std::sqrt(rowSum / seqTargetAa->L);
-                }
-                for (size_t z = 0; z < seqTargetAa->L; ++z) {
-                    colStd[z] = std::sqrt(colStd[z] / seqMergedAa->L);
-                }
-                for (size_t y = 0; y < seqMergedAa->L; ++y) {
-                    for (size_t z = 0; z < seqTargetAa->L; ++z) {
-                        float z_row = (lddtSums[y][z] - rowMean[y]) / rowStd[y];
-                        float z_col = (lddtSums[y][z] - colMean[z]) / colStd[z];
-                        lddtSums[y][z] = std::sqrt(std::abs(z_row * z_col));
-                        lddtSums[y][z] = (lddtSums[y][z] < 1.5f) ? 0.0f : lddtSums[y][z];
-                        avgscore += lddtSums[y][z];
-                    }
-                }
-            } else {
-                std::vector<float> rowMax(seqMergedAa->L);
-                std::vector<float> colMax(seqTargetAa->L);
-                for (size_t y = 0; y < seqMergedAa->L; ++y) {
-                    for (size_t z = 0; z < seqTargetAa->L; ++z) {
-                        lddtSums[y][z] /= static_cast<float>(lddtCounts[y][z]);
-                        colMax[z] = std::max(colMax[z], lddtSums[y][z]);
-                        rowMax[y] = std::max(rowMax[y], lddtSums[y][z]);
-                    }
-                }
-                for (size_t y = 0; y < seqMergedAa->L; ++y) {
-                    for (size_t z = 0; z < seqTargetAa->L; ++z) {
-                        lddtSums[y][z] = (lddtSums[y][z] * lddtSums[y][z]) / (rowMax[y] * colMax[z]);
-                        lddtSums[y][z] = (lddtSums[y][z] < nb_low_cut) ? 0.0f : lddtSums[y][z] * nb_multiplier;
-                    }
+            std::vector<float> rowMax(seqMergedAa->L);
+            std::vector<float> colMax(seqTargetAa->L);
+            for (int y = 0; y < seqMergedAa->L; ++y) {
+                for (int z = 0; z < seqTargetAa->L; ++z) {
+                    lddtSums[y][z] /= static_cast<float>(lddtCounts[y][z]);
+                    colMax[z] = std::max(colMax[z], lddtSums[y][z]);
+                    rowMax[y] = std::max(rowMax[y], lddtSums[y][z]);
                 }
             }
-            avgscore /= (static_cast<float>(seqMergedAa->L) * static_cast<float>(seqTargetAa->L));
-
-            // for (size_t y = 0; y < seqMergedAa->L; ++y) {
-            //     for (size_t z = 0; z < seqTargetAa->L; ++z) {
-            //         // lddtSums[y][z] -= avgscore;
-            //         // lddtSums[y][z] *= 2;
-            //         std::cout << std::fixed << std::setprecision(3)
-            //             << lddtSums[y][z] << '\t';
-            //     }
-            //     std::cout << '\n';
-            // }
-            // std::cout << '\n';
-
-            // unsigned int qi = 0;
-            // unsigned int tj = 0;
-            // size_t bt = 0;
-            
-            std::vector<std::tuple<size_t, size_t, size_t, size_t> > anchors;
-            // int blockStart = -1;
-            // int blockEnd = -1;
-            // int blockCount = 0;
-            // int blockThreshold = 5;
-            // int underCount = 0;
-            // int underThreshold = 3;
-            
-            // for (size_t z = 0; z < lddtScores.size(); z++) {
-            //     if (lddtScores[z] > 0.7) {
-            //         if (blockStart == -1 && blockEnd == -1) {
-            //             blockStart = qi;
-            //             blockEnd = tj;
-            //         }
-            //         blockCount++;
-            //         if (z == lddtScores.size() - 1 && blockStart != -1 && blockEnd != -1) {
-            //             anchors.push_back(std::make_tuple(blockStart, blockEnd, qi, tj));
-            //         }
-            //     } else {
-            //         if (blockStart != -1 && blockEnd != -1) {
-            //             if (underCount == underThreshold) {
-            //                 if (blockCount >= blockThreshold) {
-            //                     anchors.push_back(std::make_tuple(blockStart, blockEnd, qi, tj));
-            //                 }
-            //                 blockStart = -1;
-            //                 blockEnd = -1;
-            //                 blockCount = 0;
-            //                 underCount = 0;
-            //             } 
-            //             underCount++;
-            //         }
-            //     }
-
-            //     if (qi < sw_align.qStartPos) {
-            //         lddtScoreMap[qi][0] = lddtScores[z];
-            //         qi++;
-            //         continue;
-            //     }
-            //     if (tj < sw_align.dbStartPos) {
-            //         lddtScoreMap[0][tj] = lddtScores[z];
-            //         tj++;
-            //         continue;
-            //     }
-            //     if (bt < sw_align.backtrace.size()) {
-            //         if (sw_align.backtrace[bt] == 'M') {
-            //             lddtScoreMap[qi][tj] = lddtScores[z];
-            //             qi++;
-            //             tj++;
-            //             bt++;
-            //         } else if (sw_align.backtrace[bt] == 'I') {
-            //             lddtScoreMap[qi][tj] = lddtScores[z];
-            //             qi++;
-            //             bt++;
-            //         } else {
-            //             lddtScoreMap[qi][tj] = lddtScores[z];
-            //             tj++;
-            //             bt++;
-            //         }
-            //         continue;
-            //     }
-            //     if (tj < sw_align.dbLen) {
-            //         lddtScoreMap[0][tj] = lddtScores[z];
-            //         tj++;
-            //         continue;
-            //     }
-            //     if (qi < sw_align.qLen) {
-            //         lddtScoreMap[qi][0] = lddtScores[z];
-            //         qi++;
-            //         continue;
-            //     }
-            // }
-            
-            // if (false && queryIsProfile && targetIsProfile) {
-            //     SubMSA& q = msa[querySubMSA];
-            //     SubMSA& t = msa[targetSubMSA];
-            //     for (size_t y = 0; y < seqMergedAa->L; ++y) {
-            //         for (size_t z = 0; z < seqTargetAa->L; ++z) {
-            //             if (std::abs(q.lddt[y] - t.lddt[z]) > 0.1f) {
-            //                 lddtScoreMap[y][z] *= 0.0f;
-            //             } else {
-            //                 lddtScoreMap[y][z] *= std::sqrt(q.lddt[y] * t.lddt[z]);
-            //             }
-            //             // lddtScoreMap[y][z] = lddtScoreMap[y][z] * (1.0f - std::abs(q.lddt[y] - t.lddt[z]));
-            //         }
-            //     }
-            // } else {
-                for (size_t y = 0; y < seqMergedAa->L; ++y) {
-                    for (size_t z = 0; z < seqTargetAa->L; ++z) {
-                        lddtScoreMap[y][z] = lddtSums[y][z];
-                        // lddtScoreMap[y][z] = lddtScoreMap[y][z];
-                    }
+            for (int y = 0; y < seqMergedAa->L; ++y) {
+                for (int z = 0; z < seqTargetAa->L; ++z) {
+                    lddtSums[y][z] = (lddtSums[y][z] * lddtSums[y][z]) / (rowMax[y] * colMax[z]);
+                    lddtSums[y][z] = (lddtSums[y][z] < nb_low_cut) ? 0.0f : lddtSums[y][z] * nb_multiplier;
                 }
-            // }
+            }
+            for (int y = 0; y < seqMergedAa->L; ++y) {
+                for (int z = 0; z < seqTargetAa->L; ++z) {
+                    lddtScoreMap[y][z] = lddtSums[y][z];
+                }
+            }
             
-            // Identify anchors
-            // >0.8 LDDT, >10 residues?
-            // mergeAndExtendAnchors(anchors, seqMergedAa->L, seqTargetAa->L, 5);
-
-
             Matcher::result_t res = pairwiseAlignment(
                 structureSmithWaterman,
                 seqMergedAa->L,
@@ -3218,8 +2724,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 &subMat_aa,
                 &subMat_3di,
                 par.compBiasCorrection,
-                lddtScoreMap,
-                anchors
+                lddtScoreMap
             );
 
             for (int32_t z = 0; z < seqMergedAa->L; z++) {
@@ -3259,11 +2764,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 newSubMSA->concat(qMembers);
                 newSubMSA->concat(tMembers);
             }
-            std::vector<float> lddtScoresNew = std::get<0>(
-                calculate_lddt(msa.cigars_aa, newSubMSA->members, msa.dbKeys, seqDbrCA, par.pairThreshold, par.onlyScoringCols)
-            );
-
-
             // Don't need to make profiles on final alignment
             if (!(i == merges.size() - 1 && j == merges[i] - 1)) {
                 // newSubMSA->mask = computeProfileMask(
@@ -3278,16 +2778,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     msa.cigars_ss,
                     subMat_aa,
                     subMat_3di,
-                    par.matchRatio,
-                    lddtScoresNew
+                    par.matchRatio
                 );
                 // newSubMSA->mask = std::string(cigarLength(msa.cigars_aa[newSubMSA->members[0]], true), '0');
-                newSubMSA->lddt.clear();
-                for (size_t z = 0; z < newSubMSA->mask.length(); ++z) {
-                    if (newSubMSA->mask[z] == '0') {
-                        newSubMSA->lddt.push_back(lddtScoresNew[z]);
-                    }
-                }
                 newSubMSA->profile_aa = msa2profile(
                     newSubMSA->members,
                     msa.cigars_aa,
