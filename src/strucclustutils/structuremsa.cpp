@@ -2091,46 +2091,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     SubstitutionMatrix subMat_aa(blosum.c_str(), par.bitFactorAa, par.scoreBias);
 
     Debug(Debug::INFO) << "Got substitution matrices\n";
-
-    // Initialise MSAs, Sequence objects
-    size_t sequenceCnt = seqDbrAA.getSize();
-    int maxSeqLength = par.maxSeqLen;
-    size_t totalResidues = 0;
-    MSAContainer msa(sequenceCnt);
-    for (size_t i = 0; i < sequenceCnt; i++) {
-        unsigned int seqKeyAA = seqDbrAA.getDbKey(i);
-        unsigned int seqKey3Di = seqDbr3Di.getDbKey(i);
-        size_t seqIdAA = seqDbrAA.getId(seqKeyAA);
-        size_t seqId3Di = seqDbr3Di.getId(seqKey3Di);
-        size_t length = seqDbrAA.getSeqLen(seqIdAA);
-        totalResidues += length;
-        msa.addStructure(seqIdAA, seqKeyAA, length, seqDbrAA.getData(seqIdAA, 0), seqDbr3Di.getData(seqId3Di, 0));
-        maxSeqLength = std::max(maxSeqLength, static_cast<int>(length));
-    }
-   
+    
     // Map neighbours per residue per structure
     size_t neighbours = 21;
     float thresh = 15.0f;
     float nb_multiplier = 6.0f;
     float nb_low_cut = 0.5f;
 
-    // float nb_ang_sc1 = 1.0f;
-    // float nb_ang_sc2 = 0.6f;
-    // float nb_ang_sc3 = 0.4f;
-    // float nb_ang_sc4 = 0.2f;
-    // float nb_ang_thr1 = 0.5f;  // these should be squared
-    // float nb_ang_thr2 = 1.0f;
-    // float nb_ang_thr3 = 2.0f;
-    // float nb_ang_thr4 = 4.0f;
-    // float nb_idx_sc1 = 1.0f;
-    // float nb_idx_sc2 = 0.6f;
-    // float nb_idx_sc3 = 0.4f;
-    // float nb_idx_sc4 = 0.2f;
-    // float nb_idx_thr1 = 2.0f;
-    // float nb_idx_thr2 = 4.0f;
-    // float nb_idx_thr3 = 8.0f;
-    // float nb_idx_thr4 = 12.0f;
-    
     // continuous scoring vars
     float nb_sigma_r = 9.0f;
     float nb_sigma_i = 5.0f;
@@ -2148,76 +2115,55 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     get_param_from_env("NB_ANG_CUT", thresh);
     get_param_from_env("NB_MULT", nb_multiplier);
     get_param_from_env("NB_LOW_CUT", nb_low_cut);
-    // get_param_from_env("NB_ANG_SC1", nb_ang_sc1);
-    // get_param_from_env("NB_ANG_SC2", nb_ang_sc2);
-    // get_param_from_env("NB_ANG_SC3", nb_ang_sc3);
-    // get_param_from_env("NB_ANG_SC4", nb_ang_sc4);
-    // get_param_from_env("NB_ANG_THR1", nb_ang_thr1);
-    // get_param_from_env("NB_ANG_THR2", nb_ang_thr2);
-    // get_param_from_env("NB_ANG_THR3", nb_ang_thr3);
-    // get_param_from_env("NB_ANG_THR4", nb_ang_thr4);
-    // get_param_from_env("NB_IDX_SC1", nb_idx_sc1);
-    // get_param_from_env("NB_IDX_SC2", nb_idx_sc2);
-    // get_param_from_env("NB_IDX_SC3", nb_idx_sc3);
-    // get_param_from_env("NB_IDX_SC4", nb_idx_sc4);
-    // get_param_from_env("NB_IDX_THR1", nb_idx_thr1);
-    // get_param_from_env("NB_IDX_THR2", nb_idx_thr2);
-    // get_param_from_env("NB_IDX_THR3", nb_idx_thr3);
-    // get_param_from_env("NB_IDX_THR4", nb_idx_thr4);
-    
-    // std::cout
-    //     << "NB_TOTAL=" <<  neighbours << '\t'
-    //     << "NB_ANG_CUT=" <<  thresh << '\t'
-    //     << "NB_MULT=" <<  nb_multiplier << '\t'
-    //     << "NB_LOW_CUT=" <<  nb_low_cut << '\t'
-    //     << "NB_ANG_SC1=" <<  nb_ang_sc1 << '\t'
-    //     << "NB_ANG_SC2=" <<  nb_ang_sc2 << '\t'
-    //     << "NB_ANG_SC3=" <<  nb_ang_sc3 << '\t'
-    //     << "NB_ANG_SC4=" <<  nb_ang_sc4 << '\t'
-    //     << "NB_ANG_THR1=" <<  nb_ang_thr1 << '\t'
-    //     << "NB_ANG_THR2=" <<  nb_ang_thr2 << '\t'
-    //     << "NB_ANG_THR3=" <<  nb_ang_thr3 << '\t'
-    //     << "NB_ANG_THR4=" <<  nb_ang_thr4 << '\t'
-    //     << "NB_IDX_SC1=" <<  nb_idx_sc1 << '\t'
-    //     << "NB_IDX_SC2=" <<  nb_idx_sc2 << '\t'
-    //     << "NB_IDX_SC3=" <<  nb_idx_sc3 << '\t'
-    //     << "NB_IDX_SC4=" <<  nb_idx_sc4 << '\t'
-    //     << "NB_IDX_THR1=" <<  nb_idx_thr1 << '\t'
-    //     << "NB_IDX_THR2=" <<  nb_idx_thr2 << '\t'
-    //     << "NB_IDX_THR3=" <<  nb_idx_thr3 << '\t'
-    //     << "NB_IDX_THR4=" <<  nb_idx_thr4 << '\n';
-    
-    // nb_ang_thr1 *= nb_ang_thr1;
-    // nb_ang_thr2 *= nb_ang_thr2;
-    // nb_ang_thr3 *= nb_ang_thr3;
-    // nb_ang_thr4 *= nb_ang_thr4;
 
     const float thresh_sq = thresh * thresh;
 
-    std::vector<Neighbour> neighbourData(totalResidues * neighbours);
+    // Initialise MSAs, Sequence objects
+    size_t sequenceCnt = seqDbrAA.getSize();
+    int maxSeqLength = par.maxSeqLen;
+    size_t totalResidues = 0;
+    MSAContainer msa(sequenceCnt);
     std::vector<size_t> proteinOffsets;
+    proteinOffsets.reserve(sequenceCnt + 1);
     proteinOffsets.push_back(0);
-
     size_t baseOut = 0;
-    Coordinate16 tcoords;
+    for (size_t i = 0; i < sequenceCnt; i++) {
+        unsigned int seqKeyAA = seqDbrAA.getDbKey(i);
+        unsigned int seqKey3Di = seqDbr3Di.getDbKey(i);
+        size_t seqIdAA = seqDbrAA.getId(seqKeyAA);
+        size_t seqId3Di = seqDbr3Di.getId(seqKey3Di);
+        size_t length = seqDbrAA.getSeqLen(seqIdAA);
+        totalResidues += length;
+        msa.addStructure(seqIdAA, seqKeyAA, length, seqDbrAA.getData(seqIdAA, 0), seqDbr3Di.getData(seqId3Di, 0));
+        maxSeqLength = std::max(maxSeqLength, static_cast<int>(length));
+        baseOut += length * neighbours;
+        proteinOffsets.push_back(baseOut);
+    }
+    std::vector<Neighbour> neighbourData(totalResidues * neighbours);
 
+    int maxThreads = std::min(par.threads, static_cast<int>(sequenceCnt));
+   
+    #pragma omp parallel for num_threads(maxThreads) default(none) \
+        shared(neighbourData, proteinOffsets, sequenceCnt, neighbours, seqDbrAA, seqDbrCA, thresh_sq)
     for (size_t i = 0; i < sequenceCnt; i++) {
         unsigned int seqKeyAA = seqDbrAA.getDbKey(i);
         size_t seqIdAA = seqDbrAA.getId(seqKeyAA);
         size_t length = seqDbrAA.getSeqLen(seqIdAA);
-        
+
+        Coordinate16 tcoords;
         char *tcadata = seqDbrCA->getData(seqIdAA, 0);
         size_t tCaLength = seqDbrCA->getEntryLen(seqIdAA);
         float *targetCaData = tcoords.read(tcadata, length, tCaLength);
-        
+
         const float* x = targetCaData;
         const float* y = targetCaData + length;
         const float* z = targetCaData + length * 2;
-        
         std::vector<uint8_t> count(length, 0);
+        size_t thread_baseOut = proteinOffsets[i];
+
         for (size_t j = 0; j < length; ++j) {
             const float xj = x[j], yj = y[j], zj = z[j];
-            const size_t rowBaseJ = baseOut + j * neighbours;
+            const size_t rowBaseJ = thread_baseOut + j * neighbours;
             for (size_t k = j + 1; k < length; ++k) {
                 float dx = xj - x[k];
                 float dist = dx * dx;
@@ -2229,13 +2175,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 dist += dz * dz;
                 if (dist < thresh_sq) {
                     insert_topk(rowBaseJ, count[j], static_cast<int>(j), static_cast<int>(k), dist, neighbourData, neighbours); 
-                    const size_t rowBaseK = baseOut + k * neighbours;
+                    const size_t rowBaseK = thread_baseOut + k * neighbours;
                     insert_topk(rowBaseK, count[k], static_cast<int>(k), static_cast<int>(j), dist, neighbourData, neighbours); 
                 }
             }
         }
         for (size_t j = 0; j < length; ++j) {
-            const size_t rowBase = baseOut + j * neighbours;
+            const size_t rowBase = thread_baseOut + j * neighbours;
             const uint8_t c = count[j];
             std::sort(
                 &neighbourData[rowBase],
@@ -2248,15 +2194,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 neighbourData[rowBase + t] = Neighbour{j, j, 0.0f};
             }
         }
-        baseOut += length * neighbours;
-        proteinOffsets.push_back(baseOut);
     }
-    
-    // FIXME precompute here, maybe unavoidable
-    // for (Neighbour& n : neighbourData) {
-    //     n.distance = std::sqrt(std::max(0.f, n.distance));
-    // }
-   
+
     Debug(Debug::INFO) << "Initialised MSAs, Sequence objects\n";
 
     // Substitution matrices needed for query profile
@@ -2425,7 +2364,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     std::vector<size_t> globalToRemove;
     int index = 0; // in hit list
     size_t maxMerges = *std::max_element(merges.begin(), merges.end());
-    int maxThreads = std::min(par.threads, static_cast<int>(maxMerges));
+    maxThreads = std::min(par.threads, static_cast<int>(maxMerges));
 
     EvalueNeuralNet evaluer(seqDbrAA.getAminoAcidDBSize(), &subMat_3di);
     
@@ -2665,20 +2604,24 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                             // auto& tDists = neighbourData[tIdx];
                             float sum = 0.0f;
                             float norm = 0.0f;
+                            
+                            #pragma omp simd reduction(+:sum, norm)
                             for (size_t n = 0; n < neighbours; ++n) {
                                 Neighbour& qDist = neighbourData[qIdx + n];
                                 Neighbour& tDist = neighbourData[tIdx + n];
-                                if (qDist.empty() || tDist.empty()) break;
-                                sum += score_continuous(
-                                    qDist.distance,
-                                    tDist.distance,
-                                    (static_cast<float>(qDist.j) - static_cast<float>(qDist.k)),
-                                    (static_cast<float>(tDist.j) - static_cast<float>(tDist.k)),
-                                    nb_sigma_r,
-                                    nb_sigma_i,
-                                    nb_alpha, nb_beta
-                                );
-                                norm += 2.0f;
+                                bool isValid = !(qDist.empty() || tDist.empty());
+                                if (isValid) {
+                                    sum += score_continuous(
+                                        qDist.distance,
+                                        tDist.distance,
+                                        (static_cast<float>(qDist.j) - static_cast<float>(qDist.k)),
+                                        (static_cast<float>(tDist.j) - static_cast<float>(tDist.k)),
+                                        nb_sigma_r,
+                                        nb_sigma_i,
+                                        nb_alpha, nb_beta
+                                    );
+                                    norm += 2.0f;
+                                }
                             }
                             float score = std::abs(sum / norm);
                             lddtSums[qMSAId][tMSAId] += score;
