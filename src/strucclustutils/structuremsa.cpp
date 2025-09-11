@@ -1999,7 +1999,7 @@ inline float sim(float i1, float i2, float sigma) {
 
 inline float score_continuous(
     float ang1_sq, float ang2_sq,
-    float idx1, float idx2,
+    int idx1, int idx2,
     float sigma_r,
     float sigma_i,
     float alpha, float beta
@@ -2010,25 +2010,23 @@ inline float score_continuous(
 }
 
 struct Neighbour {
-    Neighbour() : j(0), k(0), distance(0.0f) {}
-    Neighbour(size_t j, size_t k, float distance) : j(j), k(k), distance(distance) {}
-    bool empty() { return j == k; }
-    size_t j;
-    size_t k;
+    Neighbour() : idx_dist(0), distance(0.0f) {}
+    Neighbour(int idx_dist, float distance) : idx_dist(idx_dist), distance(distance) {}
+    bool empty() { return idx_dist == 0; }
+    int idx_dist;
     float distance;
 };
 
 inline void insert_topk(
     size_t rowBase,
     uint8_t& count,
-    size_t owner_j,
-    size_t nb_k,
-    float d2,
+    int idx_dist,
+    float ang_dist,
     std::vector<Neighbour>& out,
     size_t K
 ) {
     if (count < K) {
-        out[rowBase + count] = Neighbour{ owner_j, nb_k, d2 };
+        out[rowBase + count] = Neighbour{ idx_dist, ang_dist };
         ++count;
         return;
     }
@@ -2039,8 +2037,8 @@ inline void insert_topk(
         float v = out[rowBase + t].distance;
         if (v > wval) { wval = v; worst = rowBase + t; }
     }
-    if (d2 < wval) {
-        out[worst] = Neighbour{ owner_j, nb_k, d2 };
+    if (ang_dist < wval) {
+        out[worst] = Neighbour{ idx_dist, ang_dist };
     }
 }
 
@@ -2165,6 +2163,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             const float xj = x[j], yj = y[j], zj = z[j];
             const size_t rowBaseJ = thread_baseOut + j * neighbours;
             for (size_t k = j + 1; k < length; ++k) {
+                // if (std::abs(static_cast<int>(j) - static_cast<int>(k)) < 5) continue;
                 float dx = xj - x[k];
                 float dist = dx * dx;
                 if (dist > thresh_sq) continue; 
@@ -2173,10 +2172,11 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 if (dist > thresh_sq) continue; 
                 float dz = zj - z[k];
                 dist += dz * dz;
+                int idxdist = static_cast<int>(j) - static_cast<int>(k);
                 if (dist < thresh_sq) {
-                    insert_topk(rowBaseJ, count[j], static_cast<int>(j), static_cast<int>(k), dist, neighbourData, neighbours); 
+                    insert_topk(rowBaseJ, count[j], idxdist, dist, neighbourData, neighbours); 
                     const size_t rowBaseK = thread_baseOut + k * neighbours;
-                    insert_topk(rowBaseK, count[k], static_cast<int>(k), static_cast<int>(j), dist, neighbourData, neighbours); 
+                    insert_topk(rowBaseK, count[k], idxdist, dist, neighbourData, neighbours); 
                 }
             }
         }
@@ -2191,7 +2191,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 }
             );
             for (size_t t = c; t < neighbours; ++t) {  // padding
-                neighbourData[rowBase + t] = Neighbour{j, j, 0.0f};
+                neighbourData[rowBase + t] = Neighbour{ 0, 0.0f};
             }
         }
     }
@@ -2442,10 +2442,18 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             // ids of members for each group
             std::vector<size_t> qMembers;
             std::vector<size_t> tMembers;
+            
+            std::vector<bool> qMembersKept;
+            std::vector<bool> tMembersKept;
 
             if (queryIsProfile) {
                 SubMSA& q = msa[querySubMSA];
                 qMembers.assign(q.members.begin(), q.members.end());
+                if (par.filterMsa) {
+                    qMembersKept.assign(q.diff.begin(), q.diff.end());
+                } else {
+                    qMembersKept.resize(q.members.size(), true);
+                }
                 seqMergedAaPr.mapSequence(mergedId, mergedId, q.profile_aa.c_str(), q.profile_aa.length() / Sequence::PROFILE_READIN_SIZE);
                 seqMergedSsPr.mapSequence(mergedId, mergedId, q.profile_ss.c_str(), q.profile_ss.length() / Sequence::PROFILE_READIN_SIZE);
                 seqMergedAa = &seqMergedAaPr;
@@ -2455,6 +2463,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             } else {
                 size_t length = seqDbrAA.getSeqLen(mergedId);
                 qMembers = { mergedId };
+                qMembersKept = { true };
                 seqMergedAaAa.mapSequence(mergedId, mergedId, seqDbrAA.getData(mergedId, thread_idx), length);
                 seqMergedSsAa.mapSequence(mergedId, mergedId, seqDbr3Di.getData(mergedId, thread_idx), length);
                 seqMergedAa = &seqMergedAaAa;
@@ -2468,6 +2477,11 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             if (targetIsProfile) {
                 SubMSA& t = msa[targetSubMSA];
                 tMembers.assign(t.members.begin(), t.members.end());
+                if (par.filterMsa) {
+                    tMembersKept.assign(t.diff.begin(), t.diff.end());
+                } else {
+                    tMembersKept.resize(t.members.size(), true);
+                }
                 seqTargetAaPr.mapSequence(targetId, targetId, t.profile_aa.c_str(), t.profile_aa.length() / Sequence::PROFILE_READIN_SIZE);
                 seqTargetSsPr.mapSequence(targetId, targetId, t.profile_ss.c_str(), t.profile_ss.length() / Sequence::PROFILE_READIN_SIZE);
                 seqTargetAa = &seqTargetAaPr;
@@ -2477,6 +2491,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             } else {
                 size_t length = seqDbrAA.getSeqLen(targetId);
                 tMembers = { targetId };
+                tMembersKept = { true };
                 seqTargetAaAa.mapSequence(targetId, targetId, seqDbrAA.getData(targetId, thread_idx), length);
                 seqTargetSsAa.mapSequence(targetId, targetId, seqDbr3Di.getData(targetId, thread_idx), length);
                 seqTargetAa = &seqTargetAaAa;
@@ -2514,6 +2529,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 std::swap(queryIsProfile, targetIsProfile);
                 std::swap(querySubMSA, targetSubMSA);
                 std::swap(qMembers, tMembers);
+                std::swap(qMembersKept, tMembersKept);
                 std::swap(map1, map2);
                 std::swap(map1Rev, map2Rev);
             }
@@ -2530,21 +2546,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             // seqMergedAa->reverse();
             // seqMergedSs->reverse();
             
-            if (false && targetIsProfile && queryIsProfile) {
-                SubMSA& q = msa[querySubMSA];
-                SubMSA& t = msa[targetSubMSA];
-                std::cout << " Query: ";
-                for (float f : q.lddt) {
-                    std::cout << std::fixed << std::setprecision(3) << f << ",";                    
-                }
-                std::cout << '\n';
-                std::cout << "Target: ";
-                for (float f : t.lddt) {
-                    std::cout << std::fixed << std::setprecision(3) << f << ",";                    
-                }
-                std::cout << '\n';
-            }
-
             // 1. sw, update relevant copied cigars --> MSA
             // 2. lddt on MSA --> per col count
             // 3. iterate cigar, map msa per col lddt -> (i, j)
@@ -2565,8 +2566,12 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             //                 Map & add to count matrix cell
             std::vector<std::vector<float>> lddtSums(seqMergedAa->L, std::vector<float>(seqTargetAa->L));
             std::vector<std::vector<size_t>> lddtCounts(seqMergedAa->L, std::vector<size_t>(seqTargetAa->L));
-            for (size_t qMember : qMembers) {
-                for (size_t tMember : tMembers) {
+            for (size_t qi = 0; qi < qMembers.size(); ++qi) {
+                if (qMembersKept[qi] == false) continue;
+                size_t qMember = qMembers[qi];
+                for (size_t ti = 0; ti < tMembers.size(); ++ti) {
+                    if (tMembersKept[ti] == false) continue;
+                    size_t tMember = tMembers[ti];
                     size_t qSeqId = 0;
                     size_t qResId = 0;
                     for (Instruction& qIns : msa.cigars_aa[qMember]) {
@@ -2614,8 +2619,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                                     sum += score_continuous(
                                         qDist.distance,
                                         tDist.distance,
-                                        (static_cast<float>(qDist.j) - static_cast<float>(qDist.k)),
-                                        (static_cast<float>(tDist.j) - static_cast<float>(tDist.k)),
+                                        qDist.idx_dist,
+                                        tDist.idx_dist,
                                         nb_sigma_r,
                                         nb_sigma_i,
                                         nb_alpha, nb_beta
@@ -2652,6 +2657,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             for (int y = 0; y < seqMergedAa->L; ++y) {
                 for (int z = 0; z < seqTargetAa->L; ++z) {
                     lddtScoreMap[y][z] = lddtSums[y][z];
+                    // lddtScoreMap[y][z] = static_cast<float>(lddtSums[y][z]) / static_cast<float>(lddtCounts[y][z]);
+                    // lddtScoreMap[y][z] = (lddtScoreMap[y][z] < nb_low_cut) ? 0.0f : lddtScoreMap[y][z] * nb_multiplier;
                 }
             }
             
@@ -2709,6 +2716,10 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             }
             // Don't need to make profiles on final alignment
             if (!(i == merges.size() - 1 && j == merges[i] - 1)) {
+                bool *kept = new bool[newSubMSA->members.size()];
+                for (size_t z = 0; z < newSubMSA->members.size(); ++z) {
+                    kept[z] = 1;
+                }
                 // newSubMSA->mask = computeProfileMask(
                 //     newSubMSA->members,
                 //     msa.cigars_aa,
@@ -2742,6 +2753,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     par.wg,
                     weights
                 );
+                filter_aa.getKept(kept, newSubMSA->members.size());
+                newSubMSA->diff.clear();
+                newSubMSA->diff.resize(newSubMSA->members.size());
+                for (size_t z = 0; z < newSubMSA->members.size(); ++z) {
+                    newSubMSA->diff[z] = kept[z];
+                }
+                delete[] kept;
                 newSubMSA->profile_ss = msa2profile(
                     newSubMSA->members,
                     msa.cigars_ss,

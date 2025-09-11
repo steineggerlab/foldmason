@@ -52,7 +52,7 @@ union Instruction {
 struct SubMSA {
     size_t id;                    // Database ID of 'merged' representative
     std::vector<size_t> members;  // Database IDs of member structures
-    std::vector<float> lddt;  // LDDT per column
+    std::vector<bool> diff;       // Members kept after MSA filtering
     std::string profile_aa;       // Amino acid profile
     std::string profile_ss;       // 3Di profile        
     std::string mask;             // Profile mask string
