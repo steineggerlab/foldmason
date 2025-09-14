@@ -1687,145 +1687,309 @@ void copyInstructionVectors(std::vector<std::vector<Instruction> > &one, std::ve
     }
 }
 
+class Neighbours {
+public:
+    int32_t* idx_dist = NULL;
+    float* distance = NULL;
+    size_t sz = 0;
+    size_t cap = 0;
 
-float score_continuous(float x, float k, float p, float min_score) {
-    float decay = std::exp(-std::pow(x / k, p));
-    return min_score + (1.0f - min_score) * decay;
-}
+    explicit Neighbours(size_t n) {
+        resize(n);
+    }
 
-inline bool root_diff(float sum_ab, float prod4, float T) {
-    float s = sum_ab - T;
-    return (s < 0.0f) || (prod4 > s * s);
-}
+    ~Neighbours() {
+        if (idx_dist) {
+            free(idx_dist);
+            idx_dist = nullptr;
+        }
+        if (distance) {
+            free(distance);
+            distance = nullptr;
+        }
+        sz = cap = 0;
+    }
 
-inline float score_binned(float ang1, float ang2, float idx1, float idx2) {
-    float sum = 0.0f;
-    float sum_ab = ang1 + ang2;
-    float prod4 = 4.0f * ang1 * ang2;
-    if      (root_diff(sum_ab, prod4, 0.25f)) sum += 1.0f;
-    else if (root_diff(sum_ab, prod4, 1.0f)) sum += 0.6f;
-    else if (root_diff(sum_ab, prod4, 4.0f)) sum += 0.4f;
-    else if (root_diff(sum_ab, prod4, 16.0f)) sum += 0.2f;
-    float idx_diff = std::fabs(idx1 - idx2);
-    if (idx_diff < 2.0f) sum += 1.0f;
-    else if (idx_diff < 4.0f) sum += 0.6f;
-    else if (idx_diff < 8.0f) sum += 0.4f;
-    else if (idx_diff < 12.0f) sum += 0.2f;
-    
-    // float sum2 = 0.0f;
-    // float sigma_d = 1.3f;
-    // float sigma_i = 4.0f;
-    // float r_d = std::fabsf(ang1 - ang2) / sigma_d;
-    // float r_i = std::fabsf(idx1 - idx2) / sigma_i;
-    // sum2 += 1.0f / (1.0f + r_d * r_d);
-    // sum2 += 1.0f / (1.0f + r_i * r_i);
-    // std::cout << std::fixed << std::setprecision(4) << sum << '\t' << sum2 << '\n';
-    
-    // float sum3 = 0.0f;
-    // sum3 += std::max(0.2f, std::min(1.0f, 0.628f * std::powf(std::fabsf(ang1 - ang2), -0.387f)));
-    // sum3 += std::max(0.2f, std::min(1.0f, 0.91f * std::powf(std::fabsf(idx1 - idx2), -0.61f)));
-    // std::cout << std::fixed << std::setprecision(4) << sum << '\t' << sum2 << '\t' << sum3 << '\n';
-    
-    return sum;
-}
+    // size_t size() const {
+    //     return sz;
+    // }
+    // size_t capacity() const {
+    //     return cap;
+    // }
+    // bool empty() const {
+    //     return sz == 0;
+    // }
+    // void clear() {
+    //     sz = 0;
+    // }
+    // void reserve(size_t n) {
+    //     if (n <= cap) {
+    //         return;
+    //     }
+    //     reallocate(n);
+    // }
+    void resize(size_t n) {
+        if (n > cap) {
+            reallocate(n);
+        }
+        if (n > sz) {
+            memset(idx_dist + sz, 0, (n - sz) * sizeof(int32_t));
+            memset(distance + sz, 0, (n - sz) * sizeof(float));
+        }
+        sz = n;
+    }
+    // void push_back(int32_t idx, float dist) {
+    //     if (sz == cap) {
+    //         reserve(cap ? (cap * 2) : 1);
+    //     }
+    //     idx_dist[sz] = idx;
+    //     distance[sz] = dist;
+    //     ++sz;
+    // }
+    // bool empty_at(size_t i) const {
+    //     return idx_dist[i] == 0;
+    // }
+    // int32_t* idx_ptr(size_t i = 0) {
+    //     return idx_dist + i;
+    // }
+    // const int32_t* idx_ptr(size_t i = 0) const {
+    //     return idx_dist + i;
+    // }
+    // float* dist_ptr(size_t i = 0) {
+    //     return distance + i;
+    // }
+    // const float* dist_ptr(size_t i = 0) const {
+    //     return distance + i;
+    // }
 
-inline float score_binned_manual(
-    float ang1,
-    float ang2,
-    float idx1,
-    float idx2,
-    float ang_sc1,
-    float ang_sc2,
-    float ang_sc3,
-    float ang_sc4,
-    float ang_thr1,
-    float ang_thr2,
-    float ang_thr3,
-    float ang_thr4,
-    float idx_sc1,
-    float idx_sc2,
-    float idx_sc3,
-    float idx_sc4,
-    float idx_thr1,
-    float idx_thr2,
-    float idx_thr3,
-    float idx_thr4
-) {
-    float sum = 0.0f;
-    float sum_ab = ang1 + ang2;
-    float prod4 = 4.0f * ang1 * ang2;
-    if      (root_diff(sum_ab, prod4, ang_thr1)) sum += ang_sc1;
-    else if (root_diff(sum_ab, prod4, ang_thr2)) sum += ang_sc2;
-    else if (root_diff(sum_ab, prod4, ang_thr3)) sum += ang_sc3;
-    else if (root_diff(sum_ab, prod4, ang_thr4)) sum += ang_sc4;
-    float idx_diff = std::fabs(idx1 - idx2);
-    if      (idx_diff < idx_thr1) sum += idx_sc1;
-    else if (idx_diff < idx_thr2) sum += idx_sc2;
-    else if (idx_diff < idx_thr3) sum += idx_sc3;
-    else if (idx_diff < idx_thr4) sum += idx_sc4;
-    return sum;
-}
+private:
+    void reallocate(size_t new_cap) {
+        const size_t bytes_i = new_cap * sizeof(int32_t);
+        const size_t bytes_f = new_cap * sizeof(float);
 
-inline float delta2_norm(float a, float b) {
-    float num = (a - b) * (a - b);
-    float den = a + b + 1e-12f;
-    return num / den;
-}
+        int32_t* new_idx = NULL;
+        float*   new_dst = NULL;
 
-inline float sim_gauss(float a, float b, float sigma) {
-    return expf(-delta2_norm(a, b) * sigma);
-}
+        new_idx = reinterpret_cast<int32_t*>(malloc_simd_int(bytes_i));
+        new_dst = reinterpret_cast<float*>(malloc_simd_float(bytes_f));
 
-inline float sim(float i1, float i2, float sigma) {
-    float x = fabsf(i1 - i2) * sigma;
-    return expf(-(x * x));
-}
+        if (idx_dist) {
+            memcpy(new_idx, idx_dist, sz * sizeof(int32_t));
+        }
+        if (distance) {
+            memcpy(new_dst, distance, sz * sizeof(float));
+        }
 
-inline float score_continuous(
-    float ang1_sq, float ang2_sq,
-    int idx1, int idx2,
-    float sigma_r,
-    float sigma_i,
-    float alpha, float beta
-) {
-    float Sr = sim_gauss(ang1_sq, ang2_sq, sigma_r);
-    float Si = sim(idx1, idx2, sigma_i);
-    return alpha * Sr + beta * Si;
-}
+        if (new_cap > sz) {
+            memset(new_idx + sz, 0, (new_cap - sz) * sizeof(int32_t));
+            memset(new_dst + sz, 0, (new_cap - sz) * sizeof(float));
+        }
 
-struct Neighbour {
-    Neighbour() : idx_dist(0), distance(0.0f) {}
-    Neighbour(int idx_dist, float distance) : idx_dist(idx_dist), distance(distance) {}
-    bool empty() { return idx_dist == 0; }
-    int idx_dist;
-    float distance;
+        if (idx_dist) {
+            free(idx_dist);
+        }
+        if (distance) {
+            free(distance);
+        }
+        idx_dist = new_idx;
+        distance = new_dst;
+        cap = new_cap;
+    }
 };
 
 inline void insert_topk(
     size_t rowBase,
     uint8_t& count,
-    int idx_dist,
+    int32_t idx_dist,
     float ang_dist,
-    std::vector<Neighbour>& out,
+    Neighbours& out,
     size_t K
 ) {
     if (count < K) {
-        out[rowBase + count] = Neighbour{ idx_dist, ang_dist };
+        out.idx_dist[rowBase + count] = idx_dist;
+        out.distance[rowBase + count] = ang_dist;
         ++count;
         return;
     }
     // find worst (max d^2) among current K
     size_t worst = rowBase;
-    float  wval  = out[worst].distance;
+    float  wval  = out.distance[worst];
     for (size_t t = 1; t < K; ++t) {
-        float v = out[rowBase + t].distance;
-        if (v > wval) { wval = v; worst = rowBase + t; }
+        float v = out.distance[rowBase + t];
+        if (v > wval) {
+            wval = v; worst = rowBase + t;
+        }
     }
     if (ang_dist < wval) {
-        out[worst] = Neighbour{ idx_dist, ang_dist };
+        out.idx_dist[worst] = idx_dist;
+        out.distance[worst] = ang_dist;
     }
 }
 
+inline void sortNeighbours(
+    Neighbours& out,
+    size_t rowBase,
+    size_t c,
+    size_t neighbours
+) {
+    std::vector<size_t> ord(c);
+    std::iota(ord.begin(), ord.end(), 0);
+    SORT_SERIAL(ord.begin(), ord.end(), [&](size_t a, size_t b){
+        return out.distance[rowBase + a] < out.distance[rowBase + b];
+    });
+
+    std::vector<float> tmpD(c);
+    std::vector<int32_t> tmpI(c);
+    for (size_t t = 0; t < c; ++t) {
+        size_t s = ord[t];
+        tmpD[t] = out.distance[rowBase + s];
+        tmpI[t] = out.idx_dist[rowBase + s];
+    }
+    memcpy(out.distance + rowBase, tmpD.data(), c * sizeof(float));
+    memcpy(out.idx_dist + rowBase, tmpI.data(), c * sizeof(int32_t));
+    for (size_t t = c; t < neighbours; ++t) {
+        out.idx_dist[rowBase + t] = 0;
+        out.distance[rowBase + t] = FLT_MAX;
+    }
+
+    // const size_t idx[8] = { 0, 1, 4, 7, 12, 19, 30, 47 };
+    const size_t idx[8] = { 2, 3, 5, 8, 13, 20, 31, 47 };
+    // const size_t idx[8] = { 0, 1, 3, 8, 15, 28, 47 };
+    for (size_t i = 0; i < 8; ++i) {
+        out.distance[rowBase + i] = out.distance[rowBase + idx[i]];
+        out.idx_dist[rowBase + i] = out.idx_dist[rowBase + idx[i]];
+    }
+}
+
+#include <simde/x86/fma.h>
+#if defined(AVX512)
+#define simdf32_f2it(x)     _mm512_cvttps_epi32(x)
+#define simdf32_fmadd_real(x,y,z) _mm512_fmadd_ps(x,y,z)
+#elif defined(AVX2)
+#define simdf32_f2it(x)     _mm256_cvttps_epi32(x)
+#define simdf32_fmadd_real(x,y,z) _mm256_fmadd_ps(x,y,z)
+#else
+#define simdf32_f2it(x)     _mm_cvttps_epi32(x)
+#define simdf32_fmadd_real(x,y,z) _mm_fmadd_ps(x,y,z)
+#endif
+
+// Based on https://gist.github.com/jrade/293a73f89dfef51da6522428c857802d
+// Copyright 2021 Johan Rade (johan.rade@gmail.com)
+// Distributed under the MIT license (https://opensource.org/licenses/MIT)
+// ported to SIMD
+static inline simd_float exp_approx(simd_float x) {
+    const simd_float neg20 = simdf32_set(-20.0f);
+    // 2^23 / ln2
+    const simd_float A = simdf32_set(8388608.0f / 0.69314718f);
+    // 2^23 * (127 - c)
+    const simd_float B = simdf32_set(8388608.0f * (127.0f - 0.043677448f));
+
+    // mask for lanes we must return 0.0f
+    simd_float mask_lt = simdf32_lt(x, neg20);
+
+    // clamp to keep intermediates normal (avoids denorm slowdowns)
+    // x = simdf32_max(x, neg20);
+
+    // y = A*x + B;  trunc to int;  reinterpret as float
+    // simd_float  y  = simdf32_add(simdf32_mul(A, x), B);
+    simd_float y = simdf32_fmadd_real(x, A, B);
+    simd_float r;
+#if defined(__aarch64__)
+    float32x4_t y_neon;
+    memcpy(&y_neon, &y, sizeof(y_neon));
+    int32x4_t   i32 = vcvtq_s32_f32(y_neon);
+    float32x4_t bits = vreinterpretq_f32_s32(i32);
+    memcpy(&r, &bits, sizeof(r));
+#else
+    r  = simdi_i2fcast(simdf32_f2it(y));
+#endif
+
+    // zero lanes where x < -20
+    return simdf32_andnot(mask_lt, r);
+}
+
+inline float scoreNeighbours(
+    const Neighbours& neighbourData,
+    size_t neighbours,
+    size_t qIdx,
+    size_t tIdx,
+    float nb_sigma_r,
+    float nb_sigma_i,
+    float nb_alpha,
+    float nb_beta
+) {
+    float sum = 0.0f;
+    float norm = 0.0f;
+
+    const size_t V = sizeof(simd_float) / sizeof(float);
+    const float*   qd = neighbourData.distance + qIdx;
+    const float*   td = neighbourData.distance + tIdx;
+    // const int32_t* qi = neighbourData.idx_dist + qIdx;
+    // const int32_t* ti = neighbourData.idx_dist + tIdx;
+
+    const simd_float eps        = simdf32_set(1e-12f);
+    const simd_float neg_sig_r  = simdf32_set(-nb_sigma_r);
+    // const simd_float neg_sig_i2 = simdf32_set(-(nb_sigma_i * nb_sigma_i));
+    // const simd_float pos_sig_r  = simdf32_set(nb_sigma_r);
+    // const simd_float pos_sig_i2 = simdf32_set(nb_sigma_i * nb_sigma_i);
+    const simd_float alpha_v    = simdf32_set(nb_alpha);
+    // const simd_float beta_v     = simdf32_set(nb_beta);
+    const simd_float two_v      = simdf32_set(2.0f);
+    // const simd_int   zero_i     = simdi32_set(0);
+    const simd_float zero_f   = simdf32_set(0.0f);
+    const simd_float max_f   = simdf32_set(FLT_MAX);
+    const simd_float one_v      = simdf32_set(1.0f);
+
+    simd_float sum_v  = simdf32_set(0.0f);
+    simd_float norm_v = simdf32_set(0.0f);
+    for (size_t n = 0; n < 8; n += V) {
+        simd_float a = simdf32_load(qd + n);
+        simd_float b = simdf32_load(td + n);
+        
+        // mask invalid (>c)
+        simd_float m1 = simdf32_eq(a, max_f);
+        simd_float m2 = simdf32_eq(b, max_f);
+        simd_float m  = simdf32_andnot(simdf32_or(m1, m2), simdf32_eq(zero_f, zero_f));
+
+        // simd_int i1 = simdi_load((simd_int*)(qi + n));
+        // simd_int i2 = simdi_load((simd_int*)(ti + n));
+        // // validity mask: (i1 != 0) & (i2 != 0)
+        // simd_int m1 = simdi32_eq(i1, zero_i);
+        // simd_int m2 = simdi32_eq(i2, zero_i);
+        // simd_int m  = simdi_andnot(simdi_or(m1, m2), simdi32_eq(zero_i, zero_i));
+        // // Si = exp( -( (i1 - i2)^2 * sigma_i^2 ) )
+        // simd_int d    = simdi32_sub(i1, i2);
+        // simd_float df   = simdi32_i2f(d);
+        // simd_float SiIn = simdf32_mul(simdf32_mul(df, df), neg_sig_i2);
+        // simd_float Si   = exp_approx(SiIn);
+
+        // Sr = exp( -sigma_r * ((a-b)^2 / (a+b+eps)) )
+        simd_float amb  = simdf32_sub(a, b);
+        simd_float num  = simdf32_mul(amb, amb);
+        simd_float den  = simdf32_add(simdf32_add(a, b), eps);
+        simd_float inv = simdf32_rcp(den);
+        // simd_float neg_den = simdf32_sub(zero_f, den);
+        // simd_float corr = simdf32_fmadd(neg_den, inv, two_v);
+        // inv = simdf32_mul(inv, corr);
+        simd_float y = simdf32_mul(num, inv); // num/den
+        simd_float SrIn = simdf32_mul(y, neg_sig_r);
+        simd_float Sr   = exp_approx(SrIn);
+
+        // simd_float s    = simdf32_add(simdf32_mul(alpha_v, Sr), simdf32_mul(beta_v,  Si));
+        simd_float s    = simdf32_mul(alpha_v, Sr);
+
+        // zero-out invalid lanes
+        simd_float valid01 = simdf32_blendv_ps(zero_f, one_v, (simd_float)m);
+        sum_v  = simdf32_add(sum_v, simdf32_mul(s, valid01));
+        norm_v = simdf32_add(norm_v, simdf32_mul(two_v, valid01));
+
+        // sum_v  = simdf32_add(sum_v,  s);
+        // norm_v = simdf32_add(norm_v, two_v);
+    }
+    sum  += simdf32_hadd(sum_v);
+    norm += simdf32_hadd(norm_v);
+    return sum / norm;
+}
 
 int structuremsa(int argc, const char **argv, const Command& command, bool preCluster) {
     FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
@@ -1875,7 +2039,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     Debug(Debug::INFO) << "Got substitution matrices\n";
     
     // Map neighbours per residue per structure
-    size_t neighbours = 21;
+    const size_t neighbours = 48;
     float thresh = 15.0f;
     float nb_multiplier = 6.0f;
     float nb_low_cut = 0.5f;
@@ -1889,14 +2053,11 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     get_param_from_env("NB_SIGMA_I", nb_sigma_i);
     get_param_from_env("NB_ALPHA", nb_alpha);
     get_param_from_env("NB_BETA", nb_beta);
-    
-    nb_sigma_r = 1.0f / nb_sigma_r;
-    nb_sigma_i = 1.0f / nb_sigma_i;
-
-    get_param_from_env("NB_TOTAL", neighbours);
     get_param_from_env("NB_ANG_CUT", thresh);
     get_param_from_env("NB_MULT", nb_multiplier);
     get_param_from_env("NB_LOW_CUT", nb_low_cut);
+    nb_sigma_r = 1.0f / nb_sigma_r;
+    nb_sigma_i = 1.0f / nb_sigma_i;
 
     const float thresh_sq = thresh * thresh;
 
@@ -1921,10 +2082,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         baseOut += length * neighbours;
         proteinOffsets.push_back(baseOut);
     }
-    std::vector<Neighbour> neighbourData(totalResidues * neighbours);
-
     int maxThreads = std::min(par.threads, static_cast<int>(sequenceCnt));
-   
+
+    Neighbours neighbourData(totalResidues * neighbours);
     #pragma omp parallel for num_threads(maxThreads) default(none) \
         shared(neighbourData, proteinOffsets, sequenceCnt, neighbours, seqDbrAA, seqDbrCA, thresh_sq)
     for (size_t i = 0; i < sequenceCnt; i++) {
@@ -1960,23 +2120,14 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 if (dist < thresh_sq) {
                     insert_topk(rowBaseJ, count[j], idxdist, dist, neighbourData, neighbours); 
                     const size_t rowBaseK = thread_baseOut + k * neighbours;
-                    insert_topk(rowBaseK, count[k], idxdist, dist, neighbourData, neighbours); 
+                    insert_topk(rowBaseK, count[k], -idxdist, dist, neighbourData, neighbours); 
                 }
             }
         }
         for (size_t j = 0; j < length; ++j) {
             const size_t rowBase = thread_baseOut + j * neighbours;
             const uint8_t c = count[j];
-            std::sort(
-                &neighbourData[rowBase],
-                &neighbourData[rowBase + c],
-                [](const Neighbour& a, const Neighbour& b) {
-                    return a.distance < b.distance;
-                }
-            );
-            for (size_t t = c; t < neighbours; ++t) {  // padding
-                neighbourData[rowBase + t] = Neighbour{ 0, 0.0f};
-            }
+            sortNeighbours(neighbourData, rowBase, c, neighbours);
         }
     }
 
@@ -2235,8 +2386,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 qMembers.assign(q.members.begin(), q.members.end());
                 if (par.filterMsa) {
                     qMembersKept.assign(q.diff.begin(), q.diff.end());
-                } else {
-                    qMembersKept.resize(q.members.size(), true);
                 }
                 seqMergedAaPr.mapSequence(mergedId, mergedId, q.profile_aa.c_str(), q.profile_aa.length() / Sequence::PROFILE_READIN_SIZE);
                 seqMergedSsPr.mapSequence(mergedId, mergedId, q.profile_ss.c_str(), q.profile_ss.length() / Sequence::PROFILE_READIN_SIZE);
@@ -2247,7 +2396,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             } else {
                 size_t length = seqDbrAA.getSeqLen(mergedId);
                 qMembers = { mergedId };
-                qMembersKept = { true };
                 seqMergedAaAa.mapSequence(mergedId, mergedId, seqDbrAA.getData(mergedId, thread_idx), length);
                 seqMergedSsAa.mapSequence(mergedId, mergedId, seqDbr3Di.getData(mergedId, thread_idx), length);
                 seqMergedAa = &seqMergedAaAa;
@@ -2263,8 +2411,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 tMembers.assign(t.members.begin(), t.members.end());
                 if (par.filterMsa) {
                     tMembersKept.assign(t.diff.begin(), t.diff.end());
-                } else {
-                    tMembersKept.resize(t.members.size(), true);
                 }
                 seqTargetAaPr.mapSequence(targetId, targetId, t.profile_aa.c_str(), t.profile_aa.length() / Sequence::PROFILE_READIN_SIZE);
                 seqTargetSsPr.mapSequence(targetId, targetId, t.profile_ss.c_str(), t.profile_ss.length() / Sequence::PROFILE_READIN_SIZE);
@@ -2275,7 +2421,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             } else {
                 size_t length = seqDbrAA.getSeqLen(targetId);
                 tMembers = { targetId };
-                tMembersKept = { true };
                 seqTargetAaAa.mapSequence(targetId, targetId, seqDbrAA.getData(targetId, thread_idx), length);
                 seqTargetSsAa.mapSequence(targetId, targetId, seqDbr3Di.getData(targetId, thread_idx), length);
                 seqTargetAa = &seqTargetAaAa;
@@ -2313,7 +2458,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 std::swap(queryIsProfile, targetIsProfile);
                 std::swap(querySubMSA, targetSubMSA);
                 std::swap(qMembers, tMembers);
-                std::swap(qMembersKept, tMembersKept);
+                if (par.filterMsa) {
+                    std::swap(qMembersKept, tMembersKept);
+                }
                 std::swap(map1, map2);
                 std::swap(map1Rev, map2Rev);
             }
@@ -2351,10 +2498,14 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             std::vector<std::vector<float>> lddtSums(seqMergedAa->L, std::vector<float>(seqTargetAa->L));
             std::vector<std::vector<size_t>> lddtCounts(seqMergedAa->L, std::vector<size_t>(seqTargetAa->L));
             for (size_t qi = 0; qi < qMembers.size(); ++qi) {
-                if (qMembersKept[qi] == false) continue;
+                if (par.filterMsa && qMembersKept[qi] == false) {
+                    continue;
+                }
                 size_t qMember = qMembers[qi];
                 for (size_t ti = 0; ti < tMembers.size(); ++ti) {
-                    if (tMembersKept[ti] == false) continue;
+                    if (par.filterMsa && tMembersKept[ti] == false) {
+                        continue;
+                    }
                     size_t tMember = tMembers[ti];
                     size_t qSeqId = 0;
                     size_t qResId = 0;
@@ -2389,31 +2540,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
                             size_t qIdx = qOffset + qResId * neighbours;
                             size_t tIdx = tOffset + tResId * neighbours;
-                            // auto& qDists = neighbourData[qIdx];
-                            // auto& tDists = neighbourData[tIdx];
-                            float sum = 0.0f;
-                            float norm = 0.0f;
-                            
-                            #pragma omp simd reduction(+:sum, norm)
-                            for (size_t n = 0; n < neighbours; ++n) {
-                                Neighbour& qDist = neighbourData[qIdx + n];
-                                Neighbour& tDist = neighbourData[tIdx + n];
-                                bool isValid = !(qDist.empty() || tDist.empty());
-                                if (isValid) {
-                                    sum += score_continuous(
-                                        qDist.distance,
-                                        tDist.distance,
-                                        qDist.idx_dist,
-                                        tDist.idx_dist,
-                                        nb_sigma_r,
-                                        nb_sigma_i,
-                                        nb_alpha, nb_beta
-                                    );
-                                    norm += 2.0f;
-                                }
-                            }
-                            float score = std::abs(sum / norm);
-                            lddtSums[qMSAId][tMSAId] += score;
+                            lddtSums[qMSAId][tMSAId] += scoreNeighbours(neighbourData, neighbours, qIdx, tIdx, nb_sigma_r, nb_sigma_i, nb_alpha, nb_beta);
                             lddtCounts[qMSAId][tMSAId]++;
                             tSeqId++;
                             tResId++;
@@ -2436,13 +2563,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 for (int z = 0; z < seqTargetAa->L; ++z) {
                     lddtSums[y][z] = (lddtSums[y][z] * lddtSums[y][z]) / (rowMax[y] * colMax[z]);
                     lddtSums[y][z] = (lddtSums[y][z] < nb_low_cut) ? 0.0f : lddtSums[y][z] * nb_multiplier;
-                }
-            }
-            for (int y = 0; y < seqMergedAa->L; ++y) {
-                for (int z = 0; z < seqTargetAa->L; ++z) {
                     lddtScoreMap[y][z] = lddtSums[y][z];
-                    // lddtScoreMap[y][z] = static_cast<float>(lddtSums[y][z]) / static_cast<float>(lddtCounts[y][z]);
-                    // lddtScoreMap[y][z] = (lddtScoreMap[y][z] < nb_low_cut) ? 0.0f : lddtScoreMap[y][z] * nb_multiplier;
                 }
             }
             
