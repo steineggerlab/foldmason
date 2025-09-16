@@ -2,7 +2,6 @@
 #include "Util.h"
 #include "LocalParameters.h"
 #include "DBReader.h"
-#include "IndexReader.h"
 #include "FileUtil.h"
 #include "Coordinate16.h"
 #include "tmalign/basic_fun.h"
@@ -448,6 +447,7 @@ void getComplexResidueLength( IndexReader *Dbr, std::vector<Complex> &complexes)
 }
 
 static void getlookupInfo(
+        IndexReader* dbr,
         const std::string &file,
         std::map<unsigned int, unsigned int> &chainKeyToComplexIdLookup,
         std::vector<Complex> &complexes,
@@ -461,8 +461,8 @@ static void getlookupInfo(
     char *end = data + lookupDB.mappedSize();
     const char *entry[255];
 
-    int prevComplexId =  -1;
     int nComplex = 0;
+    std::vector<bool> isVistedSet(lookupDB.mappedSize(), false);
     while (data < end && *data != '\0') {
         const size_t columns = Util::getWordsOfLine(data, entry, 255);
         if (columns < 3) {
@@ -470,26 +470,26 @@ static void getlookupInfo(
             continue;
         }
         auto chainKey = Util::fast_atoi<int>(entry[0]);
-        auto complexId = Util::fast_atoi<int>(entry[2]);
-        chainKeyToComplexIdLookup.emplace(chainKey, complexId);
-        
-        std::string chainName(entry[1], (entry[2] - entry[1]) - 1);
-        size_t lastUnderscoreIndex = chainName.find_last_of('_');
-        std::string complexName = chainName.substr(0, lastUnderscoreIndex);
+        unsigned int chainDbId = dbr->sequenceReader->getId(chainKey);
+        if (chainDbId != NOT_AVAILABLE_CHAIN_KEY) {
+            auto complexId = Util::fast_atoi<int>(entry[2]);
+            chainKeyToComplexIdLookup.emplace(chainKey, complexId);
+            std::string chainName(entry[1], (entry[2] - entry[1]) - 1);
+            size_t lastUnderscoreIndex = chainName.find_last_of('_');
+            std::string complexName = chainName.substr(0, lastUnderscoreIndex);
 
-        if (complexId != prevComplexId) {
-            
-            Complex complex;
-            complex.complexId = complexId;
-            complex.complexName = complexName;
-            complexIdtoIdx.emplace(complexId, nComplex);
-            complexes.emplace_back(complex);
-
-            prevComplexId = complexId;
-            nComplex++;
+            if (isVistedSet[complexId] == 0) {
+                Complex complex;
+                complex.complexId = complexId;
+                complex.complexName = complexName;
+                complexIdtoIdx.emplace(complexId, nComplex);
+                complexes.emplace_back(complex);
+                nComplex++;
+                isVistedSet[complexId] = 1;
+            }
+            complexes[complexIdtoIdx.at(complexId)].chainKeys.emplace_back(chainKey);
+            complexes[complexIdtoIdx.at(complexId)].nChain++;
         }
-        complexes.back().chainKeys.emplace_back(chainKey);
-        complexes.back().nChain++;
         data = Util::skipLine(data);
     }
     lookupDB.close();
@@ -541,7 +541,7 @@ localThreads = std::max(std::min((size_t)par.threads, alnDbr.getSize()), (size_t
     std::map<unsigned int, unsigned int> qComplexIdToIdx, tComplexIdToIdx;
     chainKeyToComplexId_t qChainKeyToComplexIdMap, tChainKeyToComplexIdMap;
 
-    getlookupInfo(qLookupFile, qChainKeyToComplexIdMap, qComplexes, qComplexIdToIdx);
+    getlookupInfo(qDbr, qLookupFile, qChainKeyToComplexIdMap, qComplexes, qComplexIdToIdx);
     getComplexResidueLength(qDbr, qComplexes);
     Debug::Progress progress(qComplexes.size());
 
@@ -550,7 +550,7 @@ localThreads = std::max(std::min((size_t)par.threads, alnDbr.getSize()), (size_t
         tComplexes = qComplexes;
         tComplexIdToIdx = qComplexIdToIdx;
     } else {
-        getlookupInfo(tLookupFile, tChainKeyToComplexIdMap, tComplexes, tComplexIdToIdx);
+        getlookupInfo(tDbr, tLookupFile, tChainKeyToComplexIdMap, tComplexes, tComplexIdToIdx);
         getComplexResidueLength(tDbr, tComplexes);
     }
     // std::vector<unsigned int> qComplexOrder(qComplexes.size());
