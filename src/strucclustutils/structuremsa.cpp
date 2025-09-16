@@ -2498,12 +2498,12 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             std::vector<std::vector<float>> lddtSums(seqMergedAa->L, std::vector<float>(seqTargetAa->L));
             std::vector<std::vector<size_t>> lddtCounts(seqMergedAa->L, std::vector<size_t>(seqTargetAa->L));
             for (size_t qi = 0; qi < qMembers.size(); ++qi) {
-                if (par.filterMsa && qMembersKept[qi] == false) {
+                if (par.filterMsa && queryIsProfile && qMembersKept[qi] == false) {
                     continue;
                 }
                 size_t qMember = qMembers[qi];
                 for (size_t ti = 0; ti < tMembers.size(); ++ti) {
-                    if (par.filterMsa && tMembersKept[ti] == false) {
+                    if (par.filterMsa && targetIsProfile && tMembersKept[ti] == false) {
                         continue;
                     }
                     size_t tMember = tMembers[ti];
