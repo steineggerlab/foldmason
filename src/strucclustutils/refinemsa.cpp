@@ -16,6 +16,7 @@
 #include "IndexReader.h"
 #include "DBWriter.h"
 #include "assert.h"
+#include "StructureSmithWaterman.h"
 
 /**
  * @brief Find and delete all-gap columns from a sub-collection of CIGAR vectors
@@ -217,13 +218,13 @@ void refineOne(
         tinySubMatAA, tinySubMat3Di, &subMat_aa
     );
     Matcher::result_t result = pairwiseAlignment(
-        structureSmithWaterman,
         sequences_aa[qId]->L,
         sequences_aa[qId], sequences_ss[qId],
         sequences_aa[tId], sequences_ss[tId],
         gapOpen, gapExtend,
         &subMat_aa, &subMat_3di,
-        compBiasCorrection
+        compBiasCorrection,
+        NULL
     );
     std::vector<Instruction> qBt;
     std::vector<Instruction> tBt;

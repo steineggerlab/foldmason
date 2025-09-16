@@ -82,31 +82,17 @@ void getMergeInstructions(
 );
 
 Matcher::result_t pairwiseAlignment(
-    StructureSmithWaterman & aligner,
     unsigned int querySeqLen,
     Sequence *query_aa,
     Sequence *query_3di,
     Sequence *target_aa,
     Sequence *target_3di,
-    int gapOpen, int gapExtend,
-    SubstitutionMatrix *mat_aa,
-    SubstitutionMatrix *mat_3di,
-    int compBiasCorrection
-);
-
-Matcher::result_t pairwiseAlignment(
-    StructureSmithWaterman & aligner,
-    unsigned int querySeqLen,
-    Sequence *query_aa,
-    Sequence *query_3di,
-    Sequence *target_aa,
-    Sequence *target_3di,
-    int gapOpen, int gapExtend,
+    int gapOpen,
+    int gapExtend,
     SubstitutionMatrix *mat_aa,
     SubstitutionMatrix *mat_3di,
     int compBiasCorrection,
-    float** lddtScoreMap,
-    std::vector<std::tuple<size_t, size_t, size_t, size_t> > anchors
+    float** lddtScoreMap
 );
 
 void maskToMapping(const std::string &mask, std::vector<size_t> &mapping);
