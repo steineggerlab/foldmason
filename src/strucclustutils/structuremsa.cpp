@@ -1968,11 +1968,12 @@ inline float scoreNeighbours(
         simd_float amb  = simdf32_sub(a, b);
         simd_float num  = simdf32_mul(amb, amb);
         simd_float den  = simdf32_add(simdf32_add(a, b), eps);
-        simd_float inv = simdf32_rcp(den);
+        // simd_float inv = simdf32_rcp(den);
         // simd_float neg_den = simdf32_sub(zero_f, den);
         // simd_float corr = simdf32_fmadd(neg_den, inv, two_v);
         // inv = simdf32_mul(inv, corr);
-        simd_float y = simdf32_mul(num, inv); // num/den
+        // simd_float y = simdf32_mul(num, inv); // num/den
+        simd_float y = simdf32_div(num, den); // num/den
         simd_float SrIn = simdf32_mul(y, neg_sig_r);
         simd_float Sr   = exp_approx(SrIn);
 
