@@ -10,9 +10,9 @@ def objective(trial):
     # gotoh_ge = trial.suggest_int("GOTOH_GE", 0, 20)
     # gotoh_go = trial.suggest_int("GOTOH_GO", 1, 40)
     # match_ratio = trial.suggest_float("MATCH_RATIO", 0.0, 1.0, step=0.1)
-    # nb_ang_cut = trial.suggest_int("NB_ANG_CUT", 1, 50)
-    # nb_low_cut = trial.suggest_float("NB_LOW_CUT", 0.0, 1.0, step=0.1)
-    # nb_mult = trial.suggest_int("NB_MULT", 1, 20)
+    nb_ang_cut = trial.suggest_int("NB_ANG_CUT", 1, 50)
+    nb_low_cut = trial.suggest_float("NB_LOW_CUT", 0.0, 1.0, log=True)
+    nb_mult = trial.suggest_int("NB_MULT", 1, 30)
     # nb_total = trial.suggest_int("NB_TOTAL", 1, 50)
     
     # Thresholds in increasing order by number, thr1 < thr2 < thr3 < thr4
@@ -49,23 +49,20 @@ def objective(trial):
     # bitfactor_3di = trial.suggest_float("BITFACTOR_3DI", 0.0, 5.0, step=0.1)
    
     nb_sigma_r = trial.suggest_float("NB_SIGMA_R", 0.1, 12.0, log=True)
-    nb_sigma_i = trial.suggest_float("NB_SIGMA_i", 0.1, 12.0, log=True)
-    logit_nb_alpha = trial.suggest_float("PRE_NB_ALPHA", 0.0, 1.0)
-    logit_nb_beta = trial.suggest_float("PRE_NB_BETA", 0.0, 1.0)
-    nb_alpha = logit_nb_alpha / (logit_nb_alpha + logit_nb_beta)
-    nb_beta = logit_nb_beta / (logit_nb_alpha + logit_nb_beta)
+    # nb_sigma_i = trial.suggest_float("NB_SIGMA_i", 0.1, 12.0, log=True)
+    nb_alpha = trial.suggest_float("NB_ALPHA", 0.0, 1.0, log=True)
+    # logit_nb_beta = trial.suggest_float("PRE_NB_BETA", 0.0, 1.0)
+    # nb_alpha = logit_nb_alpha / (logit_nb_alpha + logit_nb_beta)
+    # nb_beta = logit_nb_beta / (logit_nb_alpha + logit_nb_beta)
+    ndiff = trial.suggest_int("NDIFF", 1, 50)
    
     env = os.environ.copy()
     env.update({
         "GOTOH_GE": "3",
         "GOTOH_GO": "32",
-        "NB_MULT": "18",
-        "NB_LOW_CUT": "0.1",
-        "NB_TOTAL": "50",
-        "NB_ANG_CUT": "20",
         "COMP_BIAS": "1",
         "WG": "0",
-        "FILTER_MSA": "0",
+        "FILTER_MSA": "1",
         "SCORE_BIAS": "1.0",
         "SCORE_BIAS_PSSM": "-1.6",
         "SW_GO": "24",
@@ -75,12 +72,16 @@ def objective(trial):
         "MATCH_RATIO": "0.9",
         "THREADS": "128",
         "NB_SIGMA_R": str(nb_sigma_r),
-        "NB_SIGMA_I": str(nb_sigma_i),
+        # "NB_SIGMA_I": str(nb_sigma_i),
+        "NB_MULT": str(nb_mult), #"18",
+        "NB_LOW_CUT": str(nb_low_cut), # "0.1",
+        "NB_ANG_CUT": str(nb_ang_cut), #"20",
         "NB_ALPHA": str(nb_alpha),
-        "NB_BETA": str(nb_beta)
+        "NDIFF": str(ndiff)
+        # "NB_BETA": str(nb_beta)
     })
-    trial.set_user_attr("NB_ALPHA", nb_alpha)
-    trial.set_user_attr("NB_BETA", nb_beta)
+    # trial.set_user_attr("NB_ALPHA", nb_alpha)
+    # trial.set_user_attr("NB_BETA", nb_beta)
     
     try:
         result = subprocess.run(

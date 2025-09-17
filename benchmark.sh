@@ -18,12 +18,12 @@ export MATCH_RATIO="${MATCH_RATIO:=0.5}"
 export NB_ANG_CUT="${NB_ANG_CUT:=15.0}"  # angstrom cutoff
 
 export NB_SIGMA_R="${NB_SIGMA_R:=3.0}"
-export NB_SIGMA_I="${NB_SIGMA_I:=5.0}"
+# export NB_SIGMA_I="${NB_SIGMA_I:=5.0}"
 export NB_ALPHA="${NB_ALPHA:=1.0}"
-export NB_BETA="${NB_BETA:=1.0}"
+# export NB_BETA="${NB_BETA:=1.0}"
 
 # export NB_ANG_SC1="${NB_ANG_SC1:=1.0}"
-# export NB_ANG_SC2="${NB_ANG_SC2:=0.6}"
+# export NB_ANG_SC2="${NB_log=True=0.6}"
 # export NB_ANG_SC3="${NB_ANG_SC3:=0.4}"
 # export NB_ANG_SC4="${NB_ANG_SC4:=0.2}"
 # export NB_ANG_THR1="${NB_ANG_THR1:=0.5}"
@@ -50,6 +50,7 @@ export WG="${WG:=1}"
 export BITFACTOR_AA="${BITFACTOR_AA:=1.1}"
 export BITFACTOR_3DI="${BITFACTOR_3DI:=2.1}"
 export FILTER_MSA="${FILTER_MSA:=0}"
+export NDIFF="${NDIFF:=3}"
 
 # echo COMP_BIAS = "${COMP_BIAS}"
 # echo GOTOH_GE = "${GOTOH_GE}"
@@ -208,6 +209,7 @@ process_path() {
 			--bitfactor-aa "${BITFACTOR_AA}" \
 			--bitfactor-3di "${BITFACTOR_3DI}" \
 			--filter-msa "${FILTER_MSA}" \
+			--diff "${NDIFF}" \
 			--threads 1 \
 			--wg "${WG}" \
 			-v 0 \
@@ -222,6 +224,7 @@ process_path() {
 			--bitfactor-aa "${BITFACTOR_AA}" \
 			--bitfactor-3di "${BITFACTOR_3DI}" \
 			--filter-msa "${FILTER_MSA}" \
+			--diff "${NDIFF}" \
 			--threads 1 \
 			--wg "${WG}" \
 			-v 0 \
