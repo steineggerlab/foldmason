@@ -119,26 +119,11 @@ Matcher::result_t simpleGotoh(
             }
             short bias3DiTbl[21] = { -1, 0,0,0,0, 0, 0, 0, 1, 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5};
             short biasAATbl[21] = { 0, 0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-            short lddtBias = ceil(lddtScoreMap[j-1][i]);
-            short diagPenalty = ceil(0.005f * std::abs(j-1 - i));
             short subScore = ceil((((query_profile_aa[j-1] + target_profile_aa[i]) / 2
                 + (query_profile_3di[j-1] + target_profile_3di[i]) / 2)))
                 + ceil(lddtScoreMap[j-1][i])
-                // - diagPenalty
                 + bias3DiTbl[agree3Di] + biasAATbl[agreeAA] + ((strongAgree >= 19) ? 2 : 0)
                 ; 
-            // short subScore = ceil(
-            //     static_cast<float>(
-            //         ((query_profile_aa[j-1] + target_profile_aa[i]) / 2 + (query_profile_3di[j-1] + target_profile_3di[i]) / 2)
-            //         + bias3DiTbl[agree3Di] + biasAATbl[agreeAA] + ((strongAgree >= 19) ? 2 : 0)
-            //     ) * lddtScoreMap[j-1][i])
-            //     ; 
-            
-            // std::cout << query_profile_aa[j-1] << '\t' << target_profile_aa[i]
-            //     << '\t' << query_profile_3di[j-1] << '\t' << target_profile_3di[i]
-            //     << '\t' << lddtScoreMap[j-1][i]
-            //     << '\t' << ceil(lddtScoreMap[j-1][i]) <<'\n';
-
             short tempE = curr_sM_G_D_vec[j-1].H - gap_open;
             short tempF = prev_sM_G_D_vec[j].H - gap_open;
             short tempEE = (curr_sM_G_D_vec[j - 1].E - gap_extend);
@@ -149,10 +134,6 @@ Matcher::result_t simpleGotoh(
             curr_sM_G_D_vec[j].H = std::max(tempH, curr_sM_G_D_vec[j].E);
             curr_sM_G_D_vec[j].H = std::max(curr_sM_G_D_vec[j].H, curr_sM_G_D_vec[j].F);
             curr_sM_G_D_vec[j].H = std::max(curr_sM_G_D_vec[j].H, static_cast<short>(0));
-
-            // std::cout << curr_sM_G_D_vec[j].H << '\t';
-            // std::cout << lddtBias << '\t';
-            // std::cout << -diagPenalty << '\t';
 
             uint8_t mode = 0;
             mode |= (curr_sM_G_D_vec[j].E == tempE) ? E_M_FLAG : E_E_FLAG;
@@ -168,8 +149,6 @@ Matcher::result_t simpleGotoh(
             }
         }
         
-        // std::cout << '\n';
-
         if (curr_sM_G_D_vec[query_length].H > result.score) {
             result.ref = static_cast<int32_t> (i);
             result.read = static_cast<int32_t> (query_length - 1);
