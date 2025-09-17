@@ -2500,8 +2500,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             //                 LDDT(i, j)
             //                 Map & add to sum matrix cell
             //                 Map & add to count matrix cell
-            std::vector<std::vector<float>> lddtSums(seqMergedAa->L, std::vector<float>(seqTargetAa->L));
-            std::vector<std::vector<size_t>> lddtCounts(seqMergedAa->L, std::vector<size_t>(seqTargetAa->L));
+            std::vector<std::vector<unsigned int>> lddtCounts(seqMergedAa->L, std::vector<unsigned int>(seqTargetAa->L));
             for (size_t qi = 0; qi < qMembers.size(); ++qi) {
                 if (par.filterMsa && queryIsProfile && qMembersKept[qi] == false) {
                     continue;
@@ -2514,7 +2513,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     size_t tMember = tMembers[ti];
                     size_t qSeqId = 0;
                     size_t qResId = 0;
-                    for (Instruction& qIns : msa.cigars_aa[qMember]) {
+                    for (const Instruction& qIns : msa.cigars_aa[qMember]) {
                         if (!qIns.isSeq()) {
                             qSeqId += qIns.length(); 
                             continue;
@@ -2525,9 +2524,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                             qResId++;
                             continue;
                         }
+                        size_t qOffset = proteinOffsets[qMember];
+                        size_t qIdx = qOffset + qResId * neighbours;
+                        float* qLddtSums = lddtScoreMap[qMSAId];
+                        std::vector<unsigned int>& qLddtCounts = lddtCounts[qMSAId];
                         size_t tSeqId = 0;
                         size_t tResId = 0;
-                        for (Instruction& tIns : msa.cigars_aa[tMember]) {
+                        for (const Instruction& tIns : msa.cigars_aa[tMember]) {
                             if (!tIns.isSeq()) {
                                 tSeqId += tIns.length(); 
                                 continue;
@@ -2540,13 +2543,10 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                                 continue;
                             }
 
-                            size_t qOffset = proteinOffsets[qMember];
                             size_t tOffset = proteinOffsets[tMember];
-
-                            size_t qIdx = qOffset + qResId * neighbours;
                             size_t tIdx = tOffset + tResId * neighbours;
-                            lddtSums[qMSAId][tMSAId] += scoreNeighbours(neighbourData, neighbours, qIdx, tIdx, nb_sigma_r, nb_sigma_i, nb_alpha, nb_beta);
-                            lddtCounts[qMSAId][tMSAId]++;
+                            qLddtSums[tMSAId] += scoreNeighbours(neighbourData, neighbours, qIdx, tIdx, nb_sigma_r, nb_sigma_i, nb_alpha, nb_beta);
+                            qLddtCounts[tMSAId]++;
                             tSeqId++;
                             tResId++;
                         }
@@ -2559,16 +2559,15 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             std::vector<float> colMax(seqTargetAa->L);
             for (int y = 0; y < seqMergedAa->L; ++y) {
                 for (int z = 0; z < seqTargetAa->L; ++z) {
-                    lddtSums[y][z] /= static_cast<float>(lddtCounts[y][z]);
-                    colMax[z] = std::max(colMax[z], lddtSums[y][z]);
-                    rowMax[y] = std::max(rowMax[y], lddtSums[y][z]);
+                    lddtScoreMap[y][z] /= static_cast<float>(lddtCounts[y][z]);
+                    colMax[z] = std::max(colMax[z], lddtScoreMap[y][z]);
+                    rowMax[y] = std::max(rowMax[y], lddtScoreMap[y][z]);
                 }
             }
             for (int y = 0; y < seqMergedAa->L; ++y) {
                 for (int z = 0; z < seqTargetAa->L; ++z) {
-                    lddtSums[y][z] = (lddtSums[y][z] * lddtSums[y][z]) / (rowMax[y] * colMax[z]);
-                    lddtSums[y][z] = (lddtSums[y][z] < nb_low_cut) ? 0.0f : lddtSums[y][z] * nb_multiplier;
-                    lddtScoreMap[y][z] = lddtSums[y][z];
+                    lddtScoreMap[y][z] = (lddtScoreMap[y][z] * lddtScoreMap[y][z]) / (rowMax[y] * colMax[z]);
+                    lddtScoreMap[y][z] = (lddtScoreMap[y][z] < nb_low_cut) ? 0.0f : lddtScoreMap[y][z] * nb_multiplier;
                 }
             }
             
