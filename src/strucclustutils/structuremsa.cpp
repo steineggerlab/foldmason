@@ -1939,6 +1939,7 @@ inline float scoreNeighbours(
     const simd_float zero_f   = simdf32_set(0.0f);
     const simd_float max_f   = simdf32_set(FLT_MAX);
     const simd_float one_v      = simdf32_set(1.0f);
+    const simd_float true_mask = simdf32_eq(zero_f, zero_f);
 
     simd_float sum_v  = simdf32_set(0.0f);
     simd_float norm_v = simdf32_set(0.0f);
@@ -1949,7 +1950,7 @@ inline float scoreNeighbours(
         // mask invalid (>c)
         simd_float m1 = simdf32_eq(a, max_f);
         simd_float m2 = simdf32_eq(b, max_f);
-        simd_float m  = simdf32_andnot(simdf32_or(m1, m2), simdf32_eq(zero_f, zero_f));
+        simd_float m  = simdf32_andnot(simdf32_or(m1, m2), true_mask);
 
         // simd_int i1 = simdi_load((simd_int*)(qi + n));
         // simd_int i2 = simdi_load((simd_int*)(ti + n));
