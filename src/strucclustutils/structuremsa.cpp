@@ -1978,11 +1978,11 @@ inline float scoreNeighbours(
         simd_float Sr   = exp_approx(SrIn);
 
         // simd_float s    = simdf32_add(simdf32_mul(alpha_v, Sr), simdf32_mul(beta_v,  Si));
-        simd_float s    = simdf32_mul(alpha_v, Sr);
+        // simd_float s    = simdf32_mul(alpha_v, Sr);
 
         // zero-out invalid lanes
         simd_float valid01 = simdf32_blendv_ps(zero_f, one_v, (simd_float)m);
-        sum_v  = simdf32_add(sum_v, simdf32_mul(s, valid01));
+        sum_v  = simdf32_add(sum_v, simdf32_mul(Sr, valid01));
         norm_v = simdf32_add(norm_v, simdf32_mul(two_v, valid01));
 
         // sum_v  = simdf32_add(sum_v,  s);
