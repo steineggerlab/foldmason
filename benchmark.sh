@@ -19,7 +19,7 @@ export NB_ANG_CUT="${NB_ANG_CUT:=15.0}"  # angstrom cutoff
 
 export NB_SIGMA_R="${NB_SIGMA_R:=3.0}"
 # export NB_SIGMA_I="${NB_SIGMA_I:=5.0}"
-export NB_ALPHA="${NB_ALPHA:=1.0}"
+# export NB_ALPHA="${NB_ALPHA:=1.0}"
 # export NB_BETA="${NB_BETA:=1.0}"
 
 # export NB_ANG_SC1="${NB_ANG_SC1:=1.0}"

@@ -50,7 +50,7 @@ def objective(trial):
    
     nb_sigma_r = trial.suggest_float("NB_SIGMA_R", 0.1, 12.0, log=True)
     # nb_sigma_i = trial.suggest_float("NB_SIGMA_i", 0.1, 12.0, log=True)
-    nb_alpha = trial.suggest_float("NB_ALPHA", 0.0, 1.0, log=True)
+    # nb_alpha = trial.suggest_float("NB_ALPHA", 0.0, 1.0, log=True)
     # logit_nb_beta = trial.suggest_float("PRE_NB_BETA", 0.0, 1.0)
     # nb_alpha = logit_nb_alpha / (logit_nb_alpha + logit_nb_beta)
     # nb_beta = logit_nb_beta / (logit_nb_alpha + logit_nb_beta)
@@ -76,7 +76,7 @@ def objective(trial):
         "NB_MULT": str(nb_mult), #"18",
         "NB_LOW_CUT": str(nb_low_cut), # "0.1",
         "NB_ANG_CUT": str(nb_ang_cut), #"20",
-        "NB_ALPHA": str(nb_alpha),
+        # "NB_ALPHA": str(nb_alpha),
         "NDIFF": str(ndiff)
         # "NB_BETA": str(nb_beta)
     })
