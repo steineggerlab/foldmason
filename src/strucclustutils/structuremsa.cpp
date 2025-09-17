@@ -2450,6 +2450,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     std::swap(queryIsProfile, targetIsProfile);
                     std::swap(querySubMSA, targetSubMSA);
                     std::swap(qMembers, tMembers);
+                    if (par.filterMsa) {
+                        std::swap(qMembersKept, tMembersKept);
+                    }
                     std::swap(map1, map2);
                     std::swap(map1Rev, map2Rev);
                 }
