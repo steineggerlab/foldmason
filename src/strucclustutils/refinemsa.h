@@ -13,7 +13,6 @@ void refineMany(
     PSSMCalculator &calculator_3di,
     MsaFilter &filter_3di,
     SubstitutionMatrix &subMat_3di,
-    StructureSmithWaterman & structureSmithWaterman,
     int iterations,
     bool compBiasCorrection,
     bool wg,
