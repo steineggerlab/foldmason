@@ -42,10 +42,12 @@ public:
     PARAMETER(PARAM_REPORT_PATHS)
     PARAMETER(PARAM_REFINE_SEED)
     PARAMETER(PARAM_ONLY_SCORING_COLS)
+    PARAMETER(PARAM_SCORE_NEIGHBORS)
     
     std::string guideTree;
     bool recomputeScores;
     bool precluster;
+    bool scoreNeighbors;
     int refineIters;
     float bitFactorAa;
     float bitFactor3Di;

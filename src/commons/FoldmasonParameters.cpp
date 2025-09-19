@@ -14,7 +14,8 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_REPORT_COMMAND(PARAM_REPORT_COMMAND_ID, "--report-command", "", "", typeid(std::string), (void *) &reportCommand, ""),
         PARAM_REPORT_PATHS(PARAM_REPORT_PATHS_ID, "--report-paths", "", "", typeid(bool), (void *) &reportPaths, ""),
         PARAM_REFINE_SEED(PARAM_REFINE_SEED_ID, "--refine-seed", "Random number generator seed", "Random number generator seed", typeid(int), (void *) &refinementSeed, "^([-]?[0-9]*)$"),
-        PARAM_ONLY_SCORING_COLS(PARAM_ONLY_SCORING_COLS_ID, "--only-scoring-cols", "Normalise LDDT by no. scoring columns", "Normalise LDDT by no. scoring columns", typeid(bool), (void *) &onlyScoringCols, "")
+        PARAM_ONLY_SCORING_COLS(PARAM_ONLY_SCORING_COLS_ID, "--only-scoring-cols", "Normalise LDDT by no. scoring columns", "Normalise LDDT by no. scoring columns", typeid(bool), (void *) &onlyScoringCols, ""),
+        PARAM_SCORE_NEIGHBORS(PARAM_SCORE_NEIGHBORS_ID, "--score-neighbors", "Score residue neighbourhoods", "Consider residue neighbourhood similarity in alignment", typeid(bool), (void *) &scoreNeighbors, "")
 {
     // structuremsa
     structuremsa.push_back(&PARAM_WG);
@@ -38,6 +39,7 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_BITFACTOR_AA);
     structuremsa.push_back(&PARAM_BITFACTOR_3DI);
     structuremsa.push_back(&PARAM_PAIR_THRESHOLD);
+    structuremsa.push_back(&PARAM_SCORE_NEIGHBORS);
     structuremsa.push_back(&PARAM_NO_COMP_BIAS_CORR);
     structuremsa.push_back(&PARAM_V);
     structuremsa.push_back(&PARAM_REFINE_SEED);
@@ -69,6 +71,7 @@ FoldmasonParameters::FoldmasonParameters() :
     bitFactorAa = 1.1f;
     bitFactor3Di = 2.1f;
     scoreBias = 0.6f;
+    scoreNeighbors = true;
     matchRatio = 0.52f;
     guideTree = "";
     reportCommand = "";

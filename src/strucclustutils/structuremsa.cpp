@@ -1848,12 +1848,14 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     int maxThreads = std::min(par.threads, static_cast<int>(sequenceCnt));
 
     Neighbours *neighbourData;
-    if (caExist) {
+    if (caExist && par.scoreNeighbors) {
         neighbourData = new Neighbours(totalResidues * neighbours);
         collectNeighbours(
             sequenceCnt, neighbourData, seqDbrAA, seqDbrCA,
             proteinOffsets, neighbours, thresh_sq, maxThreads
         );
+    } else {
+        neighbourData = NULL;
     }
 
     Debug(Debug::INFO) << "Initialised MSAs, Sequence objects\n";
@@ -2203,11 +2205,10 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             // 1. sw, update relevant copied cigars --> MSA
             // 2. lddt on MSA --> per col count
             // 3. iterate cigar, map msa per col lddt -> (i, j)
-            float **lddtScoreMap;
-            unsigned int **lddtCounts;
-            if (caExist) {
-                lddtScoreMap = new float *[seqMergedAa->L];                
-                lddtCounts = new unsigned int *[seqMergedAa->L];
+            Matcher::result_t res;
+            if (caExist && par.scoreNeighbors) {
+                float **lddtScoreMap = new float *[seqMergedAa->L];                
+                unsigned int **lddtCounts = new unsigned int *[seqMergedAa->L];
                 for (int z = 0; z < seqMergedAa->L; z++) {
                     lddtScoreMap[z] = new float [seqTargetAa->L];
                     lddtCounts[z] = new unsigned int [seqTargetAa->L];
@@ -2220,34 +2221,40 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     queryIsProfile, targetIsProfile, par.filterMsa, neighbours, nb_sigma_r,
                     nb_low_cut, nb_multiplier
                 );
-            } else {
-                lddtScoreMap = NULL;
-                lddtCounts = NULL;
-            }
-
-            Matcher::result_t res = pairwiseAlignment(
-                seqMergedAa->L,
-                seqMergedAa,
-                seqMergedSs,
-                seqTargetAa,
-                seqTargetSs,
-                par.gapOpen.values.aminoacid(),
-                par.gapExtend.values.aminoacid(),
-                &subMat_aa,
-                &subMat_3di,
-                par.compBiasCorrection,
-                lddtScoreMap
-            );
-
-            if (caExist) {
+                res = pairwiseAlignment(
+                    seqMergedAa->L,
+                    seqMergedAa,
+                    seqMergedSs,
+                    seqTargetAa,
+                    seqTargetSs,
+                    par.gapOpen.values.aminoacid(),
+                    par.gapExtend.values.aminoacid(),
+                    &subMat_aa,
+                    &subMat_3di,
+                    par.compBiasCorrection,
+                    lddtScoreMap
+                );
                 for (int32_t z = 0; z < seqMergedAa->L; z++) {
                     delete[] lddtScoreMap[z];
                     delete[] lddtCounts[z];
                 }
                 delete[] lddtScoreMap;
                 delete[] lddtCounts;
+            } else {
+                res = pairwiseAlignment(
+                    seqMergedAa->L,
+                    seqMergedAa,
+                    seqMergedSs,
+                    seqTargetAa,
+                    seqTargetSs,
+                    par.gapOpen.values.aminoacid(),
+                    par.gapExtend.values.aminoacid(),
+                    &subMat_aa,
+                    &subMat_3di,
+                    par.compBiasCorrection,
+                    NULL
+                );
             }
-
             std::vector<Instruction> qBt;
             std::vector<Instruction> tBt;
             getMergeInstructions(res, map1, map2, qBt, tBt);
