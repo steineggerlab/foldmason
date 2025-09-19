@@ -1605,155 +1605,6 @@ void copyInstructionVectors(std::vector<std::vector<Instruction> > &one, std::ve
 }
 
 
-void collectNeighbours(
-    size_t sequenceCnt,
-    Neighbours *neighbourData,
-    DBReader<unsigned int> &seqDbrAA,
-    DBReader<unsigned int> *seqDbrCA,
-    std::vector<size_t> &proteinOffsets,
-    size_t neighbours,
-    float thresh_sq,
-    int maxThreads
-) {
-#pragma omp parallel for num_threads(maxThreads) default(none) \
-        shared(neighbourData, proteinOffsets, sequenceCnt, neighbours, seqDbrAA, seqDbrCA, thresh_sq)
-    for (size_t i = 0; i < sequenceCnt; i++) {
-        unsigned int seqKeyAA = seqDbrAA.getDbKey(i);
-        size_t seqIdAA = seqDbrAA.getId(seqKeyAA);
-        size_t length = seqDbrAA.getSeqLen(seqIdAA);
-
-        Coordinate16 tcoords;
-        char *tcadata = seqDbrCA->getData(seqIdAA, 0);
-        size_t tCaLength = seqDbrCA->getEntryLen(seqIdAA);
-        float *targetCaData = tcoords.read(tcadata, length, tCaLength);
-
-        const float* x = targetCaData;
-        const float* y = targetCaData + length;
-        const float* z = targetCaData + length * 2;
-        std::vector<uint8_t> count(length, 0);
-        size_t thread_baseOut = proteinOffsets[i];
-
-        for (size_t j = 0; j < length; ++j) {
-            const float xj = x[j], yj = y[j], zj = z[j];
-            const size_t rowBaseJ = thread_baseOut + j * neighbours;
-            for (size_t k = j + 1; k < length; ++k) {
-                float dx = xj - x[k];
-                float dist = dx * dx;
-                if (dist > thresh_sq) continue; 
-                float dy = yj - y[k];
-                dist += dy * dy;
-                if (dist > thresh_sq) continue; 
-                float dz = zj - z[k];
-                dist += dz * dz;
-                int idxdist = static_cast<int>(j) - static_cast<int>(k);
-                if (dist < thresh_sq) {
-                    neighbourData->insert_topk(rowBaseJ, count[j], idxdist, dist, neighbours); 
-                    const size_t rowBaseK = thread_baseOut + k * neighbours;
-                    neighbourData->insert_topk(rowBaseK, count[k], -idxdist, dist, neighbours); 
-                }
-            }
-        }
-        for (size_t j = 0; j < length; ++j) {
-            const size_t rowBase = thread_baseOut + j * neighbours;
-            const uint8_t c = count[j];
-            neighbourData->sortNeighbours(rowBase, c, neighbours);
-        }
-    }
-}
-
-inline void fillNeighbourScoreMatrix(
-    Neighbours *neighbourData,
-    float **lddtScoreMap,
-    unsigned int **lddtCounts,
-    int queryLen,
-    int targetLen,
-    std::vector<size_t> &qMembers, 
-    std::vector<size_t> &tMembers, 
-    std::vector<bool> &qMembersKept, 
-    std::vector<bool> &tMembersKept, 
-    std::vector<size_t> &map1Rev, 
-    std::vector<size_t> &map2Rev, 
-    std::vector<size_t> &proteinOffsets, 
-    std::vector<std::vector<Instruction>> &cigars_aa, 
-    bool queryIsProfile,
-    bool targetIsProfile,
-    int filterMsa,
-    size_t neighbours,
-    float nb_sigma_r,
-    float nb_low_cut,
-    float nb_multiplier
-) {
-    for (size_t qi = 0; qi < qMembers.size(); ++qi) {
-        if (filterMsa && queryIsProfile && qMembersKept[qi] == false) {
-            continue;
-        }
-        size_t qMember = qMembers[qi];
-        for (size_t ti = 0; ti < tMembers.size(); ++ti) {
-            if (filterMsa && targetIsProfile && tMembersKept[ti] == false) {
-                continue;
-            }
-            size_t tMember = tMembers[ti];
-            size_t qSeqId = 0;
-            size_t qResId = 0;
-            for (const Instruction& qIns : cigars_aa[qMember]) {
-                if (!qIns.isSeq()) {
-                    qSeqId += qIns.length(); 
-                    continue;
-                }
-                size_t qMSAId = map1Rev[qSeqId];
-                if (qMSAId == SIZE_T_MAX) {
-                    qSeqId++;
-                    qResId++;
-                    continue;
-                }
-                size_t qOffset = proteinOffsets[qMember];
-                size_t qIdx = qOffset + qResId * neighbours;
-                float* qLddtSums = lddtScoreMap[qMSAId];
-                unsigned int* qLddtCounts = lddtCounts[qMSAId];
-                size_t tSeqId = 0;
-                size_t tResId = 0;
-                for (const Instruction& tIns : cigars_aa[tMember]) {
-                    if (!tIns.isSeq()) {
-                        tSeqId += tIns.length(); 
-                        continue;
-                    }
-                    size_t tMSAId = map2Rev[tSeqId];
-                    if (tMSAId == SIZE_T_MAX) {
-                        tSeqId++;
-                        tResId++;
-                        continue;
-                    }
-                    size_t tOffset = proteinOffsets[tMember];
-                    size_t tIdx = tOffset + tResId * neighbours;
-                    qLddtSums[tMSAId] += neighbourData->scoreNeighbours(qIdx, tIdx, nb_sigma_r);
-                    qLddtCounts[tMSAId]++;
-                    tSeqId++;
-                    tResId++;
-                }
-                qSeqId++;
-                qResId++;
-            }
-        }
-    }
-    std::vector<float> maxes(queryLen + targetLen);
-    for (int y = 0; y < queryLen; ++y) {
-        for (int z = 0; z < targetLen; ++z) {
-            if (lddtCounts[y][z] == 0) continue;
-            lddtScoreMap[y][z] /= static_cast<float>(lddtCounts[y][z]);
-            maxes[queryLen + z] = std::max(maxes[queryLen + z], lddtScoreMap[y][z]);
-            maxes[y] = std::max(maxes[y], lddtScoreMap[y][z]);
-        }
-    }
-    for (int y = 0; y < queryLen; ++y) {
-        for (int z = 0; z < targetLen; ++z) {
-            if (maxes[y] == 0.0f || maxes[queryLen + z] == 0.0f) continue;
-            lddtScoreMap[y][z] = (lddtScoreMap[y][z] * lddtScoreMap[y][z]) / (maxes[y] * maxes[queryLen + z]);
-            lddtScoreMap[y][z] = (lddtScoreMap[y][z] < nb_low_cut) ? 0.0f : lddtScoreMap[y][z] * nb_multiplier;
-        }
-    }
-}
-
-
 int structuremsa(int argc, const char **argv, const Command& command, bool preCluster) {
     FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
 
@@ -1850,10 +1701,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     Neighbours *neighbourData;
     if (caExist && par.scoreNeighbors) {
         neighbourData = new Neighbours(totalResidues * neighbours);
-        collectNeighbours(
-            sequenceCnt, neighbourData, seqDbrAA, seqDbrCA,
-            proteinOffsets, neighbours, thresh_sq, maxThreads
-        );
+        neighbourData->collectNeighbours(sequenceCnt, seqDbrAA, seqDbrCA, proteinOffsets, neighbours, thresh_sq, maxThreads);
     } else {
         neighbourData = NULL;
     }
@@ -2209,11 +2057,11 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     memset(lddtScoreMap[z], 0, sizeof(float) * seqTargetAa->L);
                     memset(lddtCounts[z], 0, sizeof(unsigned int) * seqTargetAa->L);
                 }
-                fillNeighbourScoreMatrix(
-                    neighbourData, lddtScoreMap, lddtCounts, seqMergedAa->L, seqTargetAa->L, qMembers,
-                    tMembers, qMembersKept, tMembersKept, map1Rev, map2Rev, proteinOffsets, msa.cigars_aa,
-                    queryIsProfile, targetIsProfile, par.filterMsa, neighbours, nb_sigma_r,
-                    nb_low_cut, nb_multiplier
+                neighbourData->fillNeighbourScoreMatrix(
+                    lddtScoreMap, lddtCounts, seqMergedAa->L, seqTargetAa->L, qMembers,
+                    tMembers, qMembersKept, tMembersKept, map1Rev, map2Rev, proteinOffsets,
+                    msa.cigars_aa, queryIsProfile, targetIsProfile, par.filterMsa,
+                    neighbours, nb_sigma_r, nb_low_cut, nb_multiplier
                 );
                 res = pairwiseAlignment(
                     seqMergedAa->L,
