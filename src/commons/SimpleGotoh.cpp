@@ -119,9 +119,10 @@ Matcher::result_t simpleGotoh(
             }
             short bias3DiTbl[21] = { -1, 0,0,0,0, 0, 0, 0, 1, 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5};
             short biasAATbl[21] = { 0, 0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            short lddtBias = (lddtScoreMap == NULL) ? 0.0f : ceil(lddtScoreMap[j-1][i]);
             short subScore = ceil((((query_profile_aa[j-1] + target_profile_aa[i]) / 2
                 + (query_profile_3di[j-1] + target_profile_3di[i]) / 2)))
-                + ceil(lddtScoreMap[j-1][i])
+                + lddtBias
                 + bias3DiTbl[agree3Di] + biasAATbl[agreeAA] + ((strongAgree >= 19) ? 2 : 0)
                 ; 
             short tempE = curr_sM_G_D_vec[j-1].H - gap_open;
@@ -162,8 +163,8 @@ Matcher::result_t simpleGotoh(
     }
 
     // Perform the backtrace
-    std::string cigar;
-    
+    std::string cigar = "";
+
     int i = result.ref;
     int j = result.read;
 

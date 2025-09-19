@@ -13,6 +13,7 @@
 #include "Parameters.h"
 #include "Sequence.h"
 #include "SimpleGotoh.h"
+#include "Neighbours.h"
 #include "StructureSmithWaterman.h"
 // #include "affineneedlemanwunsch.h"
 #include "StructureUtil.h"
@@ -65,8 +66,6 @@ void get_param_from_env(const char* param, T& value) {
     }
 }
 
-
-
 GapData getGapData(const Matcher::result_t &res, const std::vector<size_t>& qMap, const std::vector<size_t>& tMap) {
     GapData data;
     data.preSequence = qMap[res.qStartPos];
@@ -96,58 +95,6 @@ void print_matrix(float** matrix, size_t m, size_t n) {
         }
         std::cout << '\n';
     }
-}
-
-inline float prob_dot_product_inline(short **q, short **t, int i, int j) {
-    float Z_q = 0.0f,
-          Z_t = 0.0f;
-    float q_probs[20],
-        t_probs[20]; // temporary, small footprint
-    for (int a = 0; a < 20; ++a) {
-        q_probs[a] = std::pow(2.0f, static_cast<float>(q[a][j]));
-        t_probs[a] = std::pow(2.0f, static_cast<float>(t[a][i]));
-        Z_q += q_probs[a];
-        Z_t += t_probs[a];
-    }
-    if (Z_q == 0.0f || Z_t == 0.0f)
-        return 0.0f;
-    float dot = 0.0f;
-    for (int a = 0; a < 20; ++a) {
-        dot += (q_probs[a] / Z_q) * (t_probs[a] / Z_t);
-    }
-    return dot;
-}
-
-inline float prob_cosine_similarity_inline(short **q, short **t, int i, int j) {
-    float Z_q = 0.0f, Z_t = 0.0f;
-    float q_probs[20], t_probs[20];
-
-    for (int a = 0; a < 20; ++a) {
-        q_probs[a] = std::pow(2.0f, static_cast<float>(q[a][j]));
-        t_probs[a] = std::pow(2.0f, static_cast<float>(t[a][i]));
-        Z_q += q_probs[a];
-        Z_t += t_probs[a];
-    }
-
-    if (Z_q == 0.0f || Z_t == 0.0f)
-        return 0.0f;
-
-    // Normalize to probability vectors
-    for (int a = 0; a < 20; ++a) {
-        q_probs[a] /= Z_q;
-        t_probs[a] /= Z_t;
-    }
-
-    float dot = 0.0f, norm_q = 0.0f, norm_t = 0.0f;
-
-    for (int a = 0; a < 20; ++a) {
-        dot    += q_probs[a] * t_probs[a];
-        norm_q += q_probs[a] * q_probs[a];
-        norm_t += t_probs[a] * t_probs[a];
-    }
-
-    float denom = std::sqrt(norm_q * norm_t);
-    return (denom > 0.0f) ? (dot / denom) : 0.0f;
 }
 
 inline size_t upper_triangle_index(size_t i, size_t j, size_t n) {
@@ -375,35 +322,6 @@ void updateAllScores(
     );
     std::vector<AlnSimple> threadHits;
     
-    // std::vector<short> selfScores(sequenceCnt);
-    // for (unsigned int i = 0; i < sequenceCnt; i++) {
-    //     unsigned int mergedKey = seqDbrAA.getDbKey(i);
-    //     if (cluDbr != NULL && cluDbr->getId(mergedKey) == UINT_MAX) {
-    //         // If we have a cluster db and this structure is NOT in it, skip
-    //         // Should only align the representatives
-    //         continue;
-    //     }
-    //     size_t mergedId  = seqDbrAA.getId(mergedKey);
-    //     seqMergedAa.mapSequence(mergedId, mergedKey, seqDbrAA.getData(mergedId, thread_idx), seqDbrAA.getSeqLen(mergedId));
-    //     mergedId = seqDbr3Di.getId(mergedKey);
-    //     seqMergedSs.mapSequence(mergedId, mergedKey, seqDbr3Di.getData(mergedId, thread_idx), seqDbr3Di.getSeqLen(mergedId));
-    //     structureSmithWaterman.ssw_init(
-    //         &seqMergedAa,
-    //         &seqMergedSs,
-    //         tinySubMatAA,
-    //         tinySubMat3Di,
-    //         subMat_aa
-    //     );
-    //     StructureSmithWaterman::s_align self_aln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
-    //         seqMergedAa.numSequence,
-    //         seqMergedSs.numSequence,
-    //         seqMergedAa.L,
-    //         go, ge,
-    //         seqMergedAa.L/2
-    //     );
-    //     selfScores[i] = self_aln.score1;
-    // }
-
 #pragma omp for schedule(dynamic, 10)
     for (unsigned int i = 0; i < sequenceCnt; i++) {
         unsigned int mergedKey = seqDbrAA.getDbKey(i);
@@ -438,8 +356,6 @@ void updateAllScores(
             AlnSimple aln;
             aln.queryId = mergedId;
             aln.targetId = targetId;
-            // aln.score = structureSmithWaterman.ungapped_alignment(seqTargetAa.numSequence, seqTargetSs.numSequence, seqTargetAa.L);
-            
             StructureSmithWaterman::s_align saln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
                     seqTargetAa.numSequence,
                     seqTargetSs.numSequence,
@@ -447,8 +363,6 @@ void updateAllScores(
                     go, ge,
                     seqMergedAa.L/2
             );
-            // float score = (1.0f - (2 * saln.score1) / static_cast<float>(selfScores[i] + selfScores[j])) * 1000.0f; 
-            // aln.score = static_cast<short>(score);
             aln.score = saln.score1;
             // std::cout << "#print\t" << i << '\t' << j << '\t' <<
             //     saln.qStartPos1+1 << '-' << saln.qEndPos1 << " (" << seqMergedAa.L << ")\t" <<
@@ -854,16 +768,14 @@ std::string computeProfileMask(
                     int ij = c_aa * lengthWithGaps + seqIndex;
                     counts[ij] += 1;
                     if (counts[ij] == 1) {
-                        // counts[(Sequence::PROFILE_AA_SIZE) * lengthWithGaps + seqIndex]++;
                         distinct[seqIndex]++;
                     }
                 }
                 if (c_ss < Sequence::PROFILE_AA_SIZE) {  // ignore X (20)
-                    int ij = c_ss * 2 * lengthWithGaps + seqIndex;
+                    int ij = (Sequence::PROFILE_AA_SIZE * lengthWithGaps) + (c_ss * lengthWithGaps) + seqIndex;
                     counts[ij] += 1;
                     if (counts[ij] == 1) {
-                        // counts[(Sequence::PROFILE_AA_SIZE) * lengthWithGaps + seqIndex]++;
-                        distinct[seqIndex * 2]++;
+                        distinct[lengthWithGaps + seqIndex]++;
                     }
                 }
                 seqIndex++;
@@ -889,16 +801,21 @@ std::string computeProfileMask(
                 const unsigned int c_aa = subMat_aa.aa2num[static_cast<int>(ins_aa.getCharacter())];
                 const unsigned int c_ss = subMat_ss.aa2num[static_cast<int>(ins_ss.getCharacter())];
                 int ij_aa = c_aa * lengthWithGaps + seqIndex;
-                int ij_ss = c_ss * 2 * lengthWithGaps + seqIndex;
+                int ij_ss = (Sequence::PROFILE_AA_SIZE * lengthWithGaps) + (c_ss * lengthWithGaps) + seqIndex;
                 if (
                     counts[ij_aa] > 0 &&
                     counts[ij_ss] > 0 &&
                     distinct[seqIndex] > 0 && 
-                    distinct[seqIndex * 2] > 0
+                    distinct[lengthWithGaps + seqIndex] > 0
                 ) {
                     seqWeights[i] += 1.0f / (
-                        (static_cast<float>(counts[ij_aa]) + static_cast<float>(counts[ij_ss]))/2.0f
-                        * (static_cast<float>(distinct[seqIndex]) + static_cast<float>(distinct[seqIndex*2]))/2.0f
+                        static_cast<float>(counts[ij_aa])
+                        * static_cast<float>(distinct[seqIndex])
+                        * (static_cast<float>(lengthWithoutGaps) + 30.0f)
+                    );
+                    seqWeights[i] += 1.0f / (
+                        static_cast<float>(counts[ij_ss])
+                        * static_cast<float>(distinct[lengthWithGaps + seqIndex])
                         * (static_cast<float>(lengthWithoutGaps) + 30.0f)
                     );
                 }
@@ -1687,311 +1604,155 @@ void copyInstructionVectors(std::vector<std::vector<Instruction> > &one, std::ve
     }
 }
 
-class Neighbours {
-public:
-    int32_t* idx_dist = NULL;
-    float* distance = NULL;
-    size_t sz = 0;
-    size_t cap = 0;
 
-    explicit Neighbours(size_t n) {
-        resize(n);
-    }
-
-    ~Neighbours() {
-        if (idx_dist) {
-            free(idx_dist);
-            idx_dist = nullptr;
-        }
-        if (distance) {
-            free(distance);
-            distance = nullptr;
-        }
-        sz = cap = 0;
-    }
-
-    // size_t size() const {
-    //     return sz;
-    // }
-    // size_t capacity() const {
-    //     return cap;
-    // }
-    // bool empty() const {
-    //     return sz == 0;
-    // }
-    // void clear() {
-    //     sz = 0;
-    // }
-    // void reserve(size_t n) {
-    //     if (n <= cap) {
-    //         return;
-    //     }
-    //     reallocate(n);
-    // }
-    void resize(size_t n) {
-        if (n > cap) {
-            reallocate(n);
-        }
-        if (n > sz) {
-            memset(idx_dist + sz, 0, (n - sz) * sizeof(int32_t));
-            memset(distance + sz, 0, (n - sz) * sizeof(float));
-        }
-        sz = n;
-    }
-    // void push_back(int32_t idx, float dist) {
-    //     if (sz == cap) {
-    //         reserve(cap ? (cap * 2) : 1);
-    //     }
-    //     idx_dist[sz] = idx;
-    //     distance[sz] = dist;
-    //     ++sz;
-    // }
-    // bool empty_at(size_t i) const {
-    //     return idx_dist[i] == 0;
-    // }
-    // int32_t* idx_ptr(size_t i = 0) {
-    //     return idx_dist + i;
-    // }
-    // const int32_t* idx_ptr(size_t i = 0) const {
-    //     return idx_dist + i;
-    // }
-    // float* dist_ptr(size_t i = 0) {
-    //     return distance + i;
-    // }
-    // const float* dist_ptr(size_t i = 0) const {
-    //     return distance + i;
-    // }
-
-private:
-    void reallocate(size_t new_cap) {
-        const size_t bytes_i = new_cap * sizeof(int32_t);
-        const size_t bytes_f = new_cap * sizeof(float);
-
-        int32_t* new_idx = NULL;
-        float*   new_dst = NULL;
-
-        new_idx = reinterpret_cast<int32_t*>(malloc_simd_int(bytes_i));
-        new_dst = reinterpret_cast<float*>(malloc_simd_float(bytes_f));
-
-        if (idx_dist) {
-            memcpy(new_idx, idx_dist, sz * sizeof(int32_t));
-        }
-        if (distance) {
-            memcpy(new_dst, distance, sz * sizeof(float));
-        }
-
-        if (new_cap > sz) {
-            memset(new_idx + sz, 0, (new_cap - sz) * sizeof(int32_t));
-            memset(new_dst + sz, 0, (new_cap - sz) * sizeof(float));
-        }
-
-        if (idx_dist) {
-            free(idx_dist);
-        }
-        if (distance) {
-            free(distance);
-        }
-        idx_dist = new_idx;
-        distance = new_dst;
-        cap = new_cap;
-    }
-};
-
-inline void insert_topk(
-    size_t rowBase,
-    uint8_t& count,
-    int32_t idx_dist,
-    float ang_dist,
-    Neighbours& out,
-    size_t K
-) {
-    if (count < K) {
-        out.idx_dist[rowBase + count] = idx_dist;
-        out.distance[rowBase + count] = ang_dist;
-        ++count;
-        return;
-    }
-    // find worst (max d^2) among current K
-    size_t worst = rowBase;
-    float  wval  = out.distance[worst];
-    for (size_t t = 1; t < K; ++t) {
-        float v = out.distance[rowBase + t];
-        if (v > wval) {
-            wval = v; worst = rowBase + t;
-        }
-    }
-    if (ang_dist < wval) {
-        out.idx_dist[worst] = idx_dist;
-        out.distance[worst] = ang_dist;
-    }
-}
-
-inline void sortNeighbours(
-    Neighbours& out,
-    size_t rowBase,
-    size_t c,
-    size_t neighbours
-) {
-    std::vector<size_t> ord(c);
-    std::iota(ord.begin(), ord.end(), 0);
-    SORT_SERIAL(ord.begin(), ord.end(), [&](size_t a, size_t b){
-        return out.distance[rowBase + a] < out.distance[rowBase + b];
-    });
-
-    std::vector<float> tmpD(c);
-    std::vector<int32_t> tmpI(c);
-    for (size_t t = 0; t < c; ++t) {
-        size_t s = ord[t];
-        tmpD[t] = out.distance[rowBase + s];
-        tmpI[t] = out.idx_dist[rowBase + s];
-    }
-    memcpy(out.distance + rowBase, tmpD.data(), c * sizeof(float));
-    memcpy(out.idx_dist + rowBase, tmpI.data(), c * sizeof(int32_t));
-    for (size_t t = c; t < neighbours; ++t) {
-        out.idx_dist[rowBase + t] = 0;
-        out.distance[rowBase + t] = FLT_MAX;
-    }
-
-    // const size_t idx[8] = { 0, 1, 4, 7, 12, 19, 30, 47 };
-    const size_t idx[8] = { 2, 3, 5, 8, 13, 20, 31, 47 };
-    // const size_t idx[8] = { 0, 1, 3, 8, 15, 28, 47 };
-    for (size_t i = 0; i < 8; ++i) {
-        out.distance[rowBase + i] = out.distance[rowBase + idx[i]];
-        out.idx_dist[rowBase + i] = out.idx_dist[rowBase + idx[i]];
-    }
-}
-
-#include <simde/x86/fma.h>
-#if defined(AVX512)
-#define simdf32_f2it(x)     _mm512_cvttps_epi32(x)
-#define simdf32_fmadd_real(x,y,z) _mm512_fmadd_ps(x,y,z)
-#elif defined(AVX2)
-#define simdf32_f2it(x)     _mm256_cvttps_epi32(x)
-#define simdf32_fmadd_real(x,y,z) _mm256_fmadd_ps(x,y,z)
-#else
-#define simdf32_f2it(x)     _mm_cvttps_epi32(x)
-#define simdf32_fmadd_real(x,y,z) _mm_fmadd_ps(x,y,z)
-#endif
-
-// Based on https://gist.github.com/jrade/293a73f89dfef51da6522428c857802d
-// Copyright 2021 Johan Rade (johan.rade@gmail.com)
-// Distributed under the MIT license (https://opensource.org/licenses/MIT)
-// ported to SIMD
-static inline simd_float exp_approx(simd_float x) {
-    const simd_float neg20 = simdf32_set(-20.0f);
-    // 2^23 / ln2
-    const simd_float A = simdf32_set(8388608.0f / 0.69314718f);
-    // 2^23 * (127 - c)
-    const simd_float B = simdf32_set(8388608.0f * (127.0f - 0.043677448f));
-
-    // mask for lanes we must return 0.0f
-    simd_float mask_lt = simdf32_lt(x, neg20);
-
-    // clamp to keep intermediates normal (avoids denorm slowdowns)
-    // x = simdf32_max(x, neg20);
-
-    // y = A*x + B;  trunc to int;  reinterpret as float
-    // simd_float  y  = simdf32_add(simdf32_mul(A, x), B);
-    simd_float y = simdf32_fmadd_real(x, A, B);
-    simd_float r;
-#if defined(__aarch64__)
-    float32x4_t y_neon;
-    memcpy(&y_neon, &y, sizeof(y_neon));
-    int32x4_t   i32 = vcvtq_s32_f32(y_neon);
-    float32x4_t bits = vreinterpretq_f32_s32(i32);
-    memcpy(&r, &bits, sizeof(r));
-#else
-    r  = simdi_i2fcast(simdf32_f2it(y));
-#endif
-
-    // zero lanes where x < -20
-    return simdf32_andnot(mask_lt, r);
-}
-
-inline float scoreNeighbours(
-    const Neighbours& neighbourData,
+void collectNeighbours(
+    size_t sequenceCnt,
+    Neighbours *neighbourData,
+    DBReader<unsigned int> &seqDbrAA,
+    DBReader<unsigned int> *seqDbrCA,
+    std::vector<size_t> &proteinOffsets,
     size_t neighbours,
-    size_t qIdx,
-    size_t tIdx,
-    float nb_sigma_r,
-    float nb_sigma_i,
-    float nb_alpha,
-    float nb_beta
+    float thresh_sq,
+    int maxThreads
 ) {
-    float sum = 0.0f;
-    float norm = 0.0f;
+#pragma omp parallel for num_threads(maxThreads) default(none) \
+        shared(neighbourData, proteinOffsets, sequenceCnt, neighbours, seqDbrAA, seqDbrCA, thresh_sq)
+    for (size_t i = 0; i < sequenceCnt; i++) {
+        unsigned int seqKeyAA = seqDbrAA.getDbKey(i);
+        size_t seqIdAA = seqDbrAA.getId(seqKeyAA);
+        size_t length = seqDbrAA.getSeqLen(seqIdAA);
 
-    const size_t V = sizeof(simd_float) / sizeof(float);
-    const float*   qd = neighbourData.distance + qIdx;
-    const float*   td = neighbourData.distance + tIdx;
-    // const int32_t* qi = neighbourData.idx_dist + qIdx;
-    // const int32_t* ti = neighbourData.idx_dist + tIdx;
+        Coordinate16 tcoords;
+        char *tcadata = seqDbrCA->getData(seqIdAA, 0);
+        size_t tCaLength = seqDbrCA->getEntryLen(seqIdAA);
+        float *targetCaData = tcoords.read(tcadata, length, tCaLength);
 
-    const simd_float eps        = simdf32_set(1e-12f);
-    const simd_float neg_sig_r  = simdf32_set(-nb_sigma_r);
-    // const simd_float neg_sig_i2 = simdf32_set(-(nb_sigma_i * nb_sigma_i));
-    // const simd_float pos_sig_r  = simdf32_set(nb_sigma_r);
-    // const simd_float pos_sig_i2 = simdf32_set(nb_sigma_i * nb_sigma_i);
-    const simd_float alpha_v    = simdf32_set(nb_alpha);
-    // const simd_float beta_v     = simdf32_set(nb_beta);
-    const simd_float two_v      = simdf32_set(2.0f);
-    // const simd_int   zero_i     = simdi32_set(0);
-    const simd_float zero_f   = simdf32_set(0.0f);
-    const simd_float max_f   = simdf32_set(FLT_MAX);
-    const simd_float one_v      = simdf32_set(1.0f);
-    const simd_float true_mask = simdf32_eq(zero_f, zero_f);
+        const float* x = targetCaData;
+        const float* y = targetCaData + length;
+        const float* z = targetCaData + length * 2;
+        std::vector<uint8_t> count(length, 0);
+        size_t thread_baseOut = proteinOffsets[i];
 
-    simd_float sum_v  = simdf32_set(0.0f);
-    simd_float norm_v = simdf32_set(0.0f);
-    for (size_t n = 0; n < 8; n += V) {
-        simd_float a = simdf32_load(qd + n);
-        simd_float b = simdf32_load(td + n);
-        
-        // mask invalid (>c)
-        simd_float m1 = simdf32_eq(a, max_f);
-        simd_float m2 = simdf32_eq(b, max_f);
-        simd_float m  = simdf32_andnot(simdf32_or(m1, m2), true_mask);
-
-        // simd_int i1 = simdi_load((simd_int*)(qi + n));
-        // simd_int i2 = simdi_load((simd_int*)(ti + n));
-        // // validity mask: (i1 != 0) & (i2 != 0)
-        // simd_int m1 = simdi32_eq(i1, zero_i);
-        // simd_int m2 = simdi32_eq(i2, zero_i);
-        // simd_int m  = simdi_andnot(simdi_or(m1, m2), simdi32_eq(zero_i, zero_i));
-        // // Si = exp( -( (i1 - i2)^2 * sigma_i^2 ) )
-        // simd_int d    = simdi32_sub(i1, i2);
-        // simd_float df   = simdi32_i2f(d);
-        // simd_float SiIn = simdf32_mul(simdf32_mul(df, df), neg_sig_i2);
-        // simd_float Si   = exp_approx(SiIn);
-
-        // Sr = exp( -sigma_r * ((a-b)^2 / (a+b+eps)) )
-        simd_float amb  = simdf32_sub(a, b);
-        simd_float num  = simdf32_mul(amb, amb);
-        simd_float den  = simdf32_add(simdf32_add(a, b), eps);
-        // simd_float inv = simdf32_rcp(den);
-        // simd_float neg_den = simdf32_sub(zero_f, den);
-        // simd_float corr = simdf32_fmadd(neg_den, inv, two_v);
-        // inv = simdf32_mul(inv, corr);
-        // simd_float y = simdf32_mul(num, inv); // num/den
-        simd_float y = simdf32_div(num, den); // num/den
-        simd_float SrIn = simdf32_mul(y, neg_sig_r);
-        simd_float Sr   = exp_approx(SrIn);
-
-        // simd_float s    = simdf32_add(simdf32_mul(alpha_v, Sr), simdf32_mul(beta_v,  Si));
-        // simd_float s    = simdf32_mul(alpha_v, Sr);
-
-        // zero-out invalid lanes
-        simd_float valid01 = simdf32_blendv_ps(zero_f, one_v, (simd_float)m);
-        sum_v  = simdf32_add(sum_v, simdf32_mul(Sr, valid01));
-        norm_v = simdf32_add(norm_v, simdf32_mul(two_v, valid01));
-
-        // sum_v  = simdf32_add(sum_v,  s);
-        // norm_v = simdf32_add(norm_v, two_v);
+        for (size_t j = 0; j < length; ++j) {
+            const float xj = x[j], yj = y[j], zj = z[j];
+            const size_t rowBaseJ = thread_baseOut + j * neighbours;
+            for (size_t k = j + 1; k < length; ++k) {
+                float dx = xj - x[k];
+                float dist = dx * dx;
+                if (dist > thresh_sq) continue; 
+                float dy = yj - y[k];
+                dist += dy * dy;
+                if (dist > thresh_sq) continue; 
+                float dz = zj - z[k];
+                dist += dz * dz;
+                int idxdist = static_cast<int>(j) - static_cast<int>(k);
+                if (dist < thresh_sq) {
+                    neighbourData->insert_topk(rowBaseJ, count[j], idxdist, dist, neighbours); 
+                    const size_t rowBaseK = thread_baseOut + k * neighbours;
+                    neighbourData->insert_topk(rowBaseK, count[k], -idxdist, dist, neighbours); 
+                }
+            }
+        }
+        for (size_t j = 0; j < length; ++j) {
+            const size_t rowBase = thread_baseOut + j * neighbours;
+            const uint8_t c = count[j];
+            neighbourData->sortNeighbours(rowBase, c, neighbours);
+        }
     }
-    sum  += simdf32_hadd(sum_v);
-    norm += simdf32_hadd(norm_v);
-    return sum / norm;
 }
+
+inline void fillNeighbourScoreMatrix(
+    Neighbours *neighbourData,
+    float **lddtScoreMap,
+    unsigned int **lddtCounts,
+    int queryLen,
+    int targetLen,
+    std::vector<size_t> &qMembers, 
+    std::vector<size_t> &tMembers, 
+    std::vector<bool> &qMembersKept, 
+    std::vector<bool> &tMembersKept, 
+    std::vector<size_t> &map1Rev, 
+    std::vector<size_t> &map2Rev, 
+    std::vector<size_t> &proteinOffsets, 
+    std::vector<std::vector<Instruction>> &cigars_aa, 
+    bool queryIsProfile,
+    bool targetIsProfile,
+    int filterMsa,
+    size_t neighbours,
+    float nb_sigma_r,
+    float nb_low_cut,
+    float nb_multiplier
+) {
+    for (size_t qi = 0; qi < qMembers.size(); ++qi) {
+        if (filterMsa && queryIsProfile && qMembersKept[qi] == false) {
+            continue;
+        }
+        size_t qMember = qMembers[qi];
+        for (size_t ti = 0; ti < tMembers.size(); ++ti) {
+            if (filterMsa && targetIsProfile && tMembersKept[ti] == false) {
+                continue;
+            }
+            size_t tMember = tMembers[ti];
+            size_t qSeqId = 0;
+            size_t qResId = 0;
+            for (const Instruction& qIns : cigars_aa[qMember]) {
+                if (!qIns.isSeq()) {
+                    qSeqId += qIns.length(); 
+                    continue;
+                }
+                size_t qMSAId = map1Rev[qSeqId];
+                if (qMSAId == SIZE_T_MAX) {
+                    qSeqId++;
+                    qResId++;
+                    continue;
+                }
+                size_t qOffset = proteinOffsets[qMember];
+                size_t qIdx = qOffset + qResId * neighbours;
+                float* qLddtSums = lddtScoreMap[qMSAId];
+                unsigned int* qLddtCounts = lddtCounts[qMSAId];
+                size_t tSeqId = 0;
+                size_t tResId = 0;
+                for (const Instruction& tIns : cigars_aa[tMember]) {
+                    if (!tIns.isSeq()) {
+                        tSeqId += tIns.length(); 
+                        continue;
+                    }
+                    size_t tMSAId = map2Rev[tSeqId];
+                    if (tMSAId == SIZE_T_MAX) {
+                        tSeqId++;
+                        tResId++;
+                        continue;
+                    }
+                    size_t tOffset = proteinOffsets[tMember];
+                    size_t tIdx = tOffset + tResId * neighbours;
+                    qLddtSums[tMSAId] += neighbourData->scoreNeighbours(qIdx, tIdx, nb_sigma_r);
+                    qLddtCounts[tMSAId]++;
+                    tSeqId++;
+                    tResId++;
+                }
+                qSeqId++;
+                qResId++;
+            }
+        }
+    }
+    std::vector<float> maxes(queryLen + targetLen);
+    for (int y = 0; y < queryLen; ++y) {
+        for (int z = 0; z < targetLen; ++z) {
+            if (lddtCounts[y][z] == 0) continue;
+            lddtScoreMap[y][z] /= static_cast<float>(lddtCounts[y][z]);
+            maxes[queryLen + z] = std::max(maxes[queryLen + z], lddtScoreMap[y][z]);
+            maxes[y] = std::max(maxes[y], lddtScoreMap[y][z]);
+        }
+    }
+    for (int y = 0; y < queryLen; ++y) {
+        for (int z = 0; z < targetLen; ++z) {
+            if (maxes[y] == 0.0f || maxes[queryLen + z] == 0.0f) continue;
+            lddtScoreMap[y][z] = (lddtScoreMap[y][z] * lddtScoreMap[y][z]) / (maxes[y] * maxes[queryLen + z]);
+            lddtScoreMap[y][z] = (lddtScoreMap[y][z] < nb_low_cut) ? 0.0f : lddtScoreMap[y][z] * nb_multiplier;
+        }
+    }
+}
+
 
 int structuremsa(int argc, const char **argv, const Command& command, bool preCluster) {
     FoldmasonParameters &par = FoldmasonParameters::getFoldmasonInstance();
@@ -2086,51 +1847,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     }
     int maxThreads = std::min(par.threads, static_cast<int>(sequenceCnt));
 
-    Neighbours neighbourData(totalResidues * neighbours);
-    #pragma omp parallel for num_threads(maxThreads) default(none) \
-        shared(neighbourData, proteinOffsets, sequenceCnt, neighbours, seqDbrAA, seqDbrCA, thresh_sq)
-    for (size_t i = 0; i < sequenceCnt; i++) {
-        unsigned int seqKeyAA = seqDbrAA.getDbKey(i);
-        size_t seqIdAA = seqDbrAA.getId(seqKeyAA);
-        size_t length = seqDbrAA.getSeqLen(seqIdAA);
-
-        Coordinate16 tcoords;
-        char *tcadata = seqDbrCA->getData(seqIdAA, 0);
-        size_t tCaLength = seqDbrCA->getEntryLen(seqIdAA);
-        float *targetCaData = tcoords.read(tcadata, length, tCaLength);
-
-        const float* x = targetCaData;
-        const float* y = targetCaData + length;
-        const float* z = targetCaData + length * 2;
-        std::vector<uint8_t> count(length, 0);
-        size_t thread_baseOut = proteinOffsets[i];
-
-        for (size_t j = 0; j < length; ++j) {
-            const float xj = x[j], yj = y[j], zj = z[j];
-            const size_t rowBaseJ = thread_baseOut + j * neighbours;
-            for (size_t k = j + 1; k < length; ++k) {
-                // if (std::abs(static_cast<int>(j) - static_cast<int>(k)) < 5) continue;
-                float dx = xj - x[k];
-                float dist = dx * dx;
-                if (dist > thresh_sq) continue; 
-                float dy = yj - y[k];
-                dist += dy * dy;
-                if (dist > thresh_sq) continue; 
-                float dz = zj - z[k];
-                dist += dz * dz;
-                int idxdist = static_cast<int>(j) - static_cast<int>(k);
-                if (dist < thresh_sq) {
-                    insert_topk(rowBaseJ, count[j], idxdist, dist, neighbourData, neighbours); 
-                    const size_t rowBaseK = thread_baseOut + k * neighbours;
-                    insert_topk(rowBaseK, count[k], -idxdist, dist, neighbourData, neighbours); 
-                }
-            }
-        }
-        for (size_t j = 0; j < length; ++j) {
-            const size_t rowBase = thread_baseOut + j * neighbours;
-            const uint8_t c = count[j];
-            sortNeighbours(neighbourData, rowBase, c, neighbours);
-        }
+    Neighbours *neighbourData;
+    if (caExist) {
+        neighbourData = new Neighbours(totalResidues * neighbours);
+        collectNeighbours(
+            sequenceCnt, neighbourData, seqDbrAA, seqDbrCA,
+            proteinOffsets, neighbours, thresh_sq, maxThreads
+        );
     }
 
     Debug(Debug::INFO) << "Initialised MSAs, Sequence objects\n";
@@ -2476,101 +2199,32 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             }
 
             structureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
-            // seqMergedAa->reverse();
-            // seqMergedSs->reverse();
-            // revStructureSmithWaterman.ssw_init(seqMergedAa, seqMergedSs, tinySubMatAA, tinySubMat3Di, &subMat_aa);
-            // seqMergedAa->reverse();
-            // seqMergedSs->reverse();
             
             // 1. sw, update relevant copied cigars --> MSA
             // 2. lddt on MSA --> per col count
             // 3. iterate cigar, map msa per col lddt -> (i, j)
-            float **lddtScoreMap = new float *[seqMergedAa->L];
-            for (int32_t z = 0; z < seqMergedAa->L; z++) {
-                lddtScoreMap[z] = new float [seqTargetAa->L];
-                memset(lddtScoreMap[z], 0, sizeof(float) * seqTargetAa->L);
-                // std::fill(lddtScoreMap[z], lddtScoreMap[z] + seqTargetAa->L, 0.0f);
+            float **lddtScoreMap;
+            unsigned int **lddtCounts;
+            if (caExist) {
+                lddtScoreMap = new float *[seqMergedAa->L];                
+                lddtCounts = new unsigned int *[seqMergedAa->L];
+                for (int z = 0; z < seqMergedAa->L; z++) {
+                    lddtScoreMap[z] = new float [seqTargetAa->L];
+                    lddtCounts[z] = new unsigned int [seqTargetAa->L];
+                    memset(lddtScoreMap[z], 0, sizeof(float) * seqTargetAa->L);
+                    memset(lddtCounts[z], 0, sizeof(unsigned int) * seqTargetAa->L);
+                }
+                fillNeighbourScoreMatrix(
+                    neighbourData, lddtScoreMap, lddtCounts, seqMergedAa->L, seqTargetAa->L, qMembers,
+                    tMembers, qMembersKept, tMembersKept, map1Rev, map2Rev, proteinOffsets, msa.cigars_aa,
+                    queryIsProfile, targetIsProfile, par.filterMsa, neighbours, nb_sigma_r,
+                    nb_low_cut, nb_multiplier
+                );
+            } else {
+                lddtScoreMap = NULL;
+                lddtCounts = NULL;
             }
 
-            // Init n*m sum matrix, count matrix
-            // For member in profile A
-            //     For member in profile B
-            //         For residue i in member of A
-            //             For residue j in member of B
-            //                 LDDT(i, j)
-            //                 Map & add to sum matrix cell
-            //                 Map & add to count matrix cell
-            std::vector<std::vector<unsigned int>> lddtCounts(seqMergedAa->L, std::vector<unsigned int>(seqTargetAa->L));
-            for (size_t qi = 0; qi < qMembers.size(); ++qi) {
-                if (par.filterMsa && queryIsProfile && qMembersKept[qi] == false) {
-                    continue;
-                }
-                size_t qMember = qMembers[qi];
-                for (size_t ti = 0; ti < tMembers.size(); ++ti) {
-                    if (par.filterMsa && targetIsProfile && tMembersKept[ti] == false) {
-                        continue;
-                    }
-                    size_t tMember = tMembers[ti];
-                    size_t qSeqId = 0;
-                    size_t qResId = 0;
-                    for (const Instruction& qIns : msa.cigars_aa[qMember]) {
-                        if (!qIns.isSeq()) {
-                            qSeqId += qIns.length(); 
-                            continue;
-                        }
-                        size_t qMSAId = map1Rev[qSeqId];
-                        if (qMSAId == SIZE_T_MAX) {
-                            qSeqId++;
-                            qResId++;
-                            continue;
-                        }
-                        size_t qOffset = proteinOffsets[qMember];
-                        size_t qIdx = qOffset + qResId * neighbours;
-                        float* qLddtSums = lddtScoreMap[qMSAId];
-                        std::vector<unsigned int>& qLddtCounts = lddtCounts[qMSAId];
-                        size_t tSeqId = 0;
-                        size_t tResId = 0;
-                        for (const Instruction& tIns : msa.cigars_aa[tMember]) {
-                            if (!tIns.isSeq()) {
-                                tSeqId += tIns.length(); 
-                                continue;
-                            }
-                            
-                            size_t tMSAId = map2Rev[tSeqId];
-                            if (tMSAId == SIZE_T_MAX) {
-                                tSeqId++;
-                                tResId++;
-                                continue;
-                            }
-
-                            size_t tOffset = proteinOffsets[tMember];
-                            size_t tIdx = tOffset + tResId * neighbours;
-                            qLddtSums[tMSAId] += scoreNeighbours(neighbourData, neighbours, qIdx, tIdx, nb_sigma_r, nb_sigma_i, nb_alpha, nb_beta);
-                            qLddtCounts[tMSAId]++;
-                            tSeqId++;
-                            tResId++;
-                        }
-                        qSeqId++;
-                        qResId++;
-                    }
-                }
-            }
-            std::vector<float> rowMax(seqMergedAa->L);
-            std::vector<float> colMax(seqTargetAa->L);
-            for (int y = 0; y < seqMergedAa->L; ++y) {
-                for (int z = 0; z < seqTargetAa->L; ++z) {
-                    lddtScoreMap[y][z] /= static_cast<float>(lddtCounts[y][z]);
-                    colMax[z] = std::max(colMax[z], lddtScoreMap[y][z]);
-                    rowMax[y] = std::max(rowMax[y], lddtScoreMap[y][z]);
-                }
-            }
-            for (int y = 0; y < seqMergedAa->L; ++y) {
-                for (int z = 0; z < seqTargetAa->L; ++z) {
-                    lddtScoreMap[y][z] = (lddtScoreMap[y][z] * lddtScoreMap[y][z]) / (rowMax[y] * colMax[z]);
-                    lddtScoreMap[y][z] = (lddtScoreMap[y][z] < nb_low_cut) ? 0.0f : lddtScoreMap[y][z] * nb_multiplier;
-                }
-            }
-            
             Matcher::result_t res = pairwiseAlignment(
                 seqMergedAa->L,
                 seqMergedAa,
@@ -2585,11 +2239,14 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 lddtScoreMap
             );
 
-            for (int32_t z = 0; z < seqMergedAa->L; z++) {
-                delete[] lddtScoreMap[z];
+            if (caExist) {
+                for (int32_t z = 0; z < seqMergedAa->L; z++) {
+                    delete[] lddtScoreMap[z];
+                    delete[] lddtCounts[z];
+                }
+                delete[] lddtScoreMap;
+                delete[] lddtCounts;
             }
-            delete[] lddtScoreMap;
- 
 
             std::vector<Instruction> qBt;
             std::vector<Instruction> tBt;
@@ -2628,12 +2285,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 for (size_t z = 0; z < newSubMSA->members.size(); ++z) {
                     kept[z] = 1;
                 }
-                // newSubMSA->mask = computeProfileMask(
-                //     newSubMSA->members,
-                //     msa.cigars_aa,
-                //     subMat_aa,
-                //     par.matchRatio
-                // );
                 newSubMSA->mask = computeProfileMask(
                     newSubMSA->members,
                     msa.cigars_aa,
@@ -2642,7 +2293,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     subMat_3di,
                     par.matchRatio
                 );
-                // newSubMSA->mask = std::string(cigarLength(msa.cigars_aa[newSubMSA->members[0]], true), '0');
                 newSubMSA->profile_aa = msa2profile(
                     newSubMSA->members,
                     msa.cigars_aa,
@@ -2783,6 +2433,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         seqDbrCA->close();
     }
     delete seqDbrCA;
+    delete neighbourData;
   
     return EXIT_SUCCESS;
 }

@@ -3,6 +3,7 @@ set(commons_source_files
         commons/FoldmasonParameters.cpp
         commons/SimpleGotoh.cpp
         commons/SimpleGotoh.h
+        commons/Neighbours.h
         commons/newick.cpp
         commons/newick.h
         commons/MSA.cpp
