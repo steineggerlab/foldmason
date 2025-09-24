@@ -15,6 +15,10 @@
 #include <omp.h>
 #endif
 
+#ifndef SIZE_T_MAX
+#define SIZE_T_MAX ((size_t) -1)
+#endif
+
 #include <simde/x86/fma.h>
 #if defined(AVX512)
 #define simdf32_f2it(x)     _mm512_cvttps_epi32(x)
