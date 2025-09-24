@@ -145,6 +145,7 @@ public:
     }
 
     inline float scoreNeighbours(size_t qIdx, size_t tIdx, float nb_sigma_r) {
+        // chi-squared exponential kernel
         float sum = 0.0f;
         float norm = 0.0f;
         const size_t V = sizeof(simd_float) / sizeof(float);

@@ -15,7 +15,14 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_REPORT_PATHS(PARAM_REPORT_PATHS_ID, "--report-paths", "", "", typeid(bool), (void *) &reportPaths, ""),
         PARAM_REFINE_SEED(PARAM_REFINE_SEED_ID, "--refine-seed", "Random number generator seed", "Random number generator seed", typeid(int), (void *) &refinementSeed, "^([-]?[0-9]*)$"),
         PARAM_ONLY_SCORING_COLS(PARAM_ONLY_SCORING_COLS_ID, "--only-scoring-cols", "Normalise LDDT by no. scoring columns", "Normalise LDDT by no. scoring columns", typeid(bool), (void *) &onlyScoringCols, ""),
-        PARAM_SCORE_NEIGHBORS(PARAM_SCORE_NEIGHBORS_ID, "--score-neighbors", "Score residue neighbourhoods", "Consider residue neighbourhood similarity in alignment", typeid(bool), (void *) &scoreNeighbors, "")
+        PARAM_FOLDMASON_FAST(PARAM_FOLDMASON_FAST_ID, "--fast", "Fast mode, disable neighbor score", "Fast mode, disable residue neighbourhood similarity scoring", typeid(bool), (void *) &fastMode, ""),
+        PARAM_SCORE_BIAS_PSSM(PARAM_SCORE_BIAS_PSSM_ID, "--score-bias-pssm", "PSSM score bias", "PSSM score bias", typeid(float), (void *) &scoreBiasPSSM, "^([-]?[0-9]*(\\.[0-9]*)?)$"),
+        PARAM_NB_SIGMA(PARAM_NB_SIGMA_ID, "--nb-sigma", "Neighborhood score decay constant", "Neighborhood score decay constant", typeid(float), (void *) &nbSigma, "^([0-9]*(\\.[0-9]*)?)$"),
+        PARAM_NB_MULTIPLIER(PARAM_NB_MULTIPLIER_ID, "--nb-multiplier", "Neighborhood score multiplier", "Neighborhood score multiplier", typeid(float), (void *) &nbMultiplier, "^([0-9]*(\\.[0-9]*)?)$"),
+        PARAM_NB_ANG_CUT(PARAM_NB_ANG_CUT_ID, "--nb-ang-cut", "Neighborhood angstrom cutoff", "Maximum distance cutoff (angstrom) for neighboring residues", typeid(float), (void *) &nbAngCut, "^([0-9]*(\\.[0-9]*)?)$"),
+        PARAM_NB_LOW_CUT(PARAM_NB_LOW_CUT_ID, "--nb-low-cut", "Neighborhood score low pass threshold", "Minimum neighborhood score threshold", typeid(float), (void *) &nbLowCut, "^([0-9]*(\\.[0-9]*)?)$"),
+        PARAM_SW_GAP_OPEN(PARAM_SW_GAP_OPEN_ID, "--sw-gap-open", "All-vs-all SW gap open cost", "Gap open cost for all-vs-all Smith-Waterman alignment", typeid(int), (void *) &swGapOpen, "[0-9]{1}[0-9]*$"),
+        PARAM_SW_GAP_EXTEND(PARAM_SW_GAP_EXTEND_ID, "--sw-gap-extend", "All-vs-all SW gap extension cost", "Gap extension cost for all-vs-all Smith-Waterman alignment", typeid(int), (void *) &swGapExtend, "[0-9]{1}[0-9]*$")
 {
     // structuremsa
     structuremsa.push_back(&PARAM_WG);
@@ -39,11 +46,18 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_BITFACTOR_AA);
     structuremsa.push_back(&PARAM_BITFACTOR_3DI);
     structuremsa.push_back(&PARAM_PAIR_THRESHOLD);
-    structuremsa.push_back(&PARAM_SCORE_NEIGHBORS);
+    structuremsa.push_back(&PARAM_FOLDMASON_FAST);
     structuremsa.push_back(&PARAM_NO_COMP_BIAS_CORR);
     structuremsa.push_back(&PARAM_V);
     structuremsa.push_back(&PARAM_REFINE_SEED);
     structuremsa.push_back(&PARAM_ONLY_SCORING_COLS);
+    structuremsa.push_back(&PARAM_SCORE_BIAS_PSSM);
+    structuremsa.push_back(&PARAM_NB_SIGMA);
+    structuremsa.push_back(&PARAM_NB_MULTIPLIER);
+    structuremsa.push_back(&PARAM_NB_ANG_CUT);
+    structuremsa.push_back(&PARAM_NB_LOW_CUT);
+    structuremsa.push_back(&PARAM_SW_GAP_OPEN);
+    structuremsa.push_back(&PARAM_SW_GAP_EXTEND);
 
     structuremsacluster = combineList(structuremsacluster, structuremsa);
 
@@ -70,9 +84,10 @@ FoldmasonParameters::FoldmasonParameters() :
     
     bitFactorAa = 1.1f;
     bitFactor3Di = 2.1f;
-    scoreBias = 0.6f;
-    scoreNeighbors = true;
-    matchRatio = 0.52f;
+    scoreBias = 4.6f;
+    scoreBiasPSSM = -0.6f;
+    fastMode = false;
+    matchRatio = 0.9f;
     guideTree = "";
     reportCommand = "";
     reportPaths = true;
@@ -81,12 +96,19 @@ FoldmasonParameters::FoldmasonParameters() :
     refineIters = 0;
     pairThreshold = 0.0;
     wg = true;
-    filterMsa = 0;
-    compBiasCorrection = 0;
+    filterMsa = 1;
+    compBiasCorrection = 1;
     refinementSeed = -1;
-    gapOpen = 20;
+    gapOpen = 25;
     gapExtend = 2;
     onlyScoringCols = false;
+    nbMultiplier = 13.0f;
+    nbAngCut = 45.0f;
+    nbLowCut = 0.02f;
+    nbSigma = 3.84098f;
+    swGapOpen = 9;
+    swGapExtend = 8;
+    Ndiff = 5; 
 
     citations.emplace(CITATION_FOLDMASON, "Gilchrist, C. L. M., Mirdita, M. & Steinegger, M. Multiple Protein Structure Alignment at Scale with FoldMason. bioRxiv, doi.org/10.1101/2024.08.01.606130 (2024)");
 }

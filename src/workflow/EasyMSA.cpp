@@ -33,7 +33,24 @@ int easymsa(int argc, const char **argv, const Command &command) {
     par.PARAM_V.removeCategory(MMseqsParameter::COMMAND_EXPERT);
 
     setEasyMSADefaults(&par);
-    par.parseParameters(argc, argv, command, true, Parameters::PARSE_VARIADIC, 0);
+    
+    par.parseParameters(argc, argv, command, false, Parameters::PARSE_VARIADIC, 0);
+    
+    // Different default params when not using neighborhood scoring
+    if (par.fastMode) {
+        for (size_t i = 0; i < par.structuremsa.size(); ++i) {
+            if (par.structuremsa[i]->wasSet) continue;
+            if (par.structuremsa[i]->uniqid == par.PARAM_NO_COMP_BIAS_CORR.uniqid) par.compBiasCorrection = 0;
+            else if (par.structuremsa[i]->uniqid == par.PARAM_SCORE_BIAS.uniqid) par.scoreBias = 1.6f;
+            else if (par.structuremsa[i]->uniqid == par.PARAM_SCORE_BIAS_PSSM.uniqid) par.scoreBiasPSSM = 0.5f;
+            else if (par.structuremsa[i]->uniqid == par.PARAM_GAP_OPEN.uniqid) par.gapOpen = MultiParam<NuclAA<int>>(23);
+            else if (par.structuremsa[i]->uniqid == par.PARAM_GAP_EXTEND.uniqid) par.gapExtend = MultiParam<NuclAA<int>>(2);
+            else if (par.structuremsa[i]->uniqid == par.PARAM_SW_GAP_OPEN.uniqid) par.swGapOpen = 8;
+            else if (par.structuremsa[i]->uniqid == par.PARAM_SW_GAP_EXTEND.uniqid) par.swGapExtend = 5;
+        }
+    }
+    
+    par.printParameters(command.cmd, argc, argv, *command.params);
 
     bool needBacktrace = false;
     bool needTaxonomy = false;

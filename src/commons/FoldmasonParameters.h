@@ -2,6 +2,7 @@
 #define FOLDMASON_LOCALPARAMETERS_H
 
 #include <LocalParameters.h>
+#include <string>
 
 const int CITATION_FOLDMASON = CITATION_FOLDSEEK << 1;
 
@@ -42,19 +43,33 @@ public:
     PARAMETER(PARAM_REPORT_PATHS)
     PARAMETER(PARAM_REFINE_SEED)
     PARAMETER(PARAM_ONLY_SCORING_COLS)
-    PARAMETER(PARAM_SCORE_NEIGHBORS)
-    
+    PARAMETER(PARAM_FOLDMASON_FAST)
+    PARAMETER(PARAM_SCORE_BIAS_PSSM)
+    PARAMETER(PARAM_NB_SIGMA)
+    PARAMETER(PARAM_NB_MULTIPLIER)
+    PARAMETER(PARAM_NB_ANG_CUT)
+    PARAMETER(PARAM_NB_LOW_CUT)
+    PARAMETER(PARAM_SW_GAP_OPEN)
+    PARAMETER(PARAM_SW_GAP_EXTEND)
+
     std::string guideTree;
     bool recomputeScores;
     bool precluster;
-    bool scoreNeighbors;
+    bool fastMode;
     int refineIters;
     float bitFactorAa;
     float bitFactor3Di;
+    float scoreBiasPSSM;
     std::string reportCommand;
     bool reportPaths;
     float pairThreshold;
     int refinementSeed;
     bool onlyScoringCols;
+    float nbSigma;
+    float nbMultiplier;
+    float nbAngCut;
+    float nbLowCut;
+    int swGapOpen;
+    int swGapExtend;
 };
 #endif
