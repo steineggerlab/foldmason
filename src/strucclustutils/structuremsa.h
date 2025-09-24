@@ -120,7 +120,8 @@ std::string msa2profile(
     float covMSAThr,
     float qsc,
     int filterMinEnable,
-    bool wg
+    bool wg,
+    float scoreBias
 );
 
 std::vector<Instruction> contract(const std::string& sequence);

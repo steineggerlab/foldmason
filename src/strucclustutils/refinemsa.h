@@ -2,8 +2,6 @@
 #define REFINEMSA_H
 
 void refineMany(
-    int8_t * tinySubMatAA,
-    int8_t * tinySubMat3Di,
     DBReader<unsigned int> *seqDbrCA,
     std::vector<std::vector<Instruction> > &cigars_aa,
     std::vector<std::vector<Instruction> > &cigars_ss,
@@ -30,7 +28,8 @@ void refineMany(
     float pairThreshold,
     std::vector<size_t> indices,
     int seed,
-    bool onlyScoringCols
+    bool onlyScoringCols,
+    float scoreBias
 );
 void deleteGapCols(std::vector<std::string> &sequences);
 void buildSubMSA(std::vector<std::string> &headers, std::vector<std::string> &sequences, std::string &subMSA);

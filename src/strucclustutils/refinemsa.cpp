@@ -99,8 +99,6 @@ std::pair<unsigned long long, unsigned long long> vectorBoolToULL(const std::vec
 
 template<typename RNG>
 void refineOne(
-    int8_t * tinySubMatAA,
-    int8_t * tinySubMat3Di,
     std::vector<std::vector<Instruction> > &cigars_aa,
     std::vector<std::vector<Instruction> > &cigars_ss,
     PSSMCalculator &calculator_aa,
@@ -122,7 +120,8 @@ void refineOne(
     int gapOpen,
     std::vector<Sequence*> &sequences_aa,
     std::vector<Sequence*> &sequences_ss,
-    RNG &rng
+    RNG &rng,
+    float scoreBias
 ) {
     int sequenceCnt = cigars_aa.size();
 
@@ -172,22 +171,22 @@ void refineOne(
     std::string profile1_aa = msa2profile(
         group1, cigars_aa, mask1, calculator_aa, filter_aa,
         subMat_aa, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
-        Ndiff, covMSAThr, qsc, filterMinEnable, wg
+        Ndiff, covMSAThr, qsc, filterMinEnable, wg, scoreBias
     );
     std::string profile1_ss = msa2profile(
         group1, cigars_ss, mask1, calculator_3di, filter_3di,
         subMat_3di, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
-        Ndiff, covMSAThr, qsc, filterMinEnable, wg
+        Ndiff, covMSAThr, qsc, filterMinEnable, wg, scoreBias
     );
     std::string profile2_aa = msa2profile(
         group2, cigars_aa, mask2, calculator_aa, filter_aa,
         subMat_aa, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
-        Ndiff, covMSAThr, qsc, filterMinEnable, wg
+        Ndiff, covMSAThr, qsc, filterMinEnable, wg, scoreBias
     );
     std::string profile2_ss = msa2profile(
         group2, cigars_ss, mask2, calculator_3di, filter_3di,
         subMat_3di, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
-        Ndiff, covMSAThr, qsc, filterMinEnable, wg
+        Ndiff, covMSAThr, qsc, filterMinEnable, wg, scoreBias
     );
     assert(profile1_aa.length() == profile1_ss.length());
     assert(profile2_aa.length() == profile2_ss.length());
@@ -227,8 +226,6 @@ void refineOne(
 }
 
 void refineMany(
-    int8_t * tinySubMatAA,
-    int8_t * tinySubMat3Di,
     DBReader<unsigned int> *seqDbrCA,
     std::vector<std::vector<Instruction> > &cigars_aa,
     std::vector<std::vector<Instruction> > &cigars_ss,
@@ -254,7 +251,8 @@ void refineMany(
     float pairThreshold,
     std::vector<size_t> indices,
     int seed,
-    bool onlyScoringCols
+    bool onlyScoringCols,
+    float scoreBias
 ) {
     std::cout << "Running " << iterations << " refinement iterations\n";
 
@@ -289,7 +287,6 @@ void refineMany(
         copyInstructionVectors(cigars_aa, cigars_new_aa);
         copyInstructionVectors(cigars_ss, cigars_new_ss);
         refineOne(
-            tinySubMatAA, tinySubMat3Di,
             cigars_new_aa, cigars_new_ss,
             calculator_aa, filter_aa, subMat_aa,
             calculator_3di, filter_3di, subMat_3di,
@@ -297,7 +294,7 @@ void refineMany(
             qid, filterMaxSeqId, Ndiff, covMSAThr, qsc, filterMinEnable,
             wg, gapExtend, gapOpen,
             sequences_aa, sequences_ss,
-            rng
+            rng, scoreBias
         );
         float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, seqDbrCA, pairThreshold, onlyScoringCols));
         // std::cout << std::fixed << std::setprecision(4) << "New LDDT: " << lddtScore << '\t' << "(" << i + 1 << ")\n";
@@ -369,18 +366,6 @@ int refinemsa(int argc, const char **argv, const Command& command) {
         }
     }
     SubstitutionMatrix subMat_aa(blosum.c_str(), par.bitFactorAa, par.scoreBias);
-
-    // Substitution matrices needed for query profile
-    int8_t *tinySubMatAA  = (int8_t*) mem_align(ALIGN_INT, subMat_aa.alphabetSize * 32);
-    int8_t *tinySubMat3Di = (int8_t*) mem_align(ALIGN_INT, subMat_3di.alphabetSize * 32);
-
-    for (int i = 0; i < subMat_aa.alphabetSize; i++)
-        for (int j = 0; j < subMat_aa.alphabetSize; j++)
-            tinySubMatAA[i * subMat_aa.alphabetSize + j] = subMat_aa.subMatrix[i][j];
-    for (int i = 0; i < subMat_3di.alphabetSize; i++)
-        for (int j = 0; j < subMat_3di.alphabetSize; j++)
-            tinySubMat3Di[i * subMat_3di.alphabetSize + j] = subMat_3di.subMatrix[i][j]; // for farrar profile
-
     MsaFilter filter_aa(par.maxSeqLen + 1, sequenceCnt + 1, &subMat_aa, par.gapOpen.values.aminoacid(), par.gapExtend.values.aminoacid());
     MsaFilter filter_3di(par.maxSeqLen + 1, sequenceCnt + 1, &subMat_3di, par.gapOpen.values.aminoacid(), par.gapExtend.values.aminoacid()); 
     PSSMCalculator calculator_aa(&subMat_aa, par.maxSeqLen + 1, sequenceCnt + 1, par.pcmode, par.pca, par.pcb
@@ -396,12 +381,12 @@ int refinemsa(int argc, const char **argv, const Command& command) {
     
     // Refine for N iterations
     refineMany(
-        tinySubMatAA, tinySubMat3Di, &seqDbrCA, cigars_aa, cigars_ss,
+        &seqDbrCA, cigars_aa, cigars_ss,
         calculator_aa, filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
         par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
         par.qsc, par.Ndiff, par.covMSAThr,
         par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
-        par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed, par.onlyScoringCols
+        par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed, par.onlyScoringCols, par.scoreBiasPSSM
     );
     
     // Write final MSA to file
@@ -431,8 +416,6 @@ int refinemsa(int argc, const char **argv, const Command& command) {
     // Cleanup
     seqDbrAA.close();
     seqDbr3Di.close();
-    delete [] tinySubMatAA;
-    delete [] tinySubMat3Di;
 
     return EXIT_SUCCESS;
 }

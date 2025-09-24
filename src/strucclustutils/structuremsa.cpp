@@ -275,7 +275,9 @@ void updateAllScores(
     int maxSeqLen,
     int alphabetSize,
     int compBiasCorrection,
-    int compBiasCorrectionScale
+    int compBiasCorrectionScale,
+    int gapOpen,
+    int gapExtend
 ) {
     size_t sequenceCnt = seqDbrAA.getSize();
     Debug::Progress progress;
@@ -289,14 +291,6 @@ void updateAllScores(
         size_t n = sequenceCnt * (sequenceCnt - 1) / 2;
         hits.reserve(n);
         progress.reset(n);
-    }
-    
-    int go = 10; int ge = 1;
-    if (const char* s = std::getenv("SW_GO")) {
-        go = std::stoi(s);
-    }
-    if (const char* s = std::getenv("SW_GE")) {
-        ge = std::stoi(s);
     }
 
 #pragma omp parallel
@@ -360,7 +354,7 @@ void updateAllScores(
                     seqTargetAa.numSequence,
                     seqTargetSs.numSequence,
                     seqTargetAa.L,
-                    go, ge,
+                    gapOpen, gapExtend,
                     seqMergedAa.L/2
             );
             aln.score = saln.score1;
@@ -871,111 +865,7 @@ std::vector<int> parseQidString(std::string qid) {
     std::sort(qid_vec.begin(), qid_vec.end());
     return qid_vec;
 }
-std::string msa2profile(
-    std::vector<size_t> &indices,
-    std::vector<std::vector<Instruction> > &cigars,
-    std::string mask,
-    PSSMCalculator &pssmCalculator,
-    MsaFilter &filter,
-    SubstitutionMatrix &subMat,
-    bool filterMsa,
-    bool compBiasCorrection,
-    std::string & qid,
-    float filterMaxSeqId,
-    float Ndiff,
-    float covMSAThr,
-    float qsc,
-    int filterMinEnable,
-    bool wg
-) {
-    // length of sequences after masking
-    int lengthWithMask = 0;
-    for (char c : mask) {
-        if (c == '0') lengthWithMask++;
-    }
 
-    float *pNullBuffer = new float[lengthWithMask];
-
-    // build reduced MSA
-    char **msaSequences = MultipleAlignment::initX(lengthWithMask + 1, indices.size());
-    for (size_t i = 0; i < indices.size(); i++) {
-        msaSequences[i][lengthWithMask] = '\0';
-        int seqIndex = 0;
-        int msaIndex = 0;
-        for (Instruction &ins : cigars[indices[i]]) {
-            if (ins.isSeq()) {
-                const unsigned int c = subMat.aa2num[static_cast<int>(ins.getCharacter())];
-                if (mask[seqIndex] == '0') {
-                    msaSequences[i][msaIndex] = c;
-                    msaIndex++;
-                }
-                seqIndex++;
-            } else {
-                for (size_t j = 0; j < ins.bits.count; j++) {
-                    if (mask[seqIndex] == '0') {
-                        msaSequences[i][msaIndex] = (int)MultipleAlignment::GAP;
-                        msaIndex++;
-                    }
-                    seqIndex++;
-                }
-            }
-        }
-        assert(msaIndex == lengthWithMask);
-    }
-    
-    MultipleAlignment::MSAResult msaResult(lengthWithMask, lengthWithMask, indices.size(), msaSequences);
-
-    size_t filteredSetSize = indices.size();
-    if (filterMsa == 1) {
-        std::vector<int> qid_vec = parseQidString(qid);
-        filteredSetSize = filter.filter(
-            indices.size(),
-            lengthWithMask,
-            static_cast<int>(covMSAThr * 100),
-            qid_vec,
-            qsc,
-            static_cast<int>(filterMaxSeqId * 100),
-            Ndiff,
-            filterMinEnable,
-            (const char **) msaSequences,
-            true
-        );
-    }
-
-    PSSMCalculator::Profile pssmRes = pssmCalculator.computePSSMFromMSA(
-        filteredSetSize,
-        msaResult.centerLength,
-        (const char **) msaResult.msaSequence,
-#ifdef GAP_POS_SCORING
-        alnResults,
-#endif
-        wg,
-        // FIXME
-        0.0
-    );
-    
-    if (compBiasCorrection) {
-        SubstitutionMatrix::calcGlobalAaBiasCorrection(
-            &subMat,
-            pssmRes.pssm,
-            pNullBuffer,
-            Sequence::PROFILE_AA_SIZE,
-            lengthWithMask
-        );
-    }
-    unsigned char * consensus = new unsigned char[lengthWithMask];
-    for (int i = 0; i < lengthWithMask; ++i)
-        consensus[i] = subMat.aa2num[pssmRes.consensus[i]];
-    std::string result;
-    pssmRes.toBuffer(consensus, lengthWithMask, subMat, result);
-
-    delete[] pNullBuffer;
-    free(msaSequences[0]);
-    delete[] msaSequences;
-    delete[] consensus;
-    
-    return result;
-}
 // Generate PSSM from CIGARs and a MSA mask
 std::string msa2profile(
     std::vector<size_t> &indices,
@@ -993,7 +883,7 @@ std::string msa2profile(
     float qsc,
     int filterMinEnable,
     bool wg,
-    std::vector<double> branchWeights
+    float scoreBias
 ) {
     // length of sequences after masking
     int lengthWithMask = 0;
@@ -1049,9 +939,6 @@ std::string msa2profile(
         );
     }
     
-    float scorebias = 0.0f;
-    get_param_from_env("SCORE_BIAS_PSSM", scorebias);
-
     PSSMCalculator::Profile pssmRes = pssmCalculator.computePSSMFromMSA(
         filteredSetSize,
         msaResult.centerLength,
@@ -1060,10 +947,7 @@ std::string msa2profile(
         alnResults,
 #endif
         wg,
-        // FIXME
-        scorebias,
-        branchWeights,
-        indices
+        scoreBias
     );
     
     if (compBiasCorrection) {
@@ -1610,7 +1494,23 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
     // Databases
     const bool touch = (par.preloadMode != Parameters::PRELOAD_MODE_MMAP);
-    par.parseParameters(argc, argv, command, true, 0, MMseqsParameter::COMMAND_ALIGN);
+    par.parseParameters(argc, argv, command, false, 0, 0); // MMseqsParameter::COMMAND_ALIGN);
+    
+    // Different default params when not using neighborhood scoring
+    if (par.fastMode) {
+        for (size_t i = 0; i < par.structuremsa.size(); ++i) {
+            if (par.structuremsa[i]->wasSet) continue;
+            if (par.structuremsa[i]->uniqid == par.PARAM_NO_COMP_BIAS_CORR.uniqid) par.compBiasCorrection = 0;
+            else if (par.structuremsa[i]->uniqid == par.PARAM_SCORE_BIAS.uniqid) par.scoreBias = 1.6f;
+            else if (par.structuremsa[i]->uniqid == par.PARAM_SCORE_BIAS_PSSM.uniqid) par.scoreBiasPSSM = 0.5f;
+            else if (par.structuremsa[i]->uniqid == par.PARAM_GAP_OPEN.uniqid) par.gapOpen = MultiParam<NuclAA<int>>(23);
+            else if (par.structuremsa[i]->uniqid == par.PARAM_GAP_EXTEND.uniqid) par.gapExtend = MultiParam<NuclAA<int>>(2);
+            else if (par.structuremsa[i]->uniqid == par.PARAM_SW_GAP_OPEN.uniqid) par.swGapOpen = 8;
+            else if (par.structuremsa[i]->uniqid == par.PARAM_SW_GAP_EXTEND.uniqid) par.swGapExtend = 5;
+        }
+    }
+    
+    par.printParameters(command.cmd, argc, argv, *command.params);
 
     DBReader<unsigned int> seqDbrAA(par.db1.c_str(), par.db1Index.c_str(), par.threads, DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA|DBReader<unsigned int>::USE_LOOKUP_REV);
     seqDbrAA.open(DBReader<unsigned int>::NOSORT);
@@ -1654,26 +1554,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     
     // Map neighbours per residue per structure
     const size_t neighbours = 48;
-    float thresh = 15.0f;
-    float nb_multiplier = 6.0f;
-    float nb_low_cut = 0.5f;
+    par.nbSigma = 1.0f / par.nbSigma;
+    const float thresh_sq = par.nbAngCut * par.nbAngCut;
 
-    // continuous scoring vars
-    float nb_sigma_r = 9.0f;
-    float nb_sigma_i = 5.0f;
-    float nb_alpha = 1.0f;
-    float nb_beta = 1.0f;
-    get_param_from_env("NB_SIGMA_R", nb_sigma_r);
-    get_param_from_env("NB_SIGMA_I", nb_sigma_i);
-    get_param_from_env("NB_ALPHA", nb_alpha);
-    get_param_from_env("NB_BETA", nb_beta);
-    get_param_from_env("NB_ANG_CUT", thresh);
-    get_param_from_env("NB_MULT", nb_multiplier);
-    get_param_from_env("NB_LOW_CUT", nb_low_cut);
-    nb_sigma_r = 1.0f / nb_sigma_r;
-    nb_sigma_i = 1.0f / nb_sigma_i;
-
-    const float thresh_sq = thresh * thresh;
 
     // Initialise MSAs, Sequence objects
     size_t sequenceCnt = seqDbrAA.getSize();
@@ -1699,7 +1582,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     int maxThreads = std::min(par.threads, static_cast<int>(sequenceCnt));
 
     Neighbours *neighbourData;
-    if (caExist && par.scoreNeighbors) {
+    if (caExist && !par.fastMode) {
         neighbourData = new Neighbours(totalResidues * neighbours);
         neighbourData->collectNeighbours(sequenceCnt, seqDbrAA, seqDbrCA, proteinOffsets, neighbours, thresh_sq, maxThreads);
     } else {
@@ -1739,7 +1622,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     std::string tree;
     std::vector<AlnSimple> hits;
     std::vector<size_t> merges;
-    std::vector<double> weights;
 
     if (par.guideTree != "") {
         std::string line;
@@ -1807,7 +1689,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             par.maxSeqLen,
             subMat_3di.alphabetSize,
             par.compBiasCorrection,
-            par.compBiasCorrectionScale
+            par.compBiasCorrectionScale,
+            par.swGapOpen,
+            par.swGapExtend
         );
         if (cluDbr != NULL) {
             // add external hits to the list
@@ -1831,13 +1715,9 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
         Debug(Debug::INFO) << "Generating guide tree\n";
         mst(hits, sequenceCnt);
-        // upgma(hits, sequenceCnt);
-        // neighbour_joining(hits, sequenceCnt);
-        // assert(hits.size() == sequenceCnt - 1);  // should be n-1 edges
 
         Debug(Debug::INFO) << "Optimising merge order\n";
         balanceTree(hits, merges, sequenceCnt);
-        // merges.assign(sequenceCnt - 1, 1);
 
         std::string nw = makeNewick(hits, sequenceCnt, &qdbrH);
         std::string treeFile = par.filenames[par.filenames.size()-1] + ".nw";
@@ -2044,11 +1924,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 toRemove.push_back(targetSubMSA);
             }
             
-            // 1. sw, update relevant copied cigars --> MSA
-            // 2. lddt on MSA --> per col count
-            // 3. iterate cigar, map msa per col lddt -> (i, j)
             Matcher::result_t res;
-            if (caExist && par.scoreNeighbors) {
+            if (caExist && !par.fastMode) {
                 float **lddtScoreMap = new float *[seqMergedAa->L];                
                 unsigned int **lddtCounts = new unsigned int *[seqMergedAa->L];
                 for (int z = 0; z < seqMergedAa->L; z++) {
@@ -2061,7 +1938,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     lddtScoreMap, lddtCounts, seqMergedAa->L, seqTargetAa->L, qMembers,
                     tMembers, qMembersKept, tMembersKept, map1Rev, map2Rev, proteinOffsets,
                     msa.cigars_aa, queryIsProfile, targetIsProfile, par.filterMsa,
-                    neighbours, nb_sigma_r, nb_low_cut, nb_multiplier
+                    neighbours, par.nbSigma, par.nbLowCut, par.nbMultiplier
                 );
                 res = pairwiseAlignment(
                     seqMergedAa->L,
@@ -2158,7 +2035,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     par.qsc,
                     par.filterMinEnable,
                     par.wg,
-                    weights
+                    par.scoreBiasPSSM
                 );
                 filter_aa.getKept(kept, newSubMSA->members.size());
                 newSubMSA->diff.clear();
@@ -2183,7 +2060,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     par.qsc,
                     par.filterMinEnable,
                     par.wg,
-                    weights
+                    par.scoreBiasPSSM
                 );
             }
 
@@ -2212,12 +2089,12 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 {
     if (par.refineIters > 0) {
         refineMany(
-            tinySubMatAA, tinySubMat3Di, seqDbrCA, msa.cigars_aa, msa.cigars_ss, calculator_aa,
+            seqDbrCA, msa.cigars_aa, msa.cigars_ss, calculator_aa,
             filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
             par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId, par.qsc,
             par.Ndiff, par.covMSAThr, par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(),
             par.gapOpen.values.aminoacid(), par.maxSeqLen, par.qid, par.pairThreshold, msa.dbKeys,
-            par.refinementSeed, par.onlyScoringCols
+            par.refinementSeed, par.onlyScoringCols, par.scoreBiasPSSM
         );
     }
 }
