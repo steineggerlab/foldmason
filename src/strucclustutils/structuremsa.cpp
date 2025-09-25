@@ -1557,7 +1557,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     par.nbSigma = 1.0f / par.nbSigma;
     const float thresh_sq = par.nbAngCut * par.nbAngCut;
 
-
     // Initialise MSAs, Sequence objects
     size_t sequenceCnt = seqDbrAA.getSize();
     int maxSeqLength = par.maxSeqLen;
@@ -2091,10 +2090,11 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         refineMany(
             seqDbrCA, msa.cigars_aa, msa.cigars_ss, calculator_aa,
             filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
-            par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId, par.qsc,
+            par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId, par.qsc, par.matchRatio,
             par.Ndiff, par.covMSAThr, par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(),
             par.gapOpen.values.aminoacid(), par.maxSeqLen, par.qid, par.pairThreshold, msa.dbKeys,
-            par.refinementSeed, par.onlyScoringCols, par.scoreBiasPSSM
+            par.refinementSeed, par.onlyScoringCols, par.scoreBiasPSSM,
+            par.nbSigma, par.nbLowCut, par.nbMultiplier, par.fastMode, neighbourData, &proteinOffsets
         );
     }
 }

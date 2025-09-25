@@ -17,6 +17,7 @@ void refineMany(
     float filterMaxSeqId,
     // float matchRatio,
     float qsc,
+    float matchRatio,
     int Ndiff,
     float covMSAThr,
     int filterMinEnable,
@@ -29,7 +30,13 @@ void refineMany(
     std::vector<size_t> indices,
     int seed,
     bool onlyScoringCols,
-    float scoreBias
+    float scoreBias,
+    float nbSigma,
+    float nbLowCut,
+    float nbMultiplier,
+    bool fastMode,
+    Neighbours* neighbourData,
+    std::vector<size_t>* proteinOffsets
 );
 void deleteGapCols(std::vector<std::string> &sequences);
 void buildSubMSA(std::vector<std::string> &headers, std::vector<std::string> &sequences, std::string &subMSA);

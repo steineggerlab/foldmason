@@ -17,6 +17,7 @@
 #include "DBWriter.h"
 #include "assert.h"
 #include "StructureSmithWaterman.h"
+#include "Neighbours.h"
 
 /**
  * @brief Find and delete all-gap columns from a sub-collection of CIGAR vectors
@@ -114,6 +115,7 @@ void refineOne(
     float Ndiff,
     float covMSAThr,
     float qsc,
+    float matchRatio,
     int filterMinEnable,
     bool wg,
     int gapExtend,
@@ -121,13 +123,20 @@ void refineOne(
     std::vector<Sequence*> &sequences_aa,
     std::vector<Sequence*> &sequences_ss,
     RNG &rng,
-    float scoreBias
+    float scoreBias,
+    float nbSigma,
+    float nbLowCut,
+    float nbMultiplier,
+    bool fastMode,
+    Neighbours* neighbourData,
+    std::vector<size_t>* proteinOffsets
 ) {
     int sequenceCnt = cigars_aa.size();
 
     // Choose random size of group 1 in distribution from 1 to (N-1)
     std::uniform_int_distribution<> dist(1, sequenceCnt - 1);
     size_t groupOneSize = dist(rng); 
+    const size_t neighbours = 48;
 
     // Create bitmask of length N, set group 1 size elements to true, then random shuffle
     std::vector<bool> bitmask(sequenceCnt, false);
@@ -160,12 +169,23 @@ void refineOne(
     deleteGapCols(group2, cigars_aa, cigars_ss);
     
     // generate masks for each sub MSA
-    std::string mask1 = computeProfileMask(group1, cigars_aa, subMat_aa, 1.0);
-    std::string mask2 = computeProfileMask(group2, cigars_aa, subMat_aa, 1.0);
+    std::string mask1 = computeProfileMask(group1, cigars_aa, cigars_ss, subMat_aa, subMat_3di, matchRatio);
+    std::string mask2 = computeProfileMask(group2, cigars_aa, cigars_ss, subMat_aa, subMat_3di, matchRatio);
     std::vector<size_t> map1;
     std::vector<size_t> map2;
+    std::vector<size_t> map1Rev;
+    std::vector<size_t> map2Rev;
     maskToMapping(mask1, map1);
     maskToMapping(mask2, map2);
+    maskToMappingRev(mask1, map1Rev);
+    maskToMappingRev(mask2, map2Rev);
+    
+    // 
+    bool *kept_raw1 = new bool[group1.size()];
+    for (size_t z = 0; z < group1.size(); ++z) {
+        kept_raw1[z] = 1;
+    }
+    std::vector<bool> kept1(group1.size());
 
     // msa2profile
     std::string profile1_aa = msa2profile(
@@ -178,6 +198,15 @@ void refineOne(
         subMat_3di, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
         Ndiff, covMSAThr, qsc, filterMinEnable, wg, scoreBias
     );
+    filter_aa.getKept(kept_raw1, group1.size());
+    for (size_t z = 0; z < group1.size(); ++z) kept1[z] = kept_raw1[z];
+    delete[] kept_raw1;
+    
+    bool *kept_raw2 = new bool[group2.size()];
+    for (size_t z = 0; z < group2.size(); ++z) {
+        kept_raw2[z] = 1;
+    }
+    std::vector<bool> kept2(group2.size());
     std::string profile2_aa = msa2profile(
         group2, cigars_aa, mask2, calculator_aa, filter_aa,
         subMat_aa, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
@@ -188,6 +217,10 @@ void refineOne(
         subMat_3di, filterMsa, compBiasCorrection, qid, filterMaxSeqId,
         Ndiff, covMSAThr, qsc, filterMinEnable, wg, scoreBias
     );
+    filter_aa.getKept(kept_raw2, group2.size());
+    for (size_t z = 0; z < group2.size(); ++z) kept2[z] = kept_raw2[z];
+    delete[] kept_raw2;
+
     assert(profile1_aa.length() == profile1_ss.length());
     assert(profile2_aa.length() == profile2_ss.length());
 
@@ -207,22 +240,61 @@ void refineOne(
         q_neff_sum += sequences_aa[tId]->neffM[i];
     if (q_neff_sum <= t_neff_sum) {
         std::swap(mask1, mask2);
+        std::swap(map1, map2);
+        std::swap(map1Rev, map2Rev);
         std::swap(group1, group2);
         std::swap(qId, tId);
     }
-    Matcher::result_t result = pairwiseAlignment(
-        sequences_aa[qId]->L,
-        sequences_aa[qId], sequences_ss[qId],
-        sequences_aa[tId], sequences_ss[tId],
-        gapOpen, gapExtend,
-        &subMat_aa, &subMat_3di,
-        compBiasCorrection,
-        NULL
-    );
+    
+    Matcher::result_t res;
+    if (!fastMode) {
+        float **lddtScoreMap = new float *[sequences_aa[qId]->L];                
+        unsigned int **lddtCounts = new unsigned int *[sequences_aa[qId]->L];
+        for (int z = 0; z < sequences_aa[qId]->L; z++) {
+            lddtScoreMap[z] = new float [sequences_aa[tId]->L];
+            lddtCounts[z] = new unsigned int [sequences_aa[tId]->L];
+            memset(lddtScoreMap[z], 0, sizeof(float) * sequences_aa[tId]->L);
+            memset(lddtCounts[z], 0, sizeof(unsigned int) * sequences_aa[tId]->L);
+        }
+        neighbourData->fillNeighbourScoreMatrix(
+            lddtScoreMap, lddtCounts, sequences_aa[qId]->L, sequences_aa[tId]->L,
+            group1, group2, kept1, kept2, map1Rev, map2Rev, *proteinOffsets,
+            cigars_aa, true, true, filterMsa, neighbours, nbSigma, nbLowCut, nbMultiplier
+        );
+        res = pairwiseAlignment(
+            sequences_aa[qId]->L,
+            sequences_aa[qId], sequences_ss[qId],
+            sequences_aa[tId], sequences_ss[tId],
+            gapOpen,
+            gapExtend,
+            &subMat_aa,
+            &subMat_3di,
+            compBiasCorrection,
+            lddtScoreMap
+        );
+        for (int32_t z = 0; z < sequences_aa[qId]->L; z++) {
+            delete[] lddtScoreMap[z];
+            delete[] lddtCounts[z];
+        }
+        delete[] lddtScoreMap;
+        delete[] lddtCounts;
+    } else {
+        res = pairwiseAlignment(
+            sequences_aa[qId]->L,
+            sequences_aa[qId], sequences_ss[qId],
+            sequences_aa[tId], sequences_ss[tId],
+            gapOpen,
+            gapExtend,
+            &subMat_aa,
+            &subMat_3di,
+            compBiasCorrection,
+            NULL
+        );
+    }
     std::vector<Instruction> qBt;
     std::vector<Instruction> tBt;
-    getMergeInstructions(result, map1, map2, qBt, tBt);
-    updateCIGARs(result, map1, map2, cigars_aa, cigars_ss, group1, group2, qBt, tBt);
+    getMergeInstructions(res, map1, map2, qBt, tBt);
+    updateCIGARs(res, map1, map2, cigars_aa, cigars_ss, group1, group2, qBt, tBt);
 }
 
 void refineMany(
@@ -240,6 +312,7 @@ void refineMany(
     bool wg,
     float filterMaxSeqId,
     float qsc,
+    float matchRatio,
     int Ndiff,
     float covMSAThr,
     int filterMinEnable,
@@ -252,7 +325,13 @@ void refineMany(
     std::vector<size_t> indices,
     int seed,
     bool onlyScoringCols,
-    float scoreBias
+    float scoreBias,
+    float nbSigma,
+    float nbLowCut,
+    float nbMultiplier,
+    bool fastMode,
+    Neighbours *neighbourData,
+    std::vector<size_t> *proteinOffsets
 ) {
     std::cout << "Running " << iterations << " refinement iterations\n";
 
@@ -291,10 +370,10 @@ void refineMany(
             calculator_aa, filter_aa, subMat_aa,
             calculator_3di, filter_3di, subMat_3di,
             filterMsa, compBiasCorrection,
-            qid, filterMaxSeqId, Ndiff, covMSAThr, qsc, filterMinEnable,
-            wg, gapExtend, gapOpen,
-            sequences_aa, sequences_ss,
-            rng, scoreBias
+            qid, filterMaxSeqId, Ndiff, covMSAThr, qsc, matchRatio, filterMinEnable,
+            wg, gapExtend, gapOpen, sequences_aa, sequences_ss,
+            rng, scoreBias, nbSigma, nbLowCut, nbMultiplier,
+            fastMode, neighbourData, proteinOffsets
         );
         float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, seqDbrCA, pairThreshold, onlyScoringCols));
         // std::cout << std::fixed << std::setprecision(4) << "New LDDT: " << lddtScore << '\t' << "(" << i + 1 << ")\n";
@@ -353,6 +432,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
     std::cout << "Parsed FASTA\n";
 
     int sequenceCnt = cigars_aa.size();
+    int maxThreads = std::min(par.threads, static_cast<int>(sequenceCnt));
     
     SubstitutionMatrix subMat_3di(par.scoringMatrixFile.values.aminoacid().c_str(), par.bitFactor3Di, par.scoreBias);
     std::string blosum;
@@ -379,16 +459,46 @@ int refinemsa(int argc, const char **argv, const Command& command) {
 #endif
             );
     
-    // Refine for N iterations
-    refineMany(
-        &seqDbrCA, cigars_aa, cigars_ss,
-        calculator_aa, filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
-        par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
-        par.qsc, par.Ndiff, par.covMSAThr,
-        par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
-        par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed, par.onlyScoringCols, par.scoreBiasPSSM
-    );
-    
+    Neighbours *neighbourData;
+    if (!par.fastMode) {
+        int totalResidues = 0;
+        const size_t neighbours = 48;
+        par.nbSigma = 1.0f / par.nbSigma;
+        const float thresh_sq = par.nbAngCut * par.nbAngCut;
+        std::vector<size_t> proteinOffsets;
+        size_t baseOut = 0;
+        proteinOffsets.reserve(sequenceCnt + 1);
+        proteinOffsets.push_back(0);
+        for (std::vector<Instruction>& cigar : cigars_aa) {
+            size_t length = cigarLength(cigar, false);            
+            totalResidues += length;
+            baseOut += length * neighbours;
+            proteinOffsets.push_back(baseOut);
+        }
+        neighbourData = new Neighbours(totalResidues * neighbours);
+        neighbourData->collectNeighbours(sequenceCnt, seqDbrAA, &seqDbrCA, proteinOffsets, neighbours, thresh_sq, maxThreads);
+        refineMany(
+            &seqDbrCA, cigars_aa, cigars_ss,
+            calculator_aa, filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
+            par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
+            par.qsc, par.matchRatio, par.Ndiff, par.covMSAThr,
+            par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
+            par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed, par.onlyScoringCols, par.scoreBiasPSSM,
+            par.nbSigma, par.nbLowCut, par.nbMultiplier, par.fastMode, neighbourData, &proteinOffsets
+        );
+ 
+    } else {
+        refineMany(
+            &seqDbrCA, cigars_aa, cigars_ss,
+            calculator_aa, filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
+            par.refineIters, par.compBiasCorrection, par.wg, par.filterMaxSeqId,
+            par.qsc, par.matchRatio, par.Ndiff, par.covMSAThr,
+            par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
+            par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed, par.onlyScoringCols, par.scoreBiasPSSM,
+            par.nbSigma, par.nbLowCut, par.nbMultiplier, par.fastMode, NULL, NULL
+        );
+    }
+   
     // Write final MSA to file
     DBWriter resultWriter(
         par.db3.c_str(),

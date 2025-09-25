@@ -68,20 +68,15 @@ static inline simd_float exp_approx(simd_float x) {
 
 class Neighbours {
 public:
-    int32_t* idx_dist = NULL;
     float* distance = NULL;
     size_t sz = 0;
     size_t cap = 0;
-
+    
     explicit Neighbours(size_t n) {
         resize(n);
     }
-
+    
     ~Neighbours() {
-        if (idx_dist) {
-            free(idx_dist);
-            idx_dist = nullptr;
-        }
         if (distance) {
             free(distance);
             distance = nullptr;
@@ -94,15 +89,13 @@ public:
             reallocate(n);
         }
         if (n > sz) {
-            memset(idx_dist + sz, 0, (n - sz) * sizeof(int32_t));
             memset(distance + sz, 0, (n - sz) * sizeof(float));
         }
         sz = n;
     }
 
-    inline void insert_topk(const size_t rowBase, uint8_t& count, int32_t idxdist, float angdist, size_t K) {
+    inline void insert_topk(const size_t rowBase, uint8_t& count, float angdist, size_t K) {
         if (count < K) {
-            idx_dist[rowBase + count] = idxdist;
             distance[rowBase + count] = angdist;
             ++count;
             return;
@@ -117,7 +110,6 @@ public:
             }
         }
         if (angdist < wval) {
-            idx_dist[worst] = idxdist;
             distance[worst] = angdist;
         }
     }
@@ -133,18 +125,14 @@ public:
         for (size_t t = 0; t < c; ++t) {
             size_t s = ord[t];
             tmpD[t] = distance[rowBase + s];
-            tmpI[t] = idx_dist[rowBase + s];
         }
         memcpy(distance + rowBase, tmpD.data(), c * sizeof(float));
-        memcpy(idx_dist + rowBase, tmpI.data(), c * sizeof(int32_t));
         for (size_t t = c; t < neighbours; ++t) {
-            idx_dist[rowBase + t] = 0;
             distance[rowBase + t] = FLT_MAX;
         }
         const size_t idx[8] = { 2, 3, 5, 8, 13, 20, 31, 47 };
         for (size_t i = 0; i < 8; ++i) {
             distance[rowBase + i] = distance[rowBase + idx[i]];
-            idx_dist[rowBase + i] = idx_dist[rowBase + idx[i]];
         }
     }
 
@@ -319,11 +307,10 @@ public:
                     if (dist > thresh_sq) continue; 
                     float dz = zj - z[k];
                     dist += dz * dz;
-                    int idxdist = static_cast<int>(j) - static_cast<int>(k);
                     if (dist < thresh_sq) {
-                        insert_topk(rowBaseJ, count[j], idxdist, dist, neighbours); 
+                        insert_topk(rowBaseJ, count[j], dist, neighbours); 
                         const size_t rowBaseK = thread_baseOut + k * neighbours;
-                        insert_topk(rowBaseK, count[k], -idxdist, dist, neighbours); 
+                        insert_topk(rowBaseK, count[k], dist, neighbours); 
                     }
                 }
             }
@@ -337,34 +324,18 @@ public:
 
 private:
     void reallocate(size_t new_cap) {
-        const size_t bytes_i = new_cap * sizeof(int32_t);
         const size_t bytes_f = new_cap * sizeof(float);
-
-        int32_t* new_idx = NULL;
         float*   new_dst = NULL;
-
-        new_idx = reinterpret_cast<int32_t*>(malloc_simd_int(bytes_i));
         new_dst = reinterpret_cast<float*>(malloc_simd_float(bytes_f));
-
-        if (idx_dist) {
-            memcpy(new_idx, idx_dist, sz * sizeof(int32_t));
-        }
         if (distance) {
             memcpy(new_dst, distance, sz * sizeof(float));
         }
-
         if (new_cap > sz) {
-            memset(new_idx + sz, 0, (new_cap - sz) * sizeof(int32_t));
             memset(new_dst + sz, 0, (new_cap - sz) * sizeof(float));
-        }
-
-        if (idx_dist) {
-            free(idx_dist);
         }
         if (distance) {
             free(distance);
         }
-        idx_dist = new_idx;
         distance = new_dst;
         cap = new_cap;
     }

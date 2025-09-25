@@ -96,12 +96,22 @@ Matcher::result_t pairwiseAlignment(
 );
 
 void maskToMapping(const std::string &mask, std::vector<size_t> &mapping);
+void maskToMappingRev(const std::string &mask, std::vector<size_t> &mapping);
 int cigarLength(const std::vector<Instruction> &cigar, bool withGaps);
 
 std::string computeProfileMask(
     std::vector<size_t> &indices,
     std::vector<std::vector<Instruction> > &cigars,
     SubstitutionMatrix &subMat,
+    float matchRatio
+);
+
+std::string computeProfileMask(
+    std::vector<size_t> &indices,
+    std::vector<std::vector<Instruction> > &cigars_aa,
+    std::vector<std::vector<Instruction> > &cigars_ss,
+    SubstitutionMatrix &subMat_aa,
+    SubstitutionMatrix &subMat_ss,
     float matchRatio
 );
 
