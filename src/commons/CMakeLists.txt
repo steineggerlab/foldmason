@@ -1,6 +1,8 @@
 set(commons_source_files
         commons/FoldmasonParameters.h
         commons/FoldmasonParameters.cpp
+        commons/FMStructureSmithWaterman.h
+        commons/FMStructureSmithWaterman.cpp
         commons/SimpleGotoh.cpp
         commons/SimpleGotoh.h
         commons/Neighbours.h

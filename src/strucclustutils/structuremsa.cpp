@@ -14,7 +14,7 @@
 #include "Sequence.h"
 #include "SimpleGotoh.h"
 #include "Neighbours.h"
-#include "StructureSmithWaterman.h"
+#include "FMStructureSmithWaterman.h"
 // #include "affineneedlemanwunsch.h"
 #include "StructureUtil.h"
 #include "Util.h"
@@ -56,7 +56,6 @@ KSEQ_INIT(kseq_buffer_t*, kseq_buffer_reader)
 #define	EXIT_FAILURE	1
 #define	EXIT_SUCCESS	0
     
-
 template<typename T>
 void get_param_from_env(const char* param, T& value) {
     if (const char* s = std::getenv(param)) {
@@ -277,7 +276,8 @@ void updateAllScores(
     int compBiasCorrection,
     int compBiasCorrectionScale,
     int gapOpen,
-    int gapExtend
+    int gapExtend,
+    bool fastMode
 ) {
     size_t sequenceCnt = seqDbrAA.getSize();
     Debug::Progress progress;
@@ -350,14 +350,18 @@ void updateAllScores(
             AlnSimple aln;
             aln.queryId = mergedId;
             aln.targetId = targetId;
-            StructureSmithWaterman::s_align saln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
-                    seqTargetAa.numSequence,
-                    seqTargetSs.numSequence,
-                    seqTargetAa.L,
-                    gapOpen, gapExtend,
-                    seqMergedAa.L/2
-            );
-            aln.score = saln.score1;
+            if (fastMode) {
+                aln.score = structureSmithWaterman.ungapped_alignment(seqTargetAa.numSequence, seqTargetSs.numSequence, seqTargetAa.L);
+            } else {
+                StructureSmithWaterman::s_align saln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
+                        seqTargetAa.numSequence,
+                        seqTargetSs.numSequence,
+                        seqTargetAa.L,
+                        gapOpen, gapExtend,
+                        seqMergedAa.L/2
+                );
+                aln.score = saln.score1;
+            }
             // std::cout << "#print\t" << i << '\t' << j << '\t' <<
             //     saln.qStartPos1+1 << '-' << saln.qEndPos1 << " (" << seqMergedAa.L << ")\t" <<
             //     saln.dbStartPos1+1 << '-' << saln.dbEndPos1 << " (" << seqMergedAa.L << ")\t" <<
@@ -1010,7 +1014,8 @@ std::vector<AlnSimple> parseAndScoreExternalHits(
     int maxSeqLen,
     int alphabetSize,
     int compBiasCorrection,
-    int compBiasCorrectionScale
+    int compBiasCorrectionScale,
+    bool fastMode
 ) {
     // open an alignment DBReader
     std::vector<AlnSimple> allAlnResults;
@@ -1075,14 +1080,18 @@ std::vector<AlnSimple> parseAndScoreExternalHits(
                 AlnSimple aln;
                 aln.queryId = queryKey;
                 aln.targetId = dbKey;
-                StructureSmithWaterman::s_align saln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
-                        seqDbAa.numSequence,
-                        seqDbSs.numSequence,
-                        seqDbAa.L,
-                        go, ge,
-                        seqQueryAa.L/2
-                );
-                aln.score = saln.score1;
+                if (fastMode) {
+                    aln.score = structureSmithWaterman.ungapped_alignment(seqDbAa.numSequence, seqDbSs.numSequence, seqDbAa.L);
+                } else {
+                    StructureSmithWaterman::s_align saln = structureSmithWaterman.alignScoreEndPos<StructureSmithWaterman::PROFILE>(
+                            seqDbAa.numSequence,
+                            seqDbSs.numSequence,
+                            seqDbAa.L,
+                            go, ge,
+                            seqQueryAa.L/2
+                    );
+                    aln.score = saln.score1;
+                }
                 threadAlnResults.push_back(aln);
             }
         }
@@ -1690,7 +1699,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             par.compBiasCorrection,
             par.compBiasCorrectionScale,
             par.swGapOpen,
-            par.swGapExtend
+            par.swGapExtend,
+            par.fastMode
         );
         if (cluDbr != NULL) {
             // add external hits to the list
@@ -1705,7 +1715,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 par.maxSeqLen,
                 subMat_3di.alphabetSize,
                 par.compBiasCorrection,
-                par.compBiasCorrectionScale
+                par.compBiasCorrectionScale,
+                par.fastMode
             );
             hits.insert(hits.end(), externalHits.begin(), externalHits.end());
             // maybe a bit dangerous because memory of hits might be doubled

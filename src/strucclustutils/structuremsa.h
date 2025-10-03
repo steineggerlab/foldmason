@@ -7,7 +7,7 @@
 #include "PSSMCalculator.h"
 #include "MsaFilter.h"
 #include "SubstitutionMatrix.h"
-#include "StructureSmithWaterman.h"
+#include "FMStructureSmithWaterman.h"
 
 enum State {
     SEQ = 0,

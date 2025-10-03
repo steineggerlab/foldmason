@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <vector>
 #include <set>
+#include "Debug.h"
 #include "DBReader.h"
 #include "Sequence.h"
 #include "kseq.h"
@@ -15,8 +16,9 @@
 #include "FoldmasonParameters.h"
 #include "IndexReader.h"
 #include "DBWriter.h"
-#include "assert.h"
-#include "StructureSmithWaterman.h"
+#include <cassert>
+// #include "assert.h"
+#include "FMStructureSmithWaterman.h"
 #include "Neighbours.h"
 
 /**
@@ -333,7 +335,7 @@ void refineMany(
     Neighbours *neighbourData,
     std::vector<size_t> *proteinOffsets
 ) {
-    std::cout << "Running " << iterations << " refinement iterations\n";
+    Debug(Debug::INFO) << "Running " << iterations << " refinement iterations\n";
 
     std::vector<size_t> subset(cigars_aa.size());
     for (size_t i = 0; i < subset.size(); i++) {
@@ -342,7 +344,7 @@ void refineMany(
 
     float prevLDDT = std::get<2>(calculate_lddt(cigars_aa, subset, indices, seqDbrCA, pairThreshold, onlyScoringCols));
     float initLDDT = prevLDDT;
-    std::cout << "Initial LDDT: " << prevLDDT << '\n';
+    Debug(Debug::INFO) << "Initial LDDT: " << prevLDDT << '\n';
 
     std::vector<std::vector<Instruction> > cigars_new_aa;
     std::vector<std::vector<Instruction> > cigars_new_ss;
@@ -359,7 +361,7 @@ void refineMany(
         seed = rd();
     }
     std::mt19937 rng(seed);
-    std::cout << "Using seed: " << std::to_string(seed) << '\n';
+    Debug(Debug::INFO) << "Using seed: " << std::to_string(seed) << '\n';
 
     int i = 0;
     while (i < iterations) {
@@ -382,7 +384,7 @@ void refineMany(
         // }
         // std::cout << std::fixed << std::setprecision(4) << prevLDDT << " -> " << lddtScore << " (+" << (lddtScore - prevLDDT) << ") #" << i + 1 << '\n';
         if (lddtScore > prevLDDT) {
-            std::cout << std::fixed << std::setprecision(4) << prevLDDT << " -> " << lddtScore << " (+" << (lddtScore - prevLDDT) << ") #" << i + 1 << '\n';
+            Debug(Debug::INFO) << SSTR(prevLDDT, 4) << " -> " << SSTR(lddtScore, 4) << " (+" << SSTR(lddtScore - prevLDDT, 4) << ") #" << i + 1 << '\n';
             prevLDDT = lddtScore;
             std::swap(cigars_aa, cigars_new_aa);
             std::swap(cigars_ss, cigars_new_ss);
@@ -391,9 +393,9 @@ void refineMany(
     }
     float delta = prevLDDT - initLDDT;
     if (delta > 0.0) {
-        std::cout << std::fixed << std::setprecision(4) << "Final LDDT: " << prevLDDT << " (+" << delta << ")\n";
+        Debug(Debug::INFO) << "Final LDDT: " << SSTR(prevLDDT, 4) << " (+" << SSTR(delta, 4) << ")\n";
     } else {
-        std::cout << "Did not improve MSA\n";
+        Debug(Debug::INFO) << "Did not improve MSA\n";
     }
     for (size_t i = 0; i < sequences_aa.size(); i++) {
         delete sequences_aa[i];
@@ -429,7 +431,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
 
     KSeqWrapper* kseq = KSeqFactory(par.db2.c_str());
     parseFasta(kseq, &seqDbrAA, &seqDbr3Di, headers, indices, cigars_aa, cigars_ss, alnLength);
-    std::cout << "Parsed FASTA\n";
+    Debug(Debug::INFO) << "Parsed FASTA\n";
 
     int sequenceCnt = cigars_aa.size();
     int maxThreads = std::min(par.threads, static_cast<int>(sequenceCnt));
