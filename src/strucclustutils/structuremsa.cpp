@@ -1521,7 +1521,11 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     
     par.printParameters(command.cmd, argc, argv, *command.params);
 
-    DBReader<unsigned int> seqDbrAA(par.db1.c_str(), par.db1Index.c_str(), par.threads, DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA|DBReader<unsigned int>::USE_LOOKUP_REV);
+    int mode = DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA;
+    if (par.guideTree != "") {
+        mode |= DBReader<unsigned int>::USE_LOOKUP_REV;
+    }
+    DBReader<unsigned int> seqDbrAA(par.db1.c_str(), par.db1Index.c_str(), par.threads, mode);
     seqDbrAA.open(DBReader<unsigned int>::NOSORT);
     DBReader<unsigned int> seqDbr3Di((par.db1+"_ss").c_str(), (par.db1+"_ss.index").c_str(), par.threads, DBReader<unsigned int>::USE_INDEX|DBReader<unsigned int>::USE_DATA);
     seqDbr3Di.open(DBReader<unsigned int>::NOSORT);
