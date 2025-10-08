@@ -29,6 +29,9 @@ jobs:
       - name: Build
         run: |
           cd ${{ github.workspace }}
+          wget "https://github.com/Kitware/CMake/releases/download/v3.31.9/cmake-3.31.9-macos-universal.tar.gz"
+          tar xzvf cmake-3.31.9-macos-universal.tar.gz
+          PATH=$(cd ./cmake-3.31.9-macos-universal/CMake.app/Contents/bin/; pwd):$PATH
           ./lib/foldseek/util/build_osx.sh . build foldmason
 
       - name: Run Regression Suite
