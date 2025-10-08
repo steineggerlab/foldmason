@@ -1505,6 +1505,11 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     const bool touch = (par.preloadMode != Parameters::PRELOAD_MODE_MMAP);
     par.parseParameters(argc, argv, command, false, 0, 0); // MMseqsParameter::COMMAND_ALIGN);
     
+    bool caExist = FileUtil::fileExists((par.db1 + "_ca.dbtype").c_str());
+    if (caExist == false) {
+        par.fastMode = true;
+    }
+
     // Different default params when not using neighborhood scoring
     if (par.fastMode) {
         for (size_t i = 0; i < par.structuremsa.size(); ++i) {
@@ -1532,7 +1537,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     
     // Check for CA database
     DBReader<unsigned int> *seqDbrCA = NULL;
-    bool caExist = FileUtil::fileExists((par.db1 + "_ca.dbtype").c_str());
     if (caExist == false) {
         Debug(Debug::INFO) << "Did not find " << FileUtil::baseName(par.db1) << " C-alpha database, not using\n";
     } else {

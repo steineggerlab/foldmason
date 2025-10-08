@@ -23,7 +23,10 @@ if(NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(FOLDSEEK_FRAMEWORK_ONLY 1 CACHE INTERNAL "" FORCE)
-set(ENABLE_PROSTT5 0 CACHE INTERNAL "" FORCE)
+if(NOT ENABLE_PROSTT5)
+    # force disable ProstT5 if its not manually specified by the user
+    set(ENABLE_PROSTT5 0 CACHE INTERNAL "" FORCE)
+endif()
 add_subdirectory(lib/foldseek EXCLUDE_FROM_ALL)
 
 add_subdirectory(data)
