@@ -29,7 +29,7 @@ jobs:
       - name: Build
         run: |
           cd ${{ github.workspace }}
-          ./util/build_osx.sh . build
+          ./lib/foldseek/util/build_osx.sh . build foldmason
 
       - name: Run Regression Suite
         if: ${{ env.regression == 1 }}
