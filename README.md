@@ -4,7 +4,7 @@ FoldMason is a software tool for constructing accurate multiple alignments from 
 <p align="center"><img src="https://github.com/steineggerlab/foldmason/blob/main/.github/foldmason_logo.png" height="250" /></p>
 
 ## Publications
-[Gilchrist CLM, Mirdita M, and Steinegger M. Multiple Protein Structure Alignment at Scale with FoldMason. bioRxiv, doi:10.1101/2024.08.01.606130 (2024)](https://www.biorxiv.org/content/10.1101/2024.08.01.606130v1)
+[Gilchrist CLM, Mirdita M, and Steinegger M. Multiple Protein Structure Alignment at Scale with FoldMason. Science, doi: 10.1126/science.ads6733 (2026)](https://www.science.org/doi/10.1126/science.ads6733)
 
 [![build workflow](https://github.com/steineggerlab/foldmason/actions/workflows/build.yml/badge.svg)](https://github.com/steineggerlab/foldmason/actions/workflows/build.yml)
 
