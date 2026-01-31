@@ -6,7 +6,7 @@
 
 const char* binary_name = "foldmason";
 const char* tool_name = "foldmason";
-const char* tool_introduction = "FoldMason is a progressive aligner for fast and accurate multiple alignment of hundreds of thousands of protein structures.\n\nPlease cite:\n Gilchrist CLM, Mirdita M, Steinegger S. Multiple Protein Structure Alignment at Scale with FoldMason. bioRxiv, 2024.06.20.44908 (2024).\n";
+const char* tool_introduction = "FoldMason is a progressive aligner for fast and accurate multiple alignment of hundreds of thousands of protein structures.\n\nPlease cite:\n Gilchrist CLM, Mirdita M, Steinegger S. Multiple Protein Structure Alignment at Scale with FoldMason. Science, doi: 10.1126/science.ads6733 (2026).\n";
 const char* main_author = "Cameron L.M. Gilchrist, Milot Mirdita, Martin Steinegger";
 const char* show_extended_help = "1";
 const char* show_bash_info = NULL;
