@@ -78,17 +78,55 @@ const char *singleLetterToThree(char singleLetterAminoacid) {
 
 }
 
-
-
+static inline int writeFloat3(char* buf, float val) {
+    char* p = buf;
+    if (val < 0.0f) {
+        *p++ = '-'; val = -val;
+    }
+    unsigned int iv = (unsigned int)((double)val * 1000.0 + 0.5);
+    unsigned int frac = iv % 1000;
+    unsigned int ipart = iv / 1000;
+    if (ipart >= 1000) {
+        *p++ = '0' + ipart/1000;
+        ipart %= 1000;
+        *p++ = '0' + ipart/100;
+        ipart %= 100;
+        *p++ = '0' + ipart/10;
+        ipart %= 10;
+        *p++ = '0' + ipart;
+    } else if (ipart >= 100) {
+        *p++ = '0' + ipart/100;
+        ipart %= 100;
+        *p++ = '0' + ipart/10;
+        ipart %= 10;
+        *p++ = '0' + ipart;
+    } else if (ipart >= 10) {
+        *p++ = '0' + ipart/10;
+        ipart %= 10;
+        *p++ = '0' + ipart;
+    } else{
+        *p++ = '0' + ipart;
+        }
+    *p++ = '.';
+    *p++ = '0' + frac/100;
+    frac %= 100;
+    *p++ = '0' + frac/10;
+    frac %= 10;
+    *p++ = '0' + frac;
+    return (int)(p - buf);
+}
 
 void caToStr(float *ca, size_t len, std::string & ret) {
+    char buf[64];
     for (size_t i = 0; i < len; i++) {
-        ret.append(SSTR(ca[i]));
-        ret.push_back(',');
-        ret.append(SSTR(ca[len+i]));
-        ret.push_back(',');
-        ret.append(SSTR(ca[2*len+i]));
-        ret.push_back(',');
+        char* p = buf;
+        p += writeFloat3(p, ca[i]);
+        *p++ = ',';
+        p += writeFloat3(p, ca[len+i]);
+        *p++ = ',';
+        p += writeFloat3(p, ca[2*len+i]);
+        *p++ = ',';
+        ret.append(buf, p - buf);
     }
 }
 
@@ -239,6 +277,9 @@ int structureconvertalis(int argc, const char **argv, const Command &command) {
         format, par.outfmt, needSequenceDB, need3DiDB, needBacktrace, needFullHeaders,
         needLookup, needSource, needTaxonomyMapping, needTaxonomy, needQCA, needTCA, needTMaligner, needLDDT
     );
+    // FIXME: We don't need the evaluer here at all
+    bool needEvaluer = format == Parameters::FORMAT_ALIGNMENT_SAM
+        || std::find(outcodes.begin(), outcodes.end(), static_cast<int>(Parameters::OUTFMT_RAW)) != outcodes.end();
 
     if(LocalParameters::FORMAT_ALIGNMENT_PDB_SUPERPOSED == format){
         needTMaligner = true;
@@ -395,7 +436,9 @@ int structureconvertalis(int argc, const char **argv, const Command &command) {
     if (needSequenceDB) {
         queryProfile = Parameters::isEqualDbtype(qDbr.sequenceReader->getDbtype(), Parameters::DBTYPE_HMM_PROFILE);
         targetProfile = Parameters::isEqualDbtype(tDbr->sequenceReader->getDbtype(), Parameters::DBTYPE_HMM_PROFILE);
-        evaluer = new EvalueComputation(tDbr->sequenceReader->getAminoAcidDBSize(), subMat, gapOpen, gapExtend);
+        if (needEvaluer) {
+            evaluer = new EvalueComputation(tDbr->sequenceReader->getAminoAcidDBSize(), subMat, gapOpen, gapExtend);
+        }
     }
 
     bool query3DiProfile = false;
@@ -403,7 +446,7 @@ int structureconvertalis(int argc, const char **argv, const Command &command) {
     if (need3DiDB) {
         query3DiProfile = Parameters::isEqualDbtype(q3DiDbr->sequenceReader->getDbtype(), Parameters::DBTYPE_HMM_PROFILE);
         target3DiProfile = Parameters::isEqualDbtype(t3DiDbr->sequenceReader->getDbtype(), Parameters::DBTYPE_HMM_PROFILE);
-        if (evaluer == NULL) {
+        if (needEvaluer && evaluer == NULL) {
             evaluer = new EvalueComputation(t3DiDbr->sequenceReader->getAminoAcidDBSize(), subMat, gapOpen, gapExtend);
         }
     }
@@ -513,8 +556,6 @@ R"html(<!DOCTYPE html>
     }
 
     Debug::Progress progress(alnDbr.getSize());
-    std::vector<std::string> qChains;
-    std::vector<std::string> tChains;
 #pragma omp parallel num_threads(localThreads)
     {
         unsigned int thread_idx = 0;
@@ -1018,13 +1059,16 @@ R"html(<!DOCTYPE html>
                                         // TODO: make SSTR_approx that outputs %2f, not %3f
                                         result.append(SSTR(lddtres.avgLddtScore));
                                         break;
-                                    case LocalParameters::OUTFMT_LDDT_FULL:
-                                        for(int i = 0; i < lddtres.scoreLength - 1; i++) {
-                                            result.append(SSTR(lddtres.perCaLddtScore[i]));
-                                            result.push_back(',');
+                                    case LocalParameters::OUTFMT_LDDT_FULL: {
+                                        char lbuf[16];
+                                        for (int i = 0; i < lddtres.scoreLength - 1; i++) {
+                                            int n = writeFloat3(lbuf, lddtres.perCaLddtScore[i]);
+                                            lbuf[n] = ',';
+                                            result.append(lbuf, n + 1);
                                         }
-                                        result.append(SSTR(lddtres.perCaLddtScore[lddtres.scoreLength - 1]));
+                                        result.append(lbuf, writeFloat3(lbuf, lddtres.perCaLddtScore[lddtres.scoreLength - 1]));
                                         break;
+                                    }
                                     case LocalParameters::OUTFMT_PROBTP:
                                         result.append(SSTR(CalcProbTP::calculate(res.score)));
                                         break;
@@ -1062,6 +1106,41 @@ R"html(<!DOCTYPE html>
                                             EXIT(EXIT_FAILURE);
                                         }
                                         result.append(retComplex.uString);
+                                        break;
+                                    case LocalParameters::OUTFMT_Q_COMPLEX_COV:
+                                        if (!retComplex.isValid) {
+                                            Debug(Debug::ERROR) << "The column qcomplexcoverage is only for scorecomplex result.\n";
+                                            EXIT(EXIT_FAILURE);
+                                        }
+                                        result.append(SSTR(retComplex.qComplexCov));
+                                        break;
+                                    case LocalParameters::OUTFMT_T_COMPLEX_COV:
+                                        if (!retComplex.isValid) {
+                                            Debug(Debug::ERROR) << "The column tcomplexcoverage is only for scorecomplex result.\n";
+                                            EXIT(EXIT_FAILURE);
+                                        }
+                                        result.append(SSTR(retComplex.tComplexCov));
+                                        break;
+                                    case LocalParameters::OUTFMT_COMPLEX_QCHAINTMS:
+                                        if (!retComplex.isValid) {
+                                            Debug(Debug::ERROR) << "The column qchaintms is only for scorecomplex result.\n";
+                                            EXIT(EXIT_FAILURE);
+                                        }
+                                        result.append(retComplex.qChainTms);
+                                        break;
+                                    case LocalParameters::OUTFMT_COMPLEX_TCHAINTMS:
+                                        if (!retComplex.isValid) {
+                                            Debug(Debug::ERROR) << "The column tchaintms is only for scorecomplex result.\n";
+                                            EXIT(EXIT_FAILURE);
+                                        }
+                                        result.append(retComplex.tChainTms);
+                                        break;
+                                    case LocalParameters::OUTFMT_INTERFACE_LDDT:
+                                        if (!retComplex.isValid) {
+                                            Debug(Debug::ERROR) << "The column interfacelddt is only for scorecomplex result.\n";
+                                            EXIT(EXIT_FAILURE);
+                                        }
+                                        result.append(retComplex.interfaceLddtScore);
                                         break;
                                 }
                                 if (i < outcodes.size() - 1) {
