@@ -50,6 +50,10 @@ public:
     static const int MODEL_MODE_AUTO = 0;
     static const int MODEL_MODE_ADD = 1;
 
+    static const int INPUT_COMPRESSION_AUTO = 0;
+    static const int INPUT_COMPRESSION_GZIP = 1;
+    static const int INPUT_COMPRESSION_ZSTD = 2;
+
     static const int OUTFMT_QCA = 40;
     static const int OUTFMT_TCA = 41;
     static const int OUTFMT_U = 42;
@@ -73,6 +77,13 @@ public:
     static const int OUTFMT_T3DI = 59;
     static const int OUTFMT_Q3DIALN = 60;
     static const int OUTFMT_T3DIALN = 61;
+    static const int OUTFMT_Q_COMPLEX_COV = 62;
+    static const int OUTFMT_T_COMPLEX_COV = 63;
+    static const int OUTFMT_COMPLEX_QCHAINTMS = 64;
+    static const int OUTFMT_COMPLEX_TCHAINTMS = 65;
+    static const int OUTFMT_INTERFACE_LDDT =66;
+    static const int OUTFMT_COMPLEX_QNAME = 67;
+    static const int OUTFMT_COMPLEX_TNAME = 68;
 
     static const int DB_EXTRACT_MODE_CHAIN = 0;
     static const int DB_EXTRACT_MODE_INTERFACE = 1;
@@ -113,7 +124,6 @@ public:
     std::vector<MMseqsParameter *> structurecreatedb;
     std::vector<MMseqsParameter *> compressca;
     std::vector<MMseqsParameter *> scoremultimer;
-    std::vector<MMseqsParameter *> filtermultimer;
     std::vector<MMseqsParameter *> multimerclusterworkflow;
     std::vector<MMseqsParameter *> easymultimerclusterworkflow;
     std::vector<MMseqsParameter *> multimersearchworkflow;
@@ -136,6 +146,7 @@ public:
     PARAMETER(PARAM_CHAIN_NAME_MODE)
     PARAMETER(PARAM_MODEL_NAME_MODE)
     PARAMETER(PARAM_WRITE_MAPPING)
+    PARAMETER(PARAM_WRITE_FOLDCOMP)
     PARAMETER(PARAM_TMALIGN_FAST)
     PARAMETER(PARAM_EXACT_TMSCORE)
     PARAMETER(PARAM_N_SAMPLE)
@@ -151,6 +162,7 @@ public:
     PARAMETER(PARAM_EXPAND_MULTIMER_EVALUE)
     PARAMETER(PARAM_EXPAND_MULTIMER_EVALUE_BC_COMPAT)
     PARAMETER(PARAM_INPUT_FORMAT)
+    PARAMETER(PARAM_INPUT_COMPRESSION_FORMAT)
     PARAMETER(PARAM_PDB_OUTPUT_MODE)
     PARAMETER(PARAM_PROSTT5_MODEL)
     PARAMETER(PARAM_DB_EXTRACTION_MODE)
@@ -158,6 +170,7 @@ public:
     PARAMETER(PARAM_MULTIMER_TM_THRESHOLD)
     PARAMETER(PARAM_CHAIN_TM_THRESHOLD)
     PARAMETER(PARAM_INTERFACE_LDDT_THRESHOLD)
+    PARAMETER(PARAM_MIN_ALIGNED_CHAINS)
     PARAMETER(PARAM_MULTIDOMAIN)
 
     float tmScoreThr;
@@ -169,7 +182,8 @@ public:
     int alignmentType;
     int chainNameMode;
     int modelNameMode;
-    bool writeMapping;
+    int writeMapping;
+    int writeFoldcomp;
     int tmAlignFast;
     int exactTMscore;
     int nsample;
@@ -183,14 +197,16 @@ public:
     int multimerReportMode;
     double eValueThrExpandMultimer;
     int inputFormat;
+    int inputCompressionFormat;
     int pdbOutputMode;
-    float filtMultimerTmThr;
+    float filtMultTmThr;
     float filtChainTmThr;
     float filtInterfaceLddtThr;
     std::string prostt5Model;
     int dbExtractionMode;
     float distanceThreshold;
     int prostt5SplitLength;
+    int minAlignedChains;
     int multiDomain;
 
     static std::vector<int> getOutputFormat(
