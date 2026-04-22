@@ -33,6 +33,7 @@
 #include "KSeqWrapper.h"
 #include "LDDT.h"
 #include "TMaligner.h"
+#include "../../lib/foldseek/src/strucclustutils/LoLAlign.h"
 #include "Coordinate16.h"
 #include "msa2lddt.h"
 
@@ -1441,6 +1442,97 @@ void testSeqLens(std::vector<size_t> &MAYBE_UNUSED(indices), std::vector<std::ve
     }
 }
 
+Matcher::result_t pairwiseLoLAlign(
+    int mergedId,
+    int targetId,
+    DBReader<unsigned int> &seqDbrAA,
+    DBReader<unsigned int> &seqDbr3Di,
+    DBReader<unsigned int> *seqDbrCA,
+    SubstitutionMatrix &subMatAA,
+    SubstitutionMatrix &subMat3Di,
+    unsigned int thread_idx,
+    int maxSeqLen,
+    int compBiasCorrection
+) {
+    const float fwbwGapOpen = 10.0f;
+    const float fwbwGapExtend = 2.0f;
+    const float temperature = 1.0f;
+    const size_t blockLen = 16;
+    const int multiDomain = 1;
+    const int qLen = seqDbrAA.getSeqLen(mergedId);
+    const int tLen = seqDbrAA.getSeqLen(targetId);
+    const size_t maxTargetLen = ((static_cast<size_t>(tLen) + 1 + blockLen - 1) / blockLen) * blockLen;
+
+    const unsigned int qKey = seqDbrAA.getDbKey(mergedId);
+    const unsigned int tKey = seqDbrAA.getDbKey(targetId);
+    const size_t qCaId = seqDbrCA->getId(qKey);
+    const size_t tCaId = seqDbrCA->getId(tKey);
+
+    Sequence qSeqAA(maxSeqLen, Parameters::DBTYPE_AMINO_ACIDS, (const BaseMatrix *) &subMatAA, 0, false, compBiasCorrection);
+    Sequence qSeq3Di(maxSeqLen, Parameters::DBTYPE_AMINO_ACIDS, (const BaseMatrix *) &subMat3Di, 0, false, compBiasCorrection);
+    Sequence tSeqAA(maxSeqLen, Parameters::DBTYPE_AMINO_ACIDS, (const BaseMatrix *) &subMatAA, 0, false, compBiasCorrection);
+    Sequence tSeq3Di(maxSeqLen, Parameters::DBTYPE_AMINO_ACIDS, (const BaseMatrix *) &subMat3Di, 0, false, compBiasCorrection);
+
+    qSeqAA.mapSequence(mergedId, qKey, seqDbrAA.getData(mergedId, thread_idx), qLen);
+    qSeq3Di.mapSequence(mergedId, qKey, seqDbr3Di.getData(mergedId, thread_idx), qLen);
+    tSeqAA.mapSequence(targetId, tKey, seqDbrAA.getData(targetId, thread_idx), tLen);
+    tSeq3Di.mapSequence(targetId, tKey, seqDbr3Di.getData(targetId, thread_idx), tLen);
+
+    Coordinate16 qcoords;
+    char *qcadata = seqDbrCA->getData(qCaId, thread_idx);
+    float *qCaData = qcoords.read(qcadata, qLen, seqDbrCA->getEntryLen(qCaId));
+
+    Coordinate16 tcoords;
+    char *tcadata = seqDbrCA->getData(tCaId, thread_idx);
+    float *tCaData = tcoords.read(tcadata, tLen, seqDbrCA->getEntryLen(tCaId));
+
+    const size_t lolAlignLen = std::max(static_cast<size_t>(qLen) + 1, maxTargetLen);
+    LoLAlign lolaligner(static_cast<unsigned int>(lolAlignLen), false);
+    FwBwAligner fwbwAligner(
+        -fwbwGapOpen,
+        -fwbwGapExtend,
+        temperature,
+        0,
+        static_cast<size_t>(qLen + 1),
+        maxTargetLen,
+        blockLen,
+        0
+    );
+
+    lolaligner.initQuery(
+        qCaData,
+        &qCaData[qLen],
+        &qCaData[qLen + qLen],
+        qSeqAA,
+        qSeq3Di,
+        qLen,
+        subMatAA,
+        static_cast<int>(maxTargetLen),
+        multiDomain
+    );
+
+    if (tLen <= 10) {
+        lolaligner.setStartAnchorLength(tLen < 4 ? 0 : 1);
+    }
+
+    Matcher::result_t res = lolaligner.align(
+        tKey,
+        tCaData,
+        &tCaData[tLen],
+        &tCaData[tLen + tLen],
+        tSeqAA,
+        tSeq3Di,
+        tLen,
+        subMatAA,
+        &fwbwAligner,
+        multiDomain
+    );
+    res.backtrace = Matcher::uncompressAlignment(res.backtrace);
+    res.alnLength = res.backtrace.length();
+
+    return res;
+}
+
 Matcher::result_t pairwiseTMAlign(
     int mergedId,
     int targetId,
@@ -1566,6 +1658,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     }
 
     SubstitutionMatrix subMat_aa(blosum.c_str(), par.bitFactorAa, par.scoreBias);
+    SubstitutionMatrix subMat_lol_aa(blosum.c_str(), 1.4f, par.scoreBias);
 
     Debug(Debug::INFO) << "Got substitution matrices\n";
     
@@ -1999,14 +2092,32 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             // NOTE this seems to degrade performance
             // If neither are profiles, do TM-align as well and take the best alignment
             if (!queryIsProfile && !targetIsProfile && caExist) {
-                Matcher::result_t tmRes = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
-                double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], tmRes, seqDbrCA, thread_idx);
+                Matcher::result_t resTM = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
+                Matcher::result_t resLoL = pairwiseLoLAlign(
+                    mergedId,
+                    targetId,
+                    seqDbrAA,
+                    seqDbr3Di,
+                    seqDbrCA,
+                    subMat_lol_aa,
+                    subMat_3di,
+                    thread_idx,
+                    par.maxSeqLen,
+                    par.compBiasCorrection
+                );
                 double lddt3Di = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], res, seqDbrCA, thread_idx);
-                if (lddtTM > lddt3Di) {
+                double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], resTM, seqDbrCA, thread_idx);
+                double lddtLoL = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], resLoL, seqDbrCA, thread_idx);
+                if (lddtTM > lddt3Di && lddtTM >= lddtLoL) {
                     qBt.clear();
                     tBt.clear();
-                    getMergeInstructions(tmRes, map1, map2, qBt, tBt);
-                    std::swap(res, tmRes);
+                    getMergeInstructions(resTM, map1, map2, qBt, tBt);
+                    std::swap(res, resTM);
+                } else if (lddtLoL > lddt3Di && lddtLoL > lddtTM) {
+                    qBt.clear();
+                    tBt.clear();
+                    getMergeInstructions(resLoL, map1, map2, qBt, tBt);
+                    std::swap(res, resLoL);
                 }
             }
 
