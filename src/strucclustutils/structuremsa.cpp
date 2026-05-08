@@ -20,7 +20,6 @@
 #include "Util.h"
 #include "structureto3diseqdist.h"
 #include <cassert>
-#include <cmath>
 #include <tuple>
 #include <set>
 #include <fstream>
@@ -100,6 +99,7 @@ void print_matrix(float** matrix, size_t m, size_t n) {
 inline size_t upper_triangle_index(size_t i, size_t j, size_t n) {
     return (i * (2 * n - i - 1)) / 2 + (j - i - 1);
 }
+
 Matcher::result_t pairwiseAlignment(
     unsigned int querySeqLen,
     Sequence *query_aa,
@@ -111,7 +111,7 @@ Matcher::result_t pairwiseAlignment(
     SubstitutionMatrix *mat_aa,
     SubstitutionMatrix *mat_3di,
     int compBiasCorrection,
-    float** lddtScoreMap
+    float** scoreBiasMap
 ) {
     std::string backtrace;
 
@@ -216,7 +216,7 @@ Matcher::result_t pairwiseAlignment(
         target_aa->L,
         gapOpen,
         gapExtend,
-        lddtScoreMap
+        scoreBiasMap
     );
         
     for (int32_t i = 0; i < alphabetSize; i++) {
@@ -1662,8 +1662,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
 
     Debug(Debug::INFO) << "Got substitution matrices\n";
     
-    // Map neighbours per residue per structure
-    const size_t neighbours = 48;
     par.nbSigma = 1.0f / par.nbSigma;
     const float thresh_sq = par.nbAngCut * par.nbAngCut;
 
@@ -1672,10 +1670,10 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     int maxSeqLength = par.maxSeqLen;
     size_t totalResidues = 0;
     MSAContainer msa(sequenceCnt);
-    std::vector<size_t> proteinOffsets;
-    proteinOffsets.reserve(sequenceCnt + 1);
-    proteinOffsets.push_back(0);
-    size_t baseOut = 0;
+    std::vector<size_t> residueOffsets;
+    residueOffsets.reserve(sequenceCnt + 1);
+    residueOffsets.push_back(0);
+    size_t residueBase = 0;
     for (size_t i = 0; i < sequenceCnt; i++) {
         unsigned int seqKeyAA = seqDbrAA.getDbKey(i);
         unsigned int seqKey3Di = seqDbr3Di.getDbKey(i);
@@ -1685,15 +1683,15 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
         totalResidues += length;
         msa.addStructure(seqIdAA, seqKeyAA, length, seqDbrAA.getData(seqIdAA, 0), seqDbr3Di.getData(seqId3Di, 0));
         maxSeqLength = std::max(maxSeqLength, static_cast<int>(length));
-        baseOut += length * neighbours;
-        proteinOffsets.push_back(baseOut);
+        residueBase += length;
+        residueOffsets.push_back(residueBase);
     }
     int maxThreads = std::min(par.threads, static_cast<int>(sequenceCnt));
 
     Neighbours *neighbourData;
     if (caExist && !par.fastMode) {
-        neighbourData = new Neighbours(totalResidues * neighbours);
-        neighbourData->collectNeighbours(sequenceCnt, seqDbrAA, seqDbrCA, proteinOffsets, neighbours, thresh_sq, maxThreads);
+        neighbourData = new Neighbours(totalResidues);
+        neighbourData->collectNeighbours(sequenceCnt, seqDbrAA, seqDbrCA, residueOffsets, thresh_sq, maxThreads);
     } else {
         neighbourData = NULL;
     }
@@ -1871,6 +1869,14 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     
     Debug::Progress progress;
     progress.reset(sequenceCnt - 1);
+    const bool secondPass = par.secondPass;
+    const size_t contactMaxAnchors = static_cast<size_t>(par.contactRefineMaxAnchors);
+    const size_t contactMaxMembers = static_cast<size_t>(par.contactRefineMaxMembers);
+    const size_t contactMaxNeighbours = std::min(static_cast<size_t>(par.contactRefineMaxNeighbours), Neighbours::CONTACT_CACHE_SIZE);
+    const size_t contactMaxCells = static_cast<size_t>(par.contactRefineMaxCells);
+    const size_t contactMinSep = static_cast<size_t>(par.contactRefineMinSeparation);
+    const float contactWeight = par.contactRefineWeight;
+    const float contactLowCut = par.contactRefineLowCut;
 
 #pragma omp parallel num_threads(maxThreads)
 {
@@ -1912,7 +1918,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     // thread-local vectors
     std::vector<SubMSA> subMSAs;
     std::vector<size_t> toRemove;
-
     for (size_t i = 0; i < merges.size(); i++) {
         subMSAs.reserve(merges[i]);
 
@@ -2036,21 +2041,26 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             }
             
             Matcher::result_t res;
+            float **scoreBiasMap = NULL;
+            unsigned int **scoreSupportCounts = NULL;
             if (caExist && !par.fastMode) {
-                float **lddtScoreMap = new float *[seqMergedAa->L];                
-                unsigned int **lddtCounts = new unsigned int *[seqMergedAa->L];
+                scoreBiasMap = new float *[seqMergedAa->L];
+                scoreSupportCounts = new unsigned int *[seqMergedAa->L];
                 for (int z = 0; z < seqMergedAa->L; z++) {
-                    lddtScoreMap[z] = new float [seqTargetAa->L];
-                    lddtCounts[z] = new unsigned int [seqTargetAa->L];
-                    memset(lddtScoreMap[z], 0, sizeof(float) * seqTargetAa->L);
-                    memset(lddtCounts[z], 0, sizeof(unsigned int) * seqTargetAa->L);
+                    scoreBiasMap[z] = new float [seqTargetAa->L];
+                    scoreSupportCounts[z] = new unsigned int [seqTargetAa->L];
+                    memset(scoreBiasMap[z], 0, sizeof(float) * seqTargetAa->L);
+                    memset(scoreSupportCounts[z], 0, sizeof(unsigned int) * seqTargetAa->L);
                 }
                 neighbourData->fillNeighbourScoreMatrix(
-                    lddtScoreMap, lddtCounts, seqMergedAa->L, seqTargetAa->L, qMembers,
-                    tMembers, qMembersKept, tMembersKept, map1Rev, map2Rev, proteinOffsets,
+                    scoreBiasMap, scoreSupportCounts, seqMergedAa->L, seqTargetAa->L, qMembers,
+                    tMembers, qMembersKept, tMembersKept, map1Rev, map2Rev,
                     msa.cigars_aa, queryIsProfile, targetIsProfile, par.filterMsa,
-                    neighbours, par.nbSigma, par.nbLowCut, par.nbMultiplier
+                    par.nbSigma, par.nbLowCut, par.nbMultiplier
                 );
+                for (int z = 0; z < seqMergedAa->L; ++z) delete[] scoreSupportCounts[z];
+                delete[] scoreSupportCounts;
+                scoreSupportCounts = NULL;
                 res = pairwiseAlignment(
                     seqMergedAa->L,
                     seqMergedAa,
@@ -2062,14 +2072,47 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     &subMat_aa,
                     &subMat_3di,
                     par.compBiasCorrection,
-                    lddtScoreMap
+                    scoreBiasMap
                 );
-                for (int32_t z = 0; z < seqMergedAa->L; z++) {
-                    delete[] lddtScoreMap[z];
-                    delete[] lddtCounts[z];
+                if (secondPass && neighbourData->applyContactPreservationRefinement(
+                    res,
+                    scoreBiasMap,
+                    seqMergedAa->L,
+                    seqTargetAa->L,
+                    qMembers,
+                    tMembers,
+                    qMembersKept,
+                    tMembersKept,
+                    queryIsProfile,
+                    targetIsProfile,
+                    par.filterMsa,
+                    contactMaxAnchors,
+                    contactMaxMembers,
+                    contactMaxNeighbours,
+                    contactMaxCells,
+                    contactMinSep,
+                    contactWeight,
+                    contactLowCut,
+                    map1Rev,
+                    map2Rev,
+                    msa.cigars_aa,
+                    seqDbrAA,
+                    par.nbMultiplier
+                )) {
+                    res = pairwiseAlignment(
+                        seqMergedAa->L,
+                        seqMergedAa,
+                        seqMergedSs,
+                        seqTargetAa,
+                        seqTargetSs,
+                        par.gapOpen.values.aminoacid(),
+                        par.gapExtend.values.aminoacid(),
+                        &subMat_aa,
+                        &subMat_3di,
+                        par.compBiasCorrection,
+                        scoreBiasMap
+                    );
                 }
-                delete[] lddtScoreMap;
-                delete[] lddtCounts;
             } else {
                 res = pairwiseAlignment(
                     seqMergedAa->L,
@@ -2087,10 +2130,8 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             }
             std::vector<Instruction> qBt;
             std::vector<Instruction> tBt;
-            getMergeInstructions(res, map1, map2, qBt, tBt);
             
-            // NOTE this seems to degrade performance
-            // If neither are profiles, do TM-align as well and take the best alignment
+            // For leaf-leaf merges, try TM-align and LoLalign and take the best alignment.
             if (!queryIsProfile && !targetIsProfile && caExist) {
                 Matcher::result_t resTM = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 Matcher::result_t resLoL = pairwiseLoLAlign(
@@ -2109,16 +2150,15 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                 double lddtTM = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], resTM, seqDbrCA, thread_idx);
                 double lddtLoL = calculate_lddt_pair(msa.dbKeys[mergedId], msa.dbKeys[targetId], resLoL, seqDbrCA, thread_idx);
                 if (lddtTM > lddt3Di && lddtTM >= lddtLoL) {
-                    qBt.clear();
-                    tBt.clear();
-                    getMergeInstructions(resTM, map1, map2, qBt, tBt);
                     std::swap(res, resTM);
                 } else if (lddtLoL > lddt3Di && lddtLoL > lddtTM) {
-                    qBt.clear();
-                    tBt.clear();
-                    getMergeInstructions(resLoL, map1, map2, qBt, tBt);
                     std::swap(res, resLoL);
                 }
+            }
+            getMergeInstructions(res, map1, map2, qBt, tBt);
+            if (scoreBiasMap != NULL) {
+                for (int32_t z = 0; z < seqMergedAa->L; z++) delete[] scoreBiasMap[z];
+                delete[] scoreBiasMap;
             }
 
             updateCIGARs(res, map1, map2, msa.cigars_aa, msa.cigars_ss, qMembers, tMembers, qBt, tBt);
@@ -2224,7 +2264,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             par.Ndiff, par.covMSAThr, par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(),
             par.gapOpen.values.aminoacid(), par.maxSeqLen, par.qid, par.pairThreshold, msa.dbKeys,
             par.refinementSeed, par.onlyScoringCols, par.scoreBiasPSSM,
-            par.nbSigma, par.nbLowCut, par.nbMultiplier, par.fastMode, neighbourData, &proteinOffsets
+            par.nbSigma, par.nbLowCut, par.nbMultiplier, par.fastMode, neighbourData
         );
     }
 }

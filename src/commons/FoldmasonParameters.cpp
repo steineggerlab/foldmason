@@ -16,11 +16,19 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_REFINE_SEED(PARAM_REFINE_SEED_ID, "--refine-seed", "Random number generator seed", "Random number generator seed", typeid(int), (void *) &refinementSeed, "^([-]?[0-9]*)$"),
         PARAM_ONLY_SCORING_COLS(PARAM_ONLY_SCORING_COLS_ID, "--only-scoring-cols", "Normalise LDDT by no. scoring columns", "Normalise LDDT by no. scoring columns", typeid(bool), (void *) &onlyScoringCols, ""),
         PARAM_FOLDMASON_FAST(PARAM_FOLDMASON_FAST_ID, "--fast", "Fast mode, disable neighbor score", "Fast mode, disable residue neighbourhood similarity scoring", typeid(bool), (void *) &fastMode, ""),
+        PARAM_NO_TWO_PASS(PARAM_NO_TWO_PASS_ID, "--no-two-pass", "Disable second pass alignment", "Disable second-pass contact and consensus re-alignment", typeid(bool), (void *) &secondPass, ""),
         PARAM_SCORE_BIAS_PSSM(PARAM_SCORE_BIAS_PSSM_ID, "--score-bias-pssm", "PSSM score bias", "PSSM score bias", typeid(float), (void *) &scoreBiasPSSM, "^([-]?[0-9]*(\\.[0-9]*)?)$"),
         PARAM_NB_SIGMA(PARAM_NB_SIGMA_ID, "--nb-sigma", "Neighborhood score decay constant", "Neighborhood score decay constant", typeid(float), (void *) &nbSigma, "^([0-9]*(\\.[0-9]*)?)$"),
         PARAM_NB_MULTIPLIER(PARAM_NB_MULTIPLIER_ID, "--nb-multiplier", "Neighborhood score multiplier", "Neighborhood score multiplier", typeid(float), (void *) &nbMultiplier, "^([0-9]*(\\.[0-9]*)?)$"),
         PARAM_NB_ANG_CUT(PARAM_NB_ANG_CUT_ID, "--nb-ang-cut", "Neighborhood angstrom cutoff", "Maximum distance cutoff (angstrom) for neighboring residues", typeid(float), (void *) &nbAngCut, "^([0-9]*(\\.[0-9]*)?)$"),
         PARAM_NB_LOW_CUT(PARAM_NB_LOW_CUT_ID, "--nb-low-cut", "Neighborhood score low pass threshold", "Minimum neighborhood score threshold", typeid(float), (void *) &nbLowCut, "^([0-9]*(\\.[0-9]*)?)$"),
+        PARAM_CONTACT_REFINE_MAX_ANCHORS(PARAM_CONTACT_REFINE_MAX_ANCHORS_ID, "--contact-max-anchors", "Contact refinement max anchors", "Maximum aligned anchors sampled for the second contact-preservation pass", typeid(int), (void *) &contactRefineMaxAnchors, "^[1-9]{1}[0-9]*$", MMseqsParameter::COMMAND_EXPERT),
+        PARAM_CONTACT_REFINE_MAX_MEMBERS(PARAM_CONTACT_REFINE_MAX_MEMBERS_ID, "--contact-max-members", "Contact refinement max members", "Maximum profile members sampled per side for the second contact-preservation pass", typeid(int), (void *) &contactRefineMaxMembers, "^[1-9]{1}[0-9]*$", MMseqsParameter::COMMAND_EXPERT),
+        PARAM_CONTACT_REFINE_MAX_NEIGHBOURS(PARAM_CONTACT_REFINE_MAX_NEIGHBOURS_ID, "--contact-max-neighbours", "Contact refinement max neighbours", "Maximum residue contacts per anchor considered during the second contact-preservation pass [1-8]", typeid(int), (void *) &contactRefineMaxNeighbours, "^[1-8]{1}$", MMseqsParameter::COMMAND_EXPERT),
+        PARAM_CONTACT_REFINE_MAX_CELLS(PARAM_CONTACT_REFINE_MAX_CELLS_ID, "--contact-max-cells", "Contact refinement max cells", "Maximum voted residue-pair cells retained per aligned anchor during the second contact-preservation pass", typeid(int), (void *) &contactRefineMaxCells, "^[1-9]{1}[0-9]*$", MMseqsParameter::COMMAND_EXPERT),
+        PARAM_CONTACT_REFINE_MIN_SEPARATION(PARAM_CONTACT_REFINE_MIN_SEPARATION_ID, "--contact-min-separation", "Contact refinement min separation", "Minimum sequence separation between residues considered as contacts in the second contact-preservation pass", typeid(int), (void *) &contactRefineMinSeparation, "^[0-9]{1}[0-9]*$", MMseqsParameter::COMMAND_EXPERT),
+        PARAM_CONTACT_REFINE_WEIGHT(PARAM_CONTACT_REFINE_WEIGHT_ID, "--contact-weight", "Contact refinement weight", "Score multiplier applied to second-pass contact votes before re-alignment", typeid(float), (void *) &contactRefineWeight, "^([0-9]*(\\.[0-9]*)?)$", MMseqsParameter::COMMAND_EXPERT),
+        PARAM_CONTACT_REFINE_LOW_CUT(PARAM_CONTACT_REFINE_LOW_CUT_ID, "--contact-low-cut", "Contact refinement low cut", "Minimum normalized second-pass contact vote retained before re-alignment", typeid(float), (void *) &contactRefineLowCut, "^([0-9]*(\\.[0-9]*)?)$", MMseqsParameter::COMMAND_EXPERT),
         PARAM_SW_GAP_OPEN(PARAM_SW_GAP_OPEN_ID, "--sw-gap-open", "All-vs-all SW gap open cost", "Gap open cost for all-vs-all Smith-Waterman alignment", typeid(int), (void *) &swGapOpen, "[0-9]{1}[0-9]*$"),
         PARAM_SW_GAP_EXTEND(PARAM_SW_GAP_EXTEND_ID, "--sw-gap-extend", "All-vs-all SW gap extension cost", "Gap extension cost for all-vs-all Smith-Waterman alignment", typeid(int), (void *) &swGapExtend, "[0-9]{1}[0-9]*$")
 {
@@ -51,11 +59,19 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_V);
     structuremsa.push_back(&PARAM_REFINE_SEED);
     structuremsa.push_back(&PARAM_ONLY_SCORING_COLS);
+    structuremsa.push_back(&PARAM_NO_TWO_PASS);
     structuremsa.push_back(&PARAM_SCORE_BIAS_PSSM);
     structuremsa.push_back(&PARAM_NB_SIGMA);
     structuremsa.push_back(&PARAM_NB_MULTIPLIER);
     structuremsa.push_back(&PARAM_NB_ANG_CUT);
     structuremsa.push_back(&PARAM_NB_LOW_CUT);
+    structuremsa.push_back(&PARAM_CONTACT_REFINE_MAX_ANCHORS);
+    structuremsa.push_back(&PARAM_CONTACT_REFINE_MAX_MEMBERS);
+    structuremsa.push_back(&PARAM_CONTACT_REFINE_MAX_NEIGHBOURS);
+    structuremsa.push_back(&PARAM_CONTACT_REFINE_MAX_CELLS);
+    structuremsa.push_back(&PARAM_CONTACT_REFINE_MIN_SEPARATION);
+    structuremsa.push_back(&PARAM_CONTACT_REFINE_WEIGHT);
+    structuremsa.push_back(&PARAM_CONTACT_REFINE_LOW_CUT);
     structuremsa.push_back(&PARAM_SW_GAP_OPEN);
     structuremsa.push_back(&PARAM_SW_GAP_EXTEND);
 
@@ -94,6 +110,7 @@ FoldmasonParameters::FoldmasonParameters() :
     recomputeScores = false;
     precluster = false;
     refineIters = 0;
+    secondPass = true;
     pairThreshold = 0.0;
     wg = true;
     filterMsa = 1;
@@ -106,6 +123,13 @@ FoldmasonParameters::FoldmasonParameters() :
     nbAngCut = 45.0f;
     nbLowCut = 0.02f;
     nbSigma = 3.84098f;
+    contactRefineMaxAnchors = 320;
+    contactRefineMaxMembers = 5;
+    contactRefineMaxNeighbours = 8;
+    contactRefineMaxCells = 16;
+    contactRefineMinSeparation = 6;
+    contactRefineWeight = 0.5f;
+    contactRefineLowCut = 0.20f;
     swGapOpen = 9;
     swGapExtend = 8;
     Ndiff = 5; 
