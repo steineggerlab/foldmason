@@ -1,19 +1,18 @@
 #ifndef NEIGHBORS_H
 #define NEIGHBORS_H
 
+#include <algorithm>
+#include <array>
+#include <cfloat>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <vector>
 
 #include "DBReader.h"
-#include "FastSort.h"
+#include "Matcher.h"
 #include "MSA.h"
 #include "simd.h"
-#include "Coordinate16.h"
-
-#ifdef OPENMP
-#include <omp.h>
-#endif
 
 #ifndef SIZE_T_MAX
 #define SIZE_T_MAX ((size_t) -1)
@@ -30,6 +29,8 @@
 #define simdf32_f2it(x)     _mm_cvttps_epi32(x)
 #define simdf32_fmadd_real(x,y,z) _mm_fmadd_ps(x,y,z)
 #endif
+
+static constexpr std::array<size_t, 8> neighbourSampleIndices = {{ 2, 3, 5, 8, 13, 20, 31, 47 }};
 
 // Based on https://gist.github.com/jrade/293a73f89dfef51da6522428c857802d
 // Copyright 2021 Johan Rade (johan.rade@gmail.com)
@@ -68,76 +69,124 @@ static inline simd_float exp_approx(simd_float x) {
 
 class Neighbours {
 public:
+    static constexpr size_t FULL_NEIGHBOUR_COUNT = neighbourSampleIndices.back() + 1;
+
     float* distance = NULL;
+    float* contactDistance = NULL;
+    uint32_t* contactResidues = NULL;
     size_t sz = 0;
     size_t cap = 0;
+    size_t contactSz = 0;
+    size_t contactCap = 0;
+    size_t contactStride = 0;
+    static constexpr uint32_t INVALID_CONTACT = UINT32_MAX;
     
-    explicit Neighbours(size_t n) {
-        resize(n);
-    }
-    
-    ~Neighbours() {
-        if (distance) {
-            free(distance);
-            distance = nullptr;
-        }
-        sz = cap = 0;
+    explicit Neighbours(size_t residueCount);
+    ~Neighbours();
+
+    void resize(size_t residueCount, size_t contactsPerResidue = 0);
+
+    inline size_t rowBase(size_t residueIndex) const {
+        return residueIndex * FULL_NEIGHBOUR_COUNT;
     }
 
-    void resize(size_t n) {
-        if (n > cap) {
-            reallocate(n);
-        }
-        if (n > sz) {
-            memset(distance + sz, 0, (n - sz) * sizeof(float));
-        }
-        sz = n;
+    inline size_t contactBase(size_t residueIndex) const {
+        return residueIndex * contactStride;
     }
 
-    inline void insert_topk(const size_t rowBase, uint8_t& count, float angdist, size_t K) {
+    inline size_t contactLimit() const {
+        return contactStride;
+    }
+
+    inline size_t residueBase(size_t sequenceIndex) const {
+        return residueOffsets[sequenceIndex];
+    }
+
+    inline void insert_topk(float *rowDistances, uint32_t *rowContacts, size_t &count, float angdist, uint32_t contactResid, size_t K) {
         if (count < K) {
-            distance[rowBase + count] = angdist;
+            rowDistances[count] = angdist;
+            if (rowContacts != nullptr) rowContacts[count] = contactResid;
             ++count;
             return;
         }
-        // find worst (max d^2) among current K
-        size_t worst = rowBase;
-        float  wval  = distance[worst];
+        size_t worst = 0;
+        float wval = rowDistances[worst];
         for (size_t t = 1; t < K; ++t) {
-            float v = distance[rowBase + t];
+            float v = rowDistances[t];
             if (v > wval) {
-                wval = v; worst = rowBase + t;
+                wval = v;
+                worst = t;
             }
         }
         if (angdist < wval) {
-            distance[worst] = angdist;
+            rowDistances[worst] = angdist;
+            if (rowContacts != nullptr) rowContacts[worst] = contactResid;
         }
     }
 
-    inline void sortNeighbours(size_t rowBase, size_t c, size_t neighbours) {
-        std::vector<size_t> ord(c);
-        std::iota(ord.begin(), ord.end(), 0);
-        SORT_SERIAL(ord.begin(), ord.end(), [&](size_t a, size_t b){
-            return distance[rowBase + a] < distance[rowBase + b];
-        });
-        std::vector<float> tmpD(c);
-        std::vector<int32_t> tmpI(c);
+    inline void sortNeighbours(float *rowDistances, size_t c) {
+        float tmpD[FULL_NEIGHBOUR_COUNT];
         for (size_t t = 0; t < c; ++t) {
-            size_t s = ord[t];
-            tmpD[t] = distance[rowBase + s];
+            tmpD[t] = rowDistances[t];
         }
-        memcpy(distance + rowBase, tmpD.data(), c * sizeof(float));
-        for (size_t t = c; t < neighbours; ++t) {
-            distance[rowBase + t] = FLT_MAX;
+        for (size_t t = 1; t < c; ++t) {
+            const float dist = tmpD[t];
+            size_t s = t;
+            while (s > 0 && tmpD[s - 1] > dist) {
+                tmpD[s] = tmpD[s - 1];
+                --s;
+            }
+            tmpD[s] = dist;
         }
-        const size_t idx[8] = { 2, 3, 5, 8, 13, 20, 31, 47 };
-        for (size_t i = 0; i < 8; ++i) {
-            distance[rowBase + i] = distance[rowBase + idx[i]];
+        memcpy(rowDistances, tmpD, c * sizeof(float));
+        for (size_t t = c; t < FULL_NEIGHBOUR_COUNT; ++t) {
+            rowDistances[t] = FLT_MAX;
+        }
+        for (size_t i = 0; i < neighbourSampleIndices.size(); ++i) {
+            const size_t idx = neighbourSampleIndices[i];
+            rowDistances[i] = (idx < FULL_NEIGHBOUR_COUNT) ? rowDistances[idx] : FLT_MAX;
+        }
+    }
+
+    inline void sortContacts(
+        float *rowDistances,
+        uint32_t *rowContacts,
+        float *rowContactDistances,
+        uint32_t *rowContactResidues,
+        size_t c,
+        size_t anchorResidue,
+        size_t minContactSeparation
+    ) {
+        for (size_t t = 1; t < c; ++t) {
+            const float dist = rowDistances[t];
+            const uint32_t contact = rowContacts[t];
+            size_t s = t;
+            while (s > 0 && rowDistances[s - 1] > dist) {
+                rowDistances[s] = rowDistances[s - 1];
+                rowContacts[s] = rowContacts[s - 1];
+                --s;
+            }
+            rowDistances[s] = dist;
+            rowContacts[s] = contact;
+        }
+        size_t contactCount = 0;
+        for (size_t t = 0; t < c; ++t) {
+            const size_t otherResidue = static_cast<size_t>(rowContacts[t]);
+            const size_t separation = (otherResidue > anchorResidue)
+                                    ? (otherResidue - anchorResidue)
+                                    : (anchorResidue - otherResidue);
+            if (separation < minContactSeparation) continue;
+            rowContactDistances[contactCount] = rowDistances[t];
+            rowContactResidues[contactCount] = rowContacts[t];
+            ++contactCount;
+        }
+        for (size_t t = contactCount; t < contactStride; ++t) {
+            rowContactDistances[t] = FLT_MAX;
+            rowContactResidues[t] = INVALID_CONTACT;
         }
     }
 
     inline float scoreNeighbours(size_t qIdx, size_t tIdx, float nb_sigma_r) {
-        // chi-squared exponential kernel
         float sum = 0.0f;
         float norm = 0.0f;
         const size_t V = sizeof(simd_float) / sizeof(float);
@@ -177,168 +226,66 @@ public:
         return sum / norm;
     }
     
-    inline void fillNeighbourScoreMatrix(
-        float **lddtScoreMap,
-        unsigned int **lddtCounts,
+    void fillNeighbourScoreMatrix(
+        float **scoreBiasMap,
+        unsigned int **scoreSupportCounts,
         int queryLen,
         int targetLen,
-        std::vector<size_t> &qMembers, 
-        std::vector<size_t> &tMembers, 
-        std::vector<bool> &qMembersKept, 
-        std::vector<bool> &tMembersKept, 
-        std::vector<size_t> &map1Rev, 
-        std::vector<size_t> &map2Rev, 
-        std::vector<size_t> &proteinOffsets, 
-        std::vector<std::vector<Instruction>> &cigars_aa, 
+        const std::vector<size_t> &qMembers,
+        const std::vector<size_t> &tMembers,
+        const std::vector<bool> &qMembersKept,
+        const std::vector<bool> &tMembersKept,
+        const std::vector<size_t> &map1Rev,
+        const std::vector<size_t> &map2Rev,
+        const std::vector<std::vector<Instruction>> &cigars_aa,
         bool queryIsProfile,
         bool targetIsProfile,
         int filterMsa,
-        size_t neighbours,
         float nb_sigma_r,
         float nb_low_cut,
         float nb_multiplier
-    ) {
-        for (size_t qi = 0; qi < qMembers.size(); ++qi) {
-            if (filterMsa && queryIsProfile && qMembersKept[qi] == false) {
-                continue;
-            }
-            size_t qMember = qMembers[qi];
-            for (size_t ti = 0; ti < tMembers.size(); ++ti) {
-                if (filterMsa && targetIsProfile && tMembersKept[ti] == false) {
-                    continue;
-                }
-                size_t tMember = tMembers[ti];
-                size_t qSeqId = 0;
-                size_t qResId = 0;
-                for (const Instruction& qIns : cigars_aa[qMember]) {
-                    if (!qIns.isSeq()) {
-                        qSeqId += qIns.length(); 
-                        continue;
-                    }
-                    size_t qMSAId = map1Rev[qSeqId];
-                    if (qMSAId == SIZE_T_MAX) {
-                        qSeqId++;
-                        qResId++;
-                        continue;
-                    }
-                    size_t qOffset = proteinOffsets[qMember];
-                    size_t qIdx = qOffset + qResId * neighbours;
-                    float* qLddtSums = lddtScoreMap[qMSAId];
-                    unsigned int* qLddtCounts = lddtCounts[qMSAId];
-                    size_t tSeqId = 0;
-                    size_t tResId = 0;
-                    for (const Instruction& tIns : cigars_aa[tMember]) {
-                        if (!tIns.isSeq()) {
-                            tSeqId += tIns.length(); 
-                            continue;
-                        }
-                        size_t tMSAId = map2Rev[tSeqId];
-                        if (tMSAId == SIZE_T_MAX) {
-                            tSeqId++;
-                            tResId++;
-                            continue;
-                        }
-                        size_t tOffset = proteinOffsets[tMember];
-                        size_t tIdx = tOffset + tResId * neighbours;
-                        qLddtSums[tMSAId] += scoreNeighbours(qIdx, tIdx, nb_sigma_r);
-                        qLddtCounts[tMSAId]++;
-                        tSeqId++;
-                        tResId++;
-                    }
-                    qSeqId++;
-                    qResId++;
-                }
-            }
-        }
-        std::vector<float> maxes(queryLen + targetLen);
-        for (int y = 0; y < queryLen; ++y) {
-            for (int z = 0; z < targetLen; ++z) {
-                if (lddtCounts[y][z] == 0) continue;
-                lddtScoreMap[y][z] /= static_cast<float>(lddtCounts[y][z]);
-                maxes[queryLen + z] = std::max(maxes[queryLen + z], lddtScoreMap[y][z]);
-                maxes[y] = std::max(maxes[y], lddtScoreMap[y][z]);
-            }
-        }
-        for (int y = 0; y < queryLen; ++y) {
-            for (int z = 0; z < targetLen; ++z) {
-                if (maxes[y] == 0.0f || maxes[queryLen + z] == 0.0f) continue;
-                lddtScoreMap[y][z] = (lddtScoreMap[y][z] * lddtScoreMap[y][z]) / (maxes[y] * maxes[queryLen + z]);
-                lddtScoreMap[y][z] = (lddtScoreMap[y][z] < nb_low_cut) ? 0.0f : lddtScoreMap[y][z] * nb_multiplier;
-            }
-        }
-    }
+    );
+
+    bool applyContactPreservationRefinement(
+        const Matcher::result_t &res,
+        float **scoreBiasMap,
+        int queryLen,
+        int targetLen,
+        const std::vector<size_t> &qMembers,
+        const std::vector<size_t> &tMembers,
+        const std::vector<bool> &qMembersKept,
+        const std::vector<bool> &tMembersKept,
+        bool queryIsProfile,
+        bool targetIsProfile,
+        int filterMsa,
+        size_t maxAnchors,
+        size_t maxMembers,
+        size_t maxNeighbours,
+        size_t maxCells,
+        float weight,
+        float lowCut,
+        const std::vector<size_t> &map1Rev,
+        const std::vector<size_t> &map2Rev,
+        const std::vector<std::vector<Instruction>> &cigarsAa,
+        DBReader<unsigned int> &seqDbrAA,
+        float nbMultiplier
+    );
 
     void collectNeighbours(
         size_t sequenceCnt,
         DBReader<unsigned int> &seqDbrAA,
         DBReader<unsigned int> *seqDbrCA,
-        std::vector<size_t> &proteinOffsets,
-        size_t neighbours,
+        const std::vector<size_t> &residueOffsets,
         float thresh_sq,
-        int maxThreads
-    ) {
-        #pragma omp parallel for num_threads(maxThreads) default(none) \
-            shared(proteinOffsets, sequenceCnt, neighbours, seqDbrAA, seqDbrCA, thresh_sq)
-        for (size_t i = 0; i < sequenceCnt; i++) {
-            unsigned int seqKeyAA = seqDbrAA.getDbKey(i);
-            size_t seqIdAA = seqDbrAA.getId(seqKeyAA);
-            size_t length = seqDbrAA.getSeqLen(seqIdAA);
-
-            Coordinate16 tcoords;
-            char *tcadata = seqDbrCA->getData(seqIdAA, 0);
-            size_t tCaLength = seqDbrCA->getEntryLen(seqIdAA);
-            float *targetCaData = tcoords.read(tcadata, length, tCaLength);
-
-            const float* x = targetCaData;
-            const float* y = targetCaData + length;
-            const float* z = targetCaData + length * 2;
-            std::vector<uint8_t> count(length, 0);
-            size_t thread_baseOut = proteinOffsets[i];
-
-            for (size_t j = 0; j < length; ++j) {
-                const float xj = x[j], yj = y[j], zj = z[j];
-                const size_t rowBaseJ = thread_baseOut + j * neighbours;
-                for (size_t k = j + 1; k < length; ++k) {
-                    float dx = xj - x[k];
-                    float dist = dx * dx;
-                    if (dist > thresh_sq) continue; 
-                    float dy = yj - y[k];
-                    dist += dy * dy;
-                    if (dist > thresh_sq) continue; 
-                    float dz = zj - z[k];
-                    dist += dz * dz;
-                    if (dist < thresh_sq) {
-                        insert_topk(rowBaseJ, count[j], dist, neighbours); 
-                        const size_t rowBaseK = thread_baseOut + k * neighbours;
-                        insert_topk(rowBaseK, count[k], dist, neighbours); 
-                    }
-                }
-            }
-            for (size_t j = 0; j < length; ++j) {
-                const size_t rowBase = thread_baseOut + j * neighbours;
-                const uint8_t c = count[j];
-                sortNeighbours(rowBase, c, neighbours);
-            }
-        }
-    }
+        int maxThreads,
+        size_t maxContacts = 0,
+        size_t minContactSeparation = 0
+    );
 
 private:
-    void reallocate(size_t new_cap) {
-        const size_t bytes_f = new_cap * sizeof(float);
-        float*   new_dst = NULL;
-        new_dst = reinterpret_cast<float*>(malloc_simd_float(bytes_f));
-        if (distance) {
-            memcpy(new_dst, distance, sz * sizeof(float));
-        }
-        if (new_cap > sz) {
-            memset(new_dst + sz, 0, (new_cap - sz) * sizeof(float));
-        }
-        if (distance) {
-            free(distance);
-        }
-        distance = new_dst;
-        cap = new_cap;
-    }
+    std::vector<size_t> residueOffsets;
+
+    void reallocate(size_t new_cap, size_t new_contact_cap);
 };
 
 #endif

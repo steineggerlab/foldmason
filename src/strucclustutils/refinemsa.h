@@ -35,8 +35,7 @@ void refineMany(
     float nbLowCut,
     float nbMultiplier,
     bool fastMode,
-    Neighbours* neighbourData,
-    std::vector<size_t>* proteinOffsets
+    Neighbours* neighbourData
 );
 void deleteGapCols(std::vector<std::string> &sequences);
 void buildSubMSA(std::vector<std::string> &headers, std::vector<std::string> &sequences, std::string &subMSA);

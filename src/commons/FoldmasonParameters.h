@@ -44,11 +44,19 @@ public:
     PARAMETER(PARAM_REFINE_SEED)
     PARAMETER(PARAM_ONLY_SCORING_COLS)
     PARAMETER(PARAM_FOLDMASON_FAST)
+    PARAMETER(PARAM_TWO_PASS)
     PARAMETER(PARAM_SCORE_BIAS_PSSM)
     PARAMETER(PARAM_NB_SIGMA)
     PARAMETER(PARAM_NB_MULTIPLIER)
     PARAMETER(PARAM_NB_ANG_CUT)
     PARAMETER(PARAM_NB_LOW_CUT)
+    PARAMETER(PARAM_CONTACT_REFINE_MAX_ANCHORS)
+    PARAMETER(PARAM_CONTACT_REFINE_MAX_MEMBERS)
+    PARAMETER(PARAM_CONTACT_REFINE_MAX_NEIGHBOURS)
+    PARAMETER(PARAM_CONTACT_REFINE_MAX_CELLS)
+    PARAMETER(PARAM_CONTACT_REFINE_MIN_SEPARATION)
+    PARAMETER(PARAM_CONTACT_REFINE_WEIGHT)
+    PARAMETER(PARAM_CONTACT_REFINE_LOW_CUT)
     PARAMETER(PARAM_SW_GAP_OPEN)
     PARAMETER(PARAM_SW_GAP_EXTEND)
 
@@ -56,6 +64,7 @@ public:
     bool recomputeScores;
     bool precluster;
     bool fastMode;
+    bool secondPass;
     int refineIters;
     float bitFactorAa;
     float bitFactor3Di;
@@ -69,6 +78,13 @@ public:
     float nbMultiplier;
     float nbAngCut;
     float nbLowCut;
+    int contactRefineMaxAnchors;
+    int contactRefineMaxMembers;
+    int contactRefineMaxNeighbours;
+    int contactRefineMaxCells;
+    int contactRefineMinSeparation;
+    float contactRefineWeight;
+    float contactRefineLowCut;
     int swGapOpen;
     int swGapExtend;
 };
