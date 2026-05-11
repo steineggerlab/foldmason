@@ -257,8 +257,7 @@ void appendProfileRawContactsForMember(
     const std::vector<uint32_t> &residueToProfile,
     const Neighbours *neighbourData,
     size_t residueBase,
-    size_t maxContacts,
-    size_t minContactSeparation
+    size_t maxContacts
 ) {
     for (size_t anchorResid = 0; anchorResid < residueToProfile.size(); ++anchorResid) {
         const uint32_t anchorCol = residueToProfile[anchorResid];
@@ -268,8 +267,7 @@ void appendProfileRawContactsForMember(
             const uint32_t otherResidGlobal = neighbourData->contactResidues[contactRowBase + n];
             if (otherResidGlobal == Neighbours::INVALID_CONTACT) break;
             const size_t otherResid = static_cast<size_t>(otherResidGlobal) - residueBase;
-            const size_t separation = (otherResid > anchorResid) ? (otherResid - anchorResid) : (anchorResid - otherResid);
-            if (otherResid >= residueToProfile.size() || separation < minContactSeparation) continue;
+            if (otherResid >= residueToProfile.size()) continue;
             const uint32_t otherCol = residueToProfile[otherResid];
             if (otherCol == UINT32_MAX) continue;
             rawContacts.push_back({
@@ -341,10 +339,9 @@ void buildProfileContactSketches(
     const std::vector<size_t> &mapRev,
     const std::vector<std::vector<Instruction>> &cigarsAa,
     Neighbours *neighbourData,
-    size_t maxContactsPerAnchor,
-    size_t minContactSeparation
+    size_t maxContactsPerAnchor
 ) {
-    const size_t perMemberContactLimit = std::min(Neighbours::CONTACT_CACHE_SIZE, maxContactsPerAnchor);
+    const size_t perMemberContactLimit = std::min(neighbourData->contactLimit(), maxContactsPerAnchor);
     sketchOffsets.assign(profileLength + 1, 0);
     sketch.clear();
     if (profileLength == 0 || memberIndices.empty() || perMemberContactLimit == 0) return;
@@ -355,7 +352,7 @@ void buildProfileContactSketches(
         const size_t member = members[memberIdx];
         const size_t residueBase = neighbourData->residueBase(member);
         mapCigarResidues(seqDbrAA.getSeqLen(member), mapRev, cigarsAa[member], nullptr, &residueToProfile);
-        appendProfileRawContactsForMember(rawContacts, residueToProfile, neighbourData, residueBase, perMemberContactLimit, minContactSeparation);
+        appendProfileRawContactsForMember(rawContacts, residueToProfile, neighbourData, residueBase, perMemberContactLimit);
     }
     if (rawContacts.empty()) return;
     reduceProfileContactSketches(sketchOffsets, sketch, rawContacts, profileLength, maxContactsPerAnchor);
@@ -446,6 +443,8 @@ void normalizeContactPreservationScoreMatrix(
 
 } // namespace
 
+constexpr uint32_t Neighbours::INVALID_CONTACT;
+
 Neighbours::Neighbours(size_t residueCount) {
     resize(residueCount);
 }
@@ -467,9 +466,10 @@ Neighbours::~Neighbours() {
     residueOffsets.clear();
 }
 
-void Neighbours::resize(size_t residueCount) {
+void Neighbours::resize(size_t residueCount, size_t contactsPerResidue) {
+    contactStride = contactsPerResidue;
     const size_t fullSize = residueCount * FULL_NEIGHBOUR_COUNT;
-    const size_t compactSize = residueCount * CONTACT_CACHE_SIZE;
+    const size_t compactSize = residueCount * contactStride;
     if (fullSize > cap || compactSize > contactCap) {
         reallocate(std::max(fullSize, cap), std::max(compactSize, contactCap));
     }
@@ -570,7 +570,6 @@ bool Neighbours::applyContactPreservationRefinement(
     size_t maxMembers,
     size_t maxNeighbours,
     size_t maxCells,
-    size_t minSep,
     float weight,
     float lowCut,
     const std::vector<size_t> &map1Rev,
@@ -594,8 +593,8 @@ bool Neighbours::applyContactPreservationRefinement(
     if (anchors.empty()) return false;
     selectContactMemberIndices(qMembers, qMembersKept, queryIsProfile, filterMsa, maxMembers, qMemberIdx);
     selectContactMemberIndices(tMembers, tMembersKept, targetIsProfile, filterMsa, maxMembers, tMemberIdx);
-    buildProfileContactSketches(qOff, qSketch, queryLen, qMemberIdx, qMembers, seqDbrAA, map1Rev, cigarsAa, this, maxNeighbours, minSep);
-    buildProfileContactSketches(tOff, tSketch, targetLen, tMemberIdx, tMembers, seqDbrAA, map2Rev, cigarsAa, this, maxNeighbours, minSep);
+    buildProfileContactSketches(qOff, qSketch, queryLen, qMemberIdx, qMembers, seqDbrAA, map1Rev, cigarsAa, this, maxNeighbours);
+    buildProfileContactSketches(tOff, tSketch, targetLen, tMemberIdx, tMembers, seqDbrAA, map2Rev, cigarsAa, this, maxNeighbours);
     fillContactPreservationScoreMatrix(contactCells, anchorCells, anchors, qOff, qSketch, tOff, tSketch, maxCells);
     if (contactCells.empty()) return false;
     normalizeContactPreservationScoreMatrix(contactCells, maxes, queryLen, targetLen, lowCut, nbMultiplier);
@@ -614,9 +613,12 @@ void Neighbours::collectNeighbours(
     DBReader<unsigned int> *seqDbrCA,
     const std::vector<size_t> &sequenceResidueOffsets,
     float thresh_sq,
-    int maxThreads
+    int maxThreads,
+    size_t maxContacts,
+    size_t minContactSeparation
 ) {
     residueOffsets = sequenceResidueOffsets;
+    resize(sequenceResidueOffsets.back(), maxContacts);
 
 #ifndef OPENMP
     (void) maxThreads;
@@ -635,8 +637,16 @@ void Neighbours::collectNeighbours(
         const float* x = targetCaData;
         const float* y = targetCaData + length;
         const float* z = targetCaData + length * 2;
-        std::vector<uint8_t> count(length, 0);
-        std::vector<uint32_t> contacts(length * FULL_NEIGHBOUR_COUNT, INVALID_CONTACT);
+        std::vector<size_t> count(length, 0);
+        const bool collectContacts = maxContacts > 0;
+        std::vector<size_t> contactCount;
+        std::vector<float> contactDistances;
+        std::vector<uint32_t> contacts;
+        if (collectContacts) {
+            contactCount.assign(length, 0);
+            contactDistances.resize(length * maxContacts);
+            contacts.resize(length * maxContacts);
+        }
         const size_t residueBase = residueOffsets[i];
         const size_t rowBaseOffset = rowBase(residueBase);
 
@@ -645,35 +655,39 @@ void Neighbours::collectNeighbours(
             const float yj = y[j];
             const float zj = z[j];
             const size_t rowBaseJ = rowBaseOffset + rowBase(j);
-            const size_t localRowBaseJ = j * FULL_NEIGHBOUR_COUNT;
+            const size_t contactRowBaseJ = j * maxContacts;
             for (size_t k = j + 1; k < length; ++k) {
                 float dx = xj - x[k];
                 float dist = dx * dx;
-                if (dist > thresh_sq) {
-                    continue;
-                }
+                if (dist > thresh_sq) continue;
                 float dy = yj - y[k];
                 dist += dy * dy;
-                if (dist > thresh_sq) {
-                    continue;
-                }
+                if (dist > thresh_sq) continue;
                 float dz = zj - z[k];
                 dist += dz * dz;
                 if (dist < thresh_sq) {
-                    insert_topk(distance + rowBaseJ, contacts.data() + localRowBaseJ, count[j], dist, static_cast<uint32_t>(residueBase + k), FULL_NEIGHBOUR_COUNT);
+                    insert_topk(distance + rowBaseJ, nullptr, count[j], dist, INVALID_CONTACT, FULL_NEIGHBOUR_COUNT);
                     const size_t rowBaseK = rowBaseOffset + rowBase(k);
-                    const size_t localRowBaseK = k * FULL_NEIGHBOUR_COUNT;
-                    insert_topk(distance + rowBaseK, contacts.data() + localRowBaseK, count[k], dist, static_cast<uint32_t>(residueBase + j), FULL_NEIGHBOUR_COUNT);
+                    insert_topk(distance + rowBaseK, nullptr, count[k], dist, INVALID_CONTACT, FULL_NEIGHBOUR_COUNT);
+                    if (collectContacts) {
+                        insert_topk(contactDistances.data() + contactRowBaseJ, contacts.data() + contactRowBaseJ, contactCount[j], dist, static_cast<uint32_t>(residueBase + k), maxContacts);
+                        const size_t contactRowBaseK = k * maxContacts;
+                        insert_topk(contactDistances.data() + contactRowBaseK, contacts.data() + contactRowBaseK, contactCount[k], dist, static_cast<uint32_t>(residueBase + j), maxContacts); }
                 }
             }
         }
         for (size_t j = 0; j < length; ++j) {
-            sortNeighbours(
-                distance + rowBaseOffset + rowBase(j),
-                contacts.data() + j * FULL_NEIGHBOUR_COUNT,
+            sortNeighbours(distance + rowBaseOffset + rowBase(j), count[j]);
+            if (!collectContacts) continue;
+            const size_t contactRowBase = j * maxContacts;
+            sortContacts(
+                contactDistances.data() + contactRowBase,
+                contacts.data() + contactRowBase,
                 contactDistance + contactBase(residueBase + j),
                 contactResidues + contactBase(residueBase + j),
-                count[j]
+                contactCount[j],
+                residueBase + j,
+                minContactSeparation
             );
         }
     }

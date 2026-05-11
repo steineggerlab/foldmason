@@ -70,7 +70,6 @@ static inline simd_float exp_approx(simd_float x) {
 class Neighbours {
 public:
     static constexpr size_t FULL_NEIGHBOUR_COUNT = neighbourSampleIndices.back() + 1;
-    static constexpr size_t CONTACT_CACHE_SIZE = neighbourSampleIndices.size();
 
     float* distance = NULL;
     float* contactDistance = NULL;
@@ -79,29 +78,34 @@ public:
     size_t cap = 0;
     size_t contactSz = 0;
     size_t contactCap = 0;
+    size_t contactStride = 0;
     static constexpr uint32_t INVALID_CONTACT = UINT32_MAX;
     
     explicit Neighbours(size_t residueCount);
     ~Neighbours();
 
-    void resize(size_t residueCount);
+    void resize(size_t residueCount, size_t contactsPerResidue = 0);
 
     inline size_t rowBase(size_t residueIndex) const {
         return residueIndex * FULL_NEIGHBOUR_COUNT;
     }
 
     inline size_t contactBase(size_t residueIndex) const {
-        return residueIndex * CONTACT_CACHE_SIZE;
+        return residueIndex * contactStride;
+    }
+
+    inline size_t contactLimit() const {
+        return contactStride;
     }
 
     inline size_t residueBase(size_t sequenceIndex) const {
         return residueOffsets[sequenceIndex];
     }
 
-    inline void insert_topk(float *rowDistances, uint32_t *rowContacts, uint8_t& count, float angdist, uint32_t contactResid, size_t K) {
+    inline void insert_topk(float *rowDistances, uint32_t *rowContacts, size_t &count, float angdist, uint32_t contactResid, size_t K) {
         if (count < K) {
             rowDistances[count] = angdist;
-            rowContacts[count] = contactResid;
+            if (rowContacts != nullptr) rowContacts[count] = contactResid;
             ++count;
             return;
         }
@@ -116,51 +120,69 @@ public:
         }
         if (angdist < wval) {
             rowDistances[worst] = angdist;
-            rowContacts[worst] = contactResid;
+            if (rowContacts != nullptr) rowContacts[worst] = contactResid;
         }
     }
 
-    inline void sortNeighbours(
-        float *rowDistances,
-        uint32_t *rowContacts,
-        float *rowContactDistances,
-        uint32_t *rowContactResidues,
-        size_t c
-    ) {
+    inline void sortNeighbours(float *rowDistances, size_t c) {
         float tmpD[FULL_NEIGHBOUR_COUNT];
-        uint32_t tmpC[FULL_NEIGHBOUR_COUNT];
         for (size_t t = 0; t < c; ++t) {
             tmpD[t] = rowDistances[t];
-            tmpC[t] = rowContacts[t];
         }
         for (size_t t = 1; t < c; ++t) {
             const float dist = tmpD[t];
-            const uint32_t contact = tmpC[t];
             size_t s = t;
             while (s > 0 && tmpD[s - 1] > dist) {
                 tmpD[s] = tmpD[s - 1];
-                tmpC[s] = tmpC[s - 1];
                 --s;
             }
             tmpD[s] = dist;
-            tmpC[s] = contact;
         }
-        const size_t compactCount = std::min(c, CONTACT_CACHE_SIZE);
         memcpy(rowDistances, tmpD, c * sizeof(float));
         for (size_t t = c; t < FULL_NEIGHBOUR_COUNT; ++t) {
             rowDistances[t] = FLT_MAX;
         }
-        for (size_t t = 0; t < compactCount; ++t) {
-            rowContactDistances[t] = tmpD[t];
-            rowContactResidues[t] = tmpC[t];
-        }
-        for (size_t t = compactCount; t < CONTACT_CACHE_SIZE; ++t) {
-            rowContactDistances[t] = FLT_MAX;
-            rowContactResidues[t] = INVALID_CONTACT;
-        }
-        for (size_t i = 0; i < CONTACT_CACHE_SIZE; ++i) {
+        for (size_t i = 0; i < neighbourSampleIndices.size(); ++i) {
             const size_t idx = neighbourSampleIndices[i];
             rowDistances[i] = (idx < FULL_NEIGHBOUR_COUNT) ? rowDistances[idx] : FLT_MAX;
+        }
+    }
+
+    inline void sortContacts(
+        float *rowDistances,
+        uint32_t *rowContacts,
+        float *rowContactDistances,
+        uint32_t *rowContactResidues,
+        size_t c,
+        size_t anchorResidue,
+        size_t minContactSeparation
+    ) {
+        for (size_t t = 1; t < c; ++t) {
+            const float dist = rowDistances[t];
+            const uint32_t contact = rowContacts[t];
+            size_t s = t;
+            while (s > 0 && rowDistances[s - 1] > dist) {
+                rowDistances[s] = rowDistances[s - 1];
+                rowContacts[s] = rowContacts[s - 1];
+                --s;
+            }
+            rowDistances[s] = dist;
+            rowContacts[s] = contact;
+        }
+        size_t contactCount = 0;
+        for (size_t t = 0; t < c; ++t) {
+            const size_t otherResidue = static_cast<size_t>(rowContacts[t]);
+            const size_t separation = (otherResidue > anchorResidue)
+                                    ? (otherResidue - anchorResidue)
+                                    : (anchorResidue - otherResidue);
+            if (separation < minContactSeparation) continue;
+            rowContactDistances[contactCount] = rowDistances[t];
+            rowContactResidues[contactCount] = rowContacts[t];
+            ++contactCount;
+        }
+        for (size_t t = contactCount; t < contactStride; ++t) {
+            rowContactDistances[t] = FLT_MAX;
+            rowContactResidues[t] = INVALID_CONTACT;
         }
     }
 
@@ -240,7 +262,6 @@ public:
         size_t maxMembers,
         size_t maxNeighbours,
         size_t maxCells,
-        size_t minSep,
         float weight,
         float lowCut,
         const std::vector<size_t> &map1Rev,
@@ -256,7 +277,9 @@ public:
         DBReader<unsigned int> *seqDbrCA,
         const std::vector<size_t> &residueOffsets,
         float thresh_sq,
-        int maxThreads
+        int maxThreads,
+        size_t maxContacts = 0,
+        size_t minContactSeparation = 0
     );
 
 private:

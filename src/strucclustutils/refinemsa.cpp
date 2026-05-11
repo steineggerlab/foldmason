@@ -130,15 +130,13 @@ void refineOne(
     float nbLowCut,
     float nbMultiplier,
     bool fastMode,
-    Neighbours* neighbourData,
-    std::vector<size_t>* proteinOffsets
+    Neighbours* neighbourData
 ) {
     int sequenceCnt = cigars_aa.size();
 
     // Choose random size of group 1 in distribution from 1 to (N-1)
     std::uniform_int_distribution<> dist(1, sequenceCnt - 1);
     size_t groupOneSize = dist(rng); 
-    const size_t neighbours = 48;
 
     // Create bitmask of length N, set group 1 size elements to true, then random shuffle
     std::vector<bool> bitmask(sequenceCnt, false);
@@ -260,8 +258,8 @@ void refineOne(
         }
         neighbourData->fillNeighbourScoreMatrix(
             lddtScoreMap, lddtCounts, sequences_aa[qId]->L, sequences_aa[tId]->L,
-            group1, group2, kept1, kept2, map1Rev, map2Rev, *proteinOffsets,
-            cigars_aa, true, true, filterMsa, neighbours, nbSigma, nbLowCut, nbMultiplier
+            group1, group2, kept1, kept2, map1Rev, map2Rev,
+            cigars_aa, true, true, filterMsa, nbSigma, nbLowCut, nbMultiplier
         );
         res = pairwiseAlignment(
             sequences_aa[qId]->L,
@@ -332,8 +330,7 @@ void refineMany(
     float nbLowCut,
     float nbMultiplier,
     bool fastMode,
-    Neighbours *neighbourData,
-    std::vector<size_t> *proteinOffsets
+    Neighbours *neighbourData
 ) {
     Debug(Debug::INFO) << "Running " << iterations << " refinement iterations\n";
 
@@ -375,7 +372,7 @@ void refineMany(
             qid, filterMaxSeqId, Ndiff, covMSAThr, qsc, matchRatio, filterMinEnable,
             wg, gapExtend, gapOpen, sequences_aa, sequences_ss,
             rng, scoreBias, nbSigma, nbLowCut, nbMultiplier,
-            fastMode, neighbourData, proteinOffsets
+            fastMode, neighbourData
         );
         float lddtScore = std::get<2>(calculate_lddt(cigars_new_aa, subset, indices, seqDbrCA, pairThreshold, onlyScoringCols));
         // std::cout << std::fixed << std::setprecision(4) << "New LDDT: " << lddtScore << '\t' << "(" << i + 1 << ")\n";
@@ -463,8 +460,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
     
     Neighbours *neighbourData;
     if (!par.fastMode) {
-        int totalResidues = 0;
-        const size_t neighbours = 48;
+        size_t totalResidues = 0;
         par.nbSigma = 1.0f / par.nbSigma;
         const float thresh_sq = par.nbAngCut * par.nbAngCut;
         std::vector<size_t> proteinOffsets;
@@ -474,11 +470,11 @@ int refinemsa(int argc, const char **argv, const Command& command) {
         for (std::vector<Instruction>& cigar : cigars_aa) {
             size_t length = cigarLength(cigar, false);            
             totalResidues += length;
-            baseOut += length * neighbours;
+            baseOut += length;
             proteinOffsets.push_back(baseOut);
         }
-        neighbourData = new Neighbours(totalResidues * neighbours);
-        neighbourData->collectNeighbours(sequenceCnt, seqDbrAA, &seqDbrCA, proteinOffsets, neighbours, thresh_sq, maxThreads);
+        neighbourData = new Neighbours(totalResidues);
+        neighbourData->collectNeighbours(sequenceCnt, seqDbrAA, &seqDbrCA, proteinOffsets, thresh_sq, maxThreads);
         refineMany(
             &seqDbrCA, cigars_aa, cigars_ss,
             calculator_aa, filter_aa, subMat_aa, calculator_3di, filter_3di, subMat_3di,
@@ -486,7 +482,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
             par.qsc, par.matchRatio, par.Ndiff, par.covMSAThr,
             par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
             par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed, par.onlyScoringCols, par.scoreBiasPSSM,
-            par.nbSigma, par.nbLowCut, par.nbMultiplier, par.fastMode, neighbourData, &proteinOffsets
+            par.nbSigma, par.nbLowCut, par.nbMultiplier, par.fastMode, neighbourData
         );
  
     } else {
@@ -497,7 +493,7 @@ int refinemsa(int argc, const char **argv, const Command& command) {
             par.qsc, par.matchRatio, par.Ndiff, par.covMSAThr,
             par.filterMinEnable, par.filterMsa, par.gapExtend.values.aminoacid(), par.gapOpen.values.aminoacid(),
             par.maxSeqLen, par.qid, par.pairThreshold, indices, par.refinementSeed, par.onlyScoringCols, par.scoreBiasPSSM,
-            par.nbSigma, par.nbLowCut, par.nbMultiplier, par.fastMode, NULL, NULL
+            par.nbSigma, par.nbLowCut, par.nbMultiplier, par.fastMode, NULL
         );
     }
    

@@ -6,6 +6,7 @@ set(commons_source_files
         commons/SimpleGotoh.cpp
         commons/SimpleGotoh.h
         commons/Neighbours.h
+        commons/Neighbours.cpp
         commons/newick.cpp
         commons/newick.h
         commons/MSA.cpp

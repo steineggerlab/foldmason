@@ -1664,6 +1664,14 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     
     par.nbSigma = 1.0f / par.nbSigma;
     const float thresh_sq = par.nbAngCut * par.nbAngCut;
+    const bool secondPass = par.secondPass;
+    const size_t contactMaxAnchors = static_cast<size_t>(par.contactRefineMaxAnchors);
+    const size_t contactMaxMembers = static_cast<size_t>(par.contactRefineMaxMembers);
+    const size_t contactMaxNeighbours = static_cast<size_t>(par.contactRefineMaxNeighbours);
+    const size_t contactMaxCells = static_cast<size_t>(par.contactRefineMaxCells);
+    const size_t contactMinSep = static_cast<size_t>(par.contactRefineMinSeparation);
+    const float contactWeight = par.contactRefineWeight;
+    const float contactLowCut = par.contactRefineLowCut;
 
     // Initialise MSAs, Sequence objects
     size_t sequenceCnt = seqDbrAA.getSize();
@@ -1691,7 +1699,13 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     Neighbours *neighbourData;
     if (caExist && !par.fastMode) {
         neighbourData = new Neighbours(totalResidues);
-        neighbourData->collectNeighbours(sequenceCnt, seqDbrAA, seqDbrCA, residueOffsets, thresh_sq, maxThreads);
+        if (secondPass) {
+            neighbourData->collectNeighbours(
+                sequenceCnt, seqDbrAA, seqDbrCA, residueOffsets, thresh_sq, maxThreads, contactMaxNeighbours, contactMinSep
+            );
+        } else {
+            neighbourData->collectNeighbours(sequenceCnt, seqDbrAA, seqDbrCA, residueOffsets, thresh_sq, maxThreads);
+        }
     } else {
         neighbourData = NULL;
     }
@@ -1869,14 +1883,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
     
     Debug::Progress progress;
     progress.reset(sequenceCnt - 1);
-    const bool secondPass = par.secondPass;
-    const size_t contactMaxAnchors = static_cast<size_t>(par.contactRefineMaxAnchors);
-    const size_t contactMaxMembers = static_cast<size_t>(par.contactRefineMaxMembers);
-    const size_t contactMaxNeighbours = std::min(static_cast<size_t>(par.contactRefineMaxNeighbours), Neighbours::CONTACT_CACHE_SIZE);
-    const size_t contactMaxCells = static_cast<size_t>(par.contactRefineMaxCells);
-    const size_t contactMinSep = static_cast<size_t>(par.contactRefineMinSeparation);
-    const float contactWeight = par.contactRefineWeight;
-    const float contactLowCut = par.contactRefineLowCut;
 
 #pragma omp parallel num_threads(maxThreads)
 {
@@ -2041,6 +2047,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             }
             
             Matcher::result_t res;
+            const bool leafLeaf = !queryIsProfile && !targetIsProfile && caExist;
             float **scoreBiasMap = NULL;
             unsigned int **scoreSupportCounts = NULL;
             if (caExist && !par.fastMode) {
@@ -2090,7 +2097,6 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
                     contactMaxMembers,
                     contactMaxNeighbours,
                     contactMaxCells,
-                    contactMinSep,
                     contactWeight,
                     contactLowCut,
                     map1Rev,
@@ -2132,7 +2138,7 @@ int structuremsa(int argc, const char **argv, const Command& command, bool preCl
             std::vector<Instruction> tBt;
             
             // For leaf-leaf merges, try TM-align and LoLalign and take the best alignment.
-            if (!queryIsProfile && !targetIsProfile && caExist) {
+            if (leafLeaf) {
                 Matcher::result_t resTM = pairwiseTMAlign(mergedId, targetId, seqDbrAA, seqDbrCA);
                 Matcher::result_t resLoL = pairwiseLoLAlign(
                     mergedId,

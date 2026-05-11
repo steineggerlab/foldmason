@@ -16,7 +16,7 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_REFINE_SEED(PARAM_REFINE_SEED_ID, "--refine-seed", "Random number generator seed", "Random number generator seed", typeid(int), (void *) &refinementSeed, "^([-]?[0-9]*)$"),
         PARAM_ONLY_SCORING_COLS(PARAM_ONLY_SCORING_COLS_ID, "--only-scoring-cols", "Normalise LDDT by no. scoring columns", "Normalise LDDT by no. scoring columns", typeid(bool), (void *) &onlyScoringCols, ""),
         PARAM_FOLDMASON_FAST(PARAM_FOLDMASON_FAST_ID, "--fast", "Fast mode, disable neighbor score", "Fast mode, disable residue neighbourhood similarity scoring", typeid(bool), (void *) &fastMode, ""),
-        PARAM_NO_TWO_PASS(PARAM_NO_TWO_PASS_ID, "--no-two-pass", "Disable second pass alignment", "Disable second-pass contact and consensus re-alignment", typeid(bool), (void *) &secondPass, ""),
+        PARAM_TWO_PASS(PARAM_TWO_PASS_ID, "--two-pass", "Enable second pass alignment", "Enable second-pass contact-preservation re-alignment", typeid(bool), (void *) &secondPass, ""),
         PARAM_SCORE_BIAS_PSSM(PARAM_SCORE_BIAS_PSSM_ID, "--score-bias-pssm", "PSSM score bias", "PSSM score bias", typeid(float), (void *) &scoreBiasPSSM, "^([-]?[0-9]*(\\.[0-9]*)?)$"),
         PARAM_NB_SIGMA(PARAM_NB_SIGMA_ID, "--nb-sigma", "Neighborhood score decay constant", "Neighborhood score decay constant", typeid(float), (void *) &nbSigma, "^([0-9]*(\\.[0-9]*)?)$"),
         PARAM_NB_MULTIPLIER(PARAM_NB_MULTIPLIER_ID, "--nb-multiplier", "Neighborhood score multiplier", "Neighborhood score multiplier", typeid(float), (void *) &nbMultiplier, "^([0-9]*(\\.[0-9]*)?)$"),
@@ -24,7 +24,7 @@ FoldmasonParameters::FoldmasonParameters() :
         PARAM_NB_LOW_CUT(PARAM_NB_LOW_CUT_ID, "--nb-low-cut", "Neighborhood score low pass threshold", "Minimum neighborhood score threshold", typeid(float), (void *) &nbLowCut, "^([0-9]*(\\.[0-9]*)?)$"),
         PARAM_CONTACT_REFINE_MAX_ANCHORS(PARAM_CONTACT_REFINE_MAX_ANCHORS_ID, "--contact-max-anchors", "Contact refinement max anchors", "Maximum aligned anchors sampled for the second contact-preservation pass", typeid(int), (void *) &contactRefineMaxAnchors, "^[1-9]{1}[0-9]*$", MMseqsParameter::COMMAND_EXPERT),
         PARAM_CONTACT_REFINE_MAX_MEMBERS(PARAM_CONTACT_REFINE_MAX_MEMBERS_ID, "--contact-max-members", "Contact refinement max members", "Maximum profile members sampled per side for the second contact-preservation pass", typeid(int), (void *) &contactRefineMaxMembers, "^[1-9]{1}[0-9]*$", MMseqsParameter::COMMAND_EXPERT),
-        PARAM_CONTACT_REFINE_MAX_NEIGHBOURS(PARAM_CONTACT_REFINE_MAX_NEIGHBOURS_ID, "--contact-max-neighbours", "Contact refinement max neighbours", "Maximum residue contacts per anchor considered during the second contact-preservation pass [1-8]", typeid(int), (void *) &contactRefineMaxNeighbours, "^[1-8]{1}$", MMseqsParameter::COMMAND_EXPERT),
+        PARAM_CONTACT_REFINE_MAX_NEIGHBOURS(PARAM_CONTACT_REFINE_MAX_NEIGHBOURS_ID, "--contact-max-neighbours", "Contact refinement max neighbours", "Maximum residue contacts retained per anchor during the second contact-preservation pass", typeid(int), (void *) &contactRefineMaxNeighbours, "^[1-9]{1}[0-9]*$", MMseqsParameter::COMMAND_EXPERT),
         PARAM_CONTACT_REFINE_MAX_CELLS(PARAM_CONTACT_REFINE_MAX_CELLS_ID, "--contact-max-cells", "Contact refinement max cells", "Maximum voted residue-pair cells retained per aligned anchor during the second contact-preservation pass", typeid(int), (void *) &contactRefineMaxCells, "^[1-9]{1}[0-9]*$", MMseqsParameter::COMMAND_EXPERT),
         PARAM_CONTACT_REFINE_MIN_SEPARATION(PARAM_CONTACT_REFINE_MIN_SEPARATION_ID, "--contact-min-separation", "Contact refinement min separation", "Minimum sequence separation between residues considered as contacts in the second contact-preservation pass", typeid(int), (void *) &contactRefineMinSeparation, "^[0-9]{1}[0-9]*$", MMseqsParameter::COMMAND_EXPERT),
         PARAM_CONTACT_REFINE_WEIGHT(PARAM_CONTACT_REFINE_WEIGHT_ID, "--contact-weight", "Contact refinement weight", "Score multiplier applied to second-pass contact votes before re-alignment", typeid(float), (void *) &contactRefineWeight, "^([0-9]*(\\.[0-9]*)?)$", MMseqsParameter::COMMAND_EXPERT),
@@ -59,7 +59,7 @@ FoldmasonParameters::FoldmasonParameters() :
     structuremsa.push_back(&PARAM_V);
     structuremsa.push_back(&PARAM_REFINE_SEED);
     structuremsa.push_back(&PARAM_ONLY_SCORING_COLS);
-    structuremsa.push_back(&PARAM_NO_TWO_PASS);
+    structuremsa.push_back(&PARAM_TWO_PASS);
     structuremsa.push_back(&PARAM_SCORE_BIAS_PSSM);
     structuremsa.push_back(&PARAM_NB_SIGMA);
     structuremsa.push_back(&PARAM_NB_MULTIPLIER);
@@ -110,7 +110,7 @@ FoldmasonParameters::FoldmasonParameters() :
     recomputeScores = false;
     precluster = false;
     refineIters = 0;
-    secondPass = true;
+    secondPass = false;
     pairThreshold = 0.0;
     wg = true;
     filterMsa = 1;
@@ -125,7 +125,7 @@ FoldmasonParameters::FoldmasonParameters() :
     nbSigma = 3.84098f;
     contactRefineMaxAnchors = 320;
     contactRefineMaxMembers = 5;
-    contactRefineMaxNeighbours = 8;
+    contactRefineMaxNeighbours = 16;
     contactRefineMaxCells = 16;
     contactRefineMinSeparation = 6;
     contactRefineWeight = 0.5f;
